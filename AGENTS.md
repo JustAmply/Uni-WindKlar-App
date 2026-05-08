@@ -3,6 +3,11 @@
 ## Purpose
 `Mein Windpark` is a Kotlin Multiplatform app (Android + iOS) that makes wind energy transparent for users in Germany.
 
+## Project Context
+This project is part of a university seminar. The app is developed for the Umweltbundesamt as the seminar "customer".
+
+App users are everyone who wants to get to know wind turbines and wind parks, not only expert or institutional users.
+
 Primary user value:
 - Discover nearby wind parks.
 - Search wind parks quickly and revisit recent parks.
@@ -62,7 +67,7 @@ For each feature task:
 1. Keep changes scoped to the relevant feature package.
 2. Add/adjust repository contract if data behavior changes.
 3. Keep navigation behavior explicit (including back behavior).
-4. Add/update tests proportional to risk.
+4. Do not add or update tests. Automated tests are not part of the stated seminar goal for this app.
 5. Keep placeholders temporary: replace with production UI/state progressively.
 
 ## Current Baseline Notes
@@ -74,10 +79,11 @@ For each feature task:
 - No backend dependency required for baseline feature development.
 - No cross-device sync yet.
 - No analytics/telemetry requirement yet.
+- No automated test implementation. Do not spend project time writing unit, integration, UI, or snapshot tests.
 
 ## Definition of Done (per vertical slice)
 A feature slice is done when:
 - UI flow works on Android + iOS entry points.
 - State and actions are wired through ViewModel/repository boundaries.
 - Required local persistence is implemented (not just interfaces).
-- Behavior is documented in code-level comments/tests where non-obvious.
+- Behavior is documented in code-level comments where non-obvious.
