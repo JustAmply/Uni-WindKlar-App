@@ -1,62 +1,116 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+# Mein Windpark
 
-* [/composeApp](./composeApp/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./composeApp/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./composeApp/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./composeApp/src/jvmMain/kotlin)
-    folder is the appropriate location.
+`Mein Windpark` is a Kotlin Multiplatform app for Android and iOS that makes wind energy more transparent for users in Germany.
 
-* [/iosApp](./iosApp/iosApp) contains iOS applications. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+The app helps users discover nearby wind parks, search for specific parks, revisit recently opened parks, understand local production context for a wind park and its `Gemeinde`, and read practical answers to common questions and skeptical critiques about wind energy.
 
-### Build and Run Android Application
+## Product Scope
 
-To build and run the development version of the Android app, use the run configuration from the run widget
-in your IDE’s toolbar or build it directly from the terminal:
-- on macOS/Linux
-  ```shell
-  ./gradlew :composeApp:assembleDebug
-  ```
-- on Windows
-  ```shell
-  .\gradlew.bat :composeApp:assembleDebug
-  ```
+The current MVP has three top-level pages plus a shared detail flow.
 
-### Build and Run iOS Application
+### Map
 
-To build and run the development version of the iOS app, use the run configuration from the run widget
-in your IDE’s toolbar or open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+- Display wind parks on a map.
+- Open a selected wind park detail page.
+- Mark wind parks as favorites.
 
----
+### Search
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+- Search for wind parks directly.
+- Keep a local history of recently opened wind parks.
+- Open a wind park detail page from search results or history.
 
-### Architecture
+### Park Detail / Production
 
-The app stays in one shared Gradle module for now:
+- Show production-related data for a selected wind park.
+- Connect the park view with relevant municipality (`Gemeinde`) context.
+- Be reachable from both the Map and Search pages.
 
-- `composeApp` contains shared Kotlin and Compose code for Android and iOS.
-- `iosApp` remains the native iOS launcher.
+### FAQ
 
-Shared code in `composeApp/src/commonMain/kotlin/app` is organized by feature and core layers:
+- Answer core wind-energy questions in clear, practical language.
+- Address common skeptical critiques, for example concerns about birds and nature impact.
 
-- `navigation/` owns top-level routes and the shared app navigation host.
-- `feature/map/`, `feature/search/`, `feature/detail/`, and `feature/faq/` contain screen-specific UI, view models, and UI state.
-- `core/` contains shared UI, model, and utility code.
-- `data/` contains local data boundaries, repositories, entities, and seed import contracts.
+## Data Strategy
 
-Platform folders should stay thin:
+The app is local-first for now. Data is stored on the device with SQLite.
+
+- Shared SQLDelight schema files live in `composeApp/src/commonMain/sqldelight`.
+- UI code must not call SQLite or SQL directly.
+- Data access should follow this boundary:
+
+```text
+UI -> ViewModel/UseCase -> Repository -> Local DB/DAO
+```
+
+There is no backend dependency, cross-device sync, or analytics requirement in the current baseline.
+
+## Project Structure
+
+This is a Kotlin Multiplatform project targeting Android and iOS.
+
+- `composeApp`: shared Kotlin and Compose Multiplatform code.
+- `iosApp`: native iOS launcher.
+
+Shared app code lives under `composeApp/src/commonMain/kotlin/app`:
+
+- `navigation/`: routes and shared app navigation host.
+- `feature/map/`: map screen, state, and view model.
+- `feature/search/`: search screen, state, history behavior, and view model.
+- `feature/detail/`: wind park detail and production context flow.
+- `feature/faq/`: FAQ screen, state, and content.
+- `core/`: shared UI primitives, models, and utilities.
+- `data/`: repository interfaces, local entities/DAO contracts, and seed import contracts.
+
+Platform-specific code should stay thin:
 
 - `commonMain`: shared UI screens, state, repository interfaces, and cross-platform logic.
-- `androidMain`: Android-only integrations such as permissions or Android-specific map SDK bindings.
+- `androidMain`: Android-only integrations, such as permissions or Android-specific map SDK bindings.
 - `iosMain`: iOS-only integrations.
 
-Team conventions:
+## Development Conventions
 
 - Use `FeatureScreen`, `FeatureViewModel`, and `FeatureUiState` naming.
 - Keep one package per feature.
-- UI code must not call the database directly; use repositories or use cases.
-- SQLDelight schema files live in `composeApp/src/commonMain/sqldelight`.
+- Prefer shared code in `commonMain` unless a platform API requires otherwise.
+- Keep navigation behavior explicit, including back behavior.
+- Add or adjust repository contracts when data behavior changes.
+- Add tests proportional to the risk and blast radius of a change.
+- Replace temporary placeholders progressively with production UI and state.
+
+## Current Baseline
+
+- Navigation shell and feature placeholders exist.
+- Data layer interfaces exist.
+- SQLite implementation is still scaffold-level.
+- SQL schema files are placeholders and need real table and query definitions.
+
+## Build And Run
+
+### Android
+
+Run the Android app from the IDE run configuration, or build it from the terminal:
+
+```shell
+./gradlew :composeApp:assembleDebug
+```
+
+On Windows:
+
+```shell
+.\gradlew.bat :composeApp:assembleDebug
+```
+
+### iOS
+
+Open `iosApp` in Xcode and run the iOS app from there. The shared UI and app logic are provided by the `composeApp` module.
+
+## Definition Of Done
+
+A vertical feature slice is considered done when:
+
+- The UI flow works through the Android and iOS entry points.
+- State and actions are wired through ViewModel and repository boundaries.
+- Required local persistence is implemented, not only declared through interfaces.
+- Navigation behavior is explicit.
+- Non-obvious behavior is documented in focused comments or tests.
