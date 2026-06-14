@@ -67,6 +67,7 @@ fun AppNavHost() {
                 )
 
                 Route.Favorites -> FavoritesScreen(
+                    onBackClick = { currentRoute = Route.Map },
                     onParkSelected = { parkId -> currentRoute = Route.Detail(parkId) },
                 )
 
