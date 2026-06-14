@@ -25,9 +25,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.core.ui.components.PrimaryButton
-import meinwindpark.composeapp.generated.resources.Res
-import meinwindpark.composeapp.generated.resources.start_background
-import meinwindpark.composeapp.generated.resources.start_wind_icon
+import windklar.composeapp.generated.resources.Res
+import windklar.composeapp.generated.resources.start_background
+import windklar.composeapp.generated.resources.start_wind_icon
 import org.jetbrains.compose.resources.painterResource
 
 @Composable

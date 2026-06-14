@@ -44,8 +44,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import meinwindpark.composeapp.generated.resources.Res
-import meinwindpark.composeapp.generated.resources.start_background
+import windklar.composeapp.generated.resources.Res
+import windklar.composeapp.generated.resources.start_background
 import org.jetbrains.compose.resources.painterResource
 
 @Composable

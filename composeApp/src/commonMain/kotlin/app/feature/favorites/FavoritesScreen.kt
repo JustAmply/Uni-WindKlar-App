@@ -40,10 +40,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import meinwindpark.composeapp.generated.resources.Res
-import meinwindpark.composeapp.generated.resources.favorite_windpark_alpen
-import meinwindpark.composeapp.generated.resources.favorite_windpark_nordsee
-import meinwindpark.composeapp.generated.resources.favorite_windpark_ostsee
+import windklar.composeapp.generated.resources.Res
+import windklar.composeapp.generated.resources.favorite_windpark_alpen
+import windklar.composeapp.generated.resources.favorite_windpark_nordsee
+import windklar.composeapp.generated.resources.favorite_windpark_ostsee
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
