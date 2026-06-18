@@ -2,11 +2,11 @@ package app.feature.start
 
 data class StartUiState(
     val appName: String = "WindKlar",
-    val subtitle: String = "Transparente Windenergie fuer Deutschland",
+    val subtitle: String = "Transparente Windenergie für Deutschland",
     val highlights: List<String> = listOf(
-        "Entdecken Sie Windparks in Ihrer Naehe",
+        "Entdecken Sie Windparks in Ihrer Nähe",
         "Verstehen Sie erneuerbare Energie",
-        "Schuetzen Sie unsere Umwelt",
+        "Schützen Sie unsere Umwelt",
     ),
     val ctaLabel: String = "Jetzt entdecken",
 )

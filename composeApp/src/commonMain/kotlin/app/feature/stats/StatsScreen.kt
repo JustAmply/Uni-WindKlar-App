@@ -55,10 +55,12 @@ private val ChartGridGreen = Color(0xFFD8ECD9)
 
 @Composable
 fun StatsScreen(
+    viewModel: StatsViewModel,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
-    uiState: StatsUiState = StatsUiState(),
 ) {
+    val uiState = viewModel.uiState
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -82,7 +84,7 @@ fun StatsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    SectionTitle(text = "Jaehrliches Wachstum")
+                    SectionTitle(text = "Jährliches Wachstum")
 
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -181,7 +183,7 @@ private fun StatsHeader(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Zurueck",
+                    contentDescription = "Zurück",
                     tint = Color.White,
                     modifier = Modifier.size(20.dp),
                 )

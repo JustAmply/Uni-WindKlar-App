@@ -14,7 +14,7 @@ fun SearchScreen(
         body = "Hier entstehen Suche, Suchhistorie und direkte Einstiege zu Windpark-Details.",
         action = {
             Button(onClick = { onParkSelected("demo-park") }) {
-                Text("Letzten Windpark oeffnen")
+                Text("Letzten Windpark öffnen")
             }
         },
     )

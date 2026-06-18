@@ -1,8 +1,6 @@
 package app.feature.profile
 
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,24 +14,27 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -41,7 +42,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -51,20 +51,16 @@ private val HeaderEndGreen = Color(0xFF43A047)
 private val DarkGreen = Color(0xFF1A3A1A)
 private val MutedGreen = Color(0xFF5A7A5A)
 private val PaleGreen = Color(0xFFE8F5E9)
-private val DisabledSwitchGreen = Color(0xFFC8E6C9)
-private val LogoutRed = Color(0xFFD32F2F)
 
 @Composable
 fun ProfileScreen(
+    viewModel: ProfileViewModel,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
-    uiState: ProfileUiState = ProfileUiState(),
-    onNotificationsChanged: (Boolean) -> Unit = {},
-    onDarkModeChanged: (Boolean) -> Unit = {},
-    onLanguageClick: () -> Unit = {},
-    onPrivacyClick: () -> Unit = {},
-    onLogoutClick: () -> Unit = {},
 ) {
+    val uiState = viewModel.uiState
+    var showPrivacyDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -79,20 +75,38 @@ fun ProfileScreen(
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            SettingsCard(
-                uiState = uiState,
-                onNotificationsChanged = onNotificationsChanged,
-                onDarkModeChanged = onDarkModeChanged,
-                onLanguageClick = onLanguageClick,
-                onPrivacyClick = onPrivacyClick,
+            InfoSettingsCard(
+                onPrivacyClick = { showPrivacyDialog = true }
             )
+
+            DataSourceCard(uiState = uiState)
 
             AboutCard(uiState = uiState)
 
-            LogoutButton(onClick = onLogoutClick)
-
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+
+    if (showPrivacyDialog) {
+        AlertDialog(
+            onDismissRequest = { showPrivacyDialog = false },
+            title = { Text("Datenschutz", color = DarkGreen, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "WindKlar speichert keine personenbezogenen Daten. Ihr Standort wird nur temporär zur Zentrierung der Karte auf Ihrem Gerät verwendet und niemals übertragen oder serverseitig gespeichert. Favoriten und Verlauf werden ausschließlich lokal auf Ihrem Gerät gesichert.",
+                    color = DarkGreen,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showPrivacyDialog = false }
+                ) {
+                    Text("Schließen")
+                }
+            }
+        )
     }
 }
 
@@ -132,7 +146,7 @@ private fun ProfileHeader(
             }
 
             Text(
-                text = "Profil",
+                text = "Info & Einstellungen",
                 color = Color.White,
                 fontSize = 24.sp,
                 lineHeight = 32.sp,
@@ -160,26 +174,11 @@ private fun ProfileHeader(
                 )
             }
         }
-
-        Text(
-            text = "Willkommen zurück!",
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp),
-            color = Color.White,
-            fontSize = 18.sp,
-            lineHeight = 28.sp,
-            textAlign = TextAlign.Center,
-        )
     }
 }
 
 @Composable
-private fun SettingsCard(
-    uiState: ProfileUiState,
-    onNotificationsChanged: (Boolean) -> Unit,
-    onDarkModeChanged: (Boolean) -> Unit,
-    onLanguageClick: () -> Unit,
+private fun InfoSettingsCard(
     onPrivacyClick: () -> Unit,
 ) {
     Surface(
@@ -190,30 +189,12 @@ private fun SettingsCard(
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "Einstellungen",
+                text = "App-Einstellungen",
                 modifier = Modifier.padding(16.dp),
                 color = DarkGreen,
-                fontSize = 20.sp,
-                lineHeight = 30.sp,
+                fontSize = 18.sp,
+                lineHeight = 26.sp,
                 fontWeight = FontWeight.Medium,
-            )
-
-            SettingsRowDivider()
-
-            SettingsToggleRow(
-                icon = Icons.Outlined.NotificationsNone,
-                label = "Benachrichtigungen",
-                checked = uiState.notificationsEnabled,
-                onCheckedChange = onNotificationsChanged,
-            )
-
-            SettingsRowDivider()
-
-            SettingsToggleRow(
-                icon = Icons.Outlined.DarkMode,
-                label = "Dunkelmodus",
-                checked = uiState.darkModeEnabled,
-                onCheckedChange = onDarkModeChanged,
             )
 
             SettingsRowDivider()
@@ -221,47 +202,100 @@ private fun SettingsCard(
             SettingsActionRow(
                 icon = Icons.Outlined.Language,
                 label = "Sprache",
-                trailingText = uiState.language,
-                onClick = onLanguageClick,
+                trailingText = "Deutsch",
+                onClick = {}
             )
 
             SettingsRowDivider()
 
             SettingsActionRow(
                 icon = Icons.Outlined.Security,
-                label = "Datenschutz",
-                onClick = onPrivacyClick,
+                label = "Datenschutzerklärung",
+                onClick = onPrivacyClick
             )
         }
     }
 }
 
 @Composable
-private fun SettingsToggleRow(
-    icon: ImageVector,
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
+private fun DataSourceCard(
+    uiState: ProfileUiState,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .defaultMinSize(minHeight = 72.dp)
-            .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        shadowElevation = 10.dp,
     ) {
-        SettingsRowLabel(
-            icon = icon,
-            label = label,
-            labelFontWeight = FontWeight.Normal,
-        )
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = null,
+                    tint = PrimaryGreen,
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = "Datenquelle & Datenqualität",
+                    color = DarkGreen,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
 
-        CompactSwitch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-        )
+            Text(
+                text = "Datenherkunft:",
+                color = DarkGreen,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = uiState.attribution,
+                color = MutedGreen,
+                fontSize = 14.sp,
+                lineHeight = 20.sp
+            )
+
+            if (uiState.limitations.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFD32F2F),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Wichtige Einschränkungen:",
+                        color = Color(0xFFD32F2F),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    uiState.limitations.forEach { limitation ->
+                        Text(
+                            text = "• $limitation",
+                            color = MutedGreen,
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -275,101 +309,48 @@ private fun SettingsActionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 73.dp)
+            .defaultMinSize(minHeight = 64.dp)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 17.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SettingsRowLabel(
-            icon = icon,
-            label = label,
-            labelFontWeight = FontWeight.Medium,
-        )
-
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (trailingText != null) {
-                Text(
-                    text = trailingText,
-                    color = MutedGreen,
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                    fontWeight = FontWeight.Medium,
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(PaleGreen, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = PrimaryGreen,
+                    modifier = Modifier.size(18.dp),
                 )
             }
 
-            Icon(
-                imageVector = Icons.Outlined.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MutedGreen,
-                modifier = Modifier.size(16.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsRowLabel(
-    icon: ImageVector,
-    label: String,
-    labelFontWeight: FontWeight,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(PaleGreen, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = PrimaryGreen,
-                modifier = Modifier.size(20.dp),
+            Text(
+                text = label,
+                color = DarkGreen,
+                fontSize = 15.sp,
+                lineHeight = 22.sp,
+                fontWeight = FontWeight.Normal,
             )
         }
 
-        Text(
-            text = label,
-            color = DarkGreen,
-            fontSize = 16.sp,
-            lineHeight = 24.sp,
-            fontWeight = labelFontWeight,
-        )
-    }
-}
-
-@Composable
-private fun CompactSwitch(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    val knobOffset by animateDpAsState(
-        targetValue = if (checked) 22.dp else 2.dp,
-    )
-
-    Box(
-        modifier = Modifier
-            .width(44.dp)
-            .height(24.dp)
-            .background(
-                color = if (checked) PrimaryGreen else DisabledSwitchGreen,
-                shape = CircleShape,
+        if (trailingText != null) {
+            Text(
+                text = trailingText,
+                color = MutedGreen,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.Medium,
             )
-            .clickable { onCheckedChange(!checked) },
-    ) {
-        Box(
-            modifier = Modifier
-                .offset(x = knobOffset, y = 2.dp)
-                .size(20.dp)
-                .background(Color.White, CircleShape),
-        )
+        }
     }
 }
 
@@ -397,7 +378,7 @@ private fun AboutCard(
                 .fillMaxWidth()
                 .background(
                     brush = Brush.linearGradient(
-                        colors = listOf(PaleGreen, DisabledSwitchGreen),
+                        colors = listOf(PaleGreen, Color(0xFFC8E6C9)),
                     ),
                     shape = RoundedCornerShape(16.dp),
                 )
@@ -427,28 +408,5 @@ private fun AboutCard(
                 lineHeight = 16.sp,
             )
         }
-    }
-}
-
-@Composable
-private fun LogoutButton(
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(58.dp)
-            .background(Color.White, RoundedCornerShape(16.dp))
-            .border(1.dp, LogoutRed, RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "Abmelden",
-            color = LogoutRed,
-            fontSize = 16.sp,
-            lineHeight = 24.sp,
-            fontWeight = FontWeight.Medium,
-        )
     }
 }

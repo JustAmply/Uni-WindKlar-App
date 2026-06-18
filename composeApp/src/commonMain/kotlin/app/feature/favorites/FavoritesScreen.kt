@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.LocationOn
@@ -46,6 +47,7 @@ import windklar.composeapp.generated.resources.favorite_windpark_nordsee
 import windklar.composeapp.generated.resources.favorite_windpark_ostsee
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import androidx.compose.runtime.LaunchedEffect
 
 private val ScreenBackground = Color(0xFFF8FAF7)
 private val PrimaryGreen = Color(0xFF2D5A2D)
@@ -57,11 +59,18 @@ private val HeartRed = Color(0xFFE53935)
 
 @Composable
 fun FavoritesScreen(
+
+    viewModel: FavoritesViewModel,
     onBackClick: () -> Unit,
     onParkSelected: (parkId: String) -> Unit,
     modifier: Modifier = Modifier,
-    uiState: FavoritesUiState = FavoritesUiState(),
 ) {
+    val uiState = viewModel.uiState
+
+    LaunchedEffect(viewModel) {
+        viewModel.loadData()
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -74,19 +83,66 @@ fun FavoritesScreen(
             modifier = Modifier
                 .offset(y = (-16).dp)
                 .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            uiState.parks.forEach { park ->
-                FavoriteParkCard(
-                    park = park,
-                    onClick = { onParkSelected(park.id) },
-                )
+            // Favorites Section
+            Text(
+                text = "Meine Favoriten",
+                color = DarkGreen,
+                fontSize = 18.sp,
+                lineHeight = 24.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+
+            if (uiState.parks.isEmpty()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color.White,
+                    shadowElevation = 4.dp
+                ) {
+                    Text(
+                        text = "Keine Favoriten gespeichert. Tippe auf der Karte auf einen Windpark und füge ihn zu deinen Favoriten hinzu!",
+                        color = MutedGreen,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            } else {
+                uiState.parks.forEach { park ->
+                    FavoriteParkCard(
+                        park = park,
+                        onClick = { onParkSelected(park.id) },
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            // Recently Viewed Section
+            if (uiState.recents.isNotEmpty()) {
+                Text(
+                    text = "Zuletzt angesehen",
+                    color = DarkGreen,
+                    fontSize = 18.sp,
+                    lineHeight = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
+
+                uiState.recents.forEach { park ->
+                    FavoriteParkCard(
+                        park = park,
+                        onClick = { onParkSelected(park.id) },
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
+
 
 @Composable
 private fun FavoritesHeader(
@@ -115,7 +171,7 @@ private fun FavoritesHeader(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Zurueck",
+                contentDescription = "Zurück",
                 tint = Color.White,
                 modifier = Modifier.size(20.dp),
             )
@@ -140,29 +196,27 @@ private fun FavoriteParkCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(24.dp),
         color = Color.White,
-        shadowElevation = 10.dp,
+        shadowElevation = 6.dp,
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.Top,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            FavoriteThumbnail(thumbnail = park.thumbnail)
+            FavoriteThumbnail(thumbnail = park.thumbnail, isFavorite = park.isFavorite)
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
                     text = park.name,
-                    color = DarkGreen,
+                    color = Color(0xFF1A3A1A),
                     fontSize = 18.sp,
-                    lineHeight = 27.sp,
+                    lineHeight = 22.sp,
                     fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
 
                 Row(
@@ -173,17 +227,17 @@ private fun FavoriteParkCard(
                         imageVector = Icons.Outlined.LocationOn,
                         contentDescription = null,
                         tint = MutedGreen,
-                        modifier = Modifier.size(12.dp),
+                        modifier = Modifier.size(14.dp),
                     )
                     Text(
                         text = park.distance,
                         color = MutedGreen,
                         fontSize = 12.sp,
                         lineHeight = 16.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
+
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -206,6 +260,7 @@ private fun FavoriteParkCard(
 @Composable
 private fun FavoriteThumbnail(
     thumbnail: FavoriteParkThumbnail,
+    isFavorite: Boolean,
 ) {
     Box(
         modifier = Modifier
@@ -231,9 +286,9 @@ private fun FavoriteThumbnail(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Favorite,
-                    contentDescription = "Favorit",
-                    tint = HeartRed,
+                    imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = if (isFavorite) "Favorit" else "Nicht Favorit",
+                    tint = if (isFavorite) HeartRed else Color.Gray,
                     modifier = Modifier.size(16.dp),
                 )
             }

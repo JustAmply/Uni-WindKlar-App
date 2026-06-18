@@ -1,33 +1,10 @@
 package app.feature.favorites
 
 data class FavoritesUiState(
-    val parks: List<FavoriteParkUiModel> = listOf(
-        FavoriteParkUiModel(
-            id = "windpark-nordsee",
-            name = "Windpark Nordsee",
-            distance = "12 km entfernt",
-            production = "42 GWh",
-            co2Reduction = "25.000 t",
-            thumbnail = FavoriteParkThumbnail.Nordsee,
-        ),
-        FavoriteParkUiModel(
-            id = "windpark-ostsee",
-            name = "Windpark Ostsee",
-            distance = "24 km entfernt",
-            production = "58 GWh",
-            co2Reduction = "34.000 t",
-            thumbnail = FavoriteParkThumbnail.Ostsee,
-        ),
-        FavoriteParkUiModel(
-            id = "windpark-alpen",
-            name = "Windpark Alpen",
-            distance = "45 km entfernt",
-            production = "36 GWh",
-            co2Reduction = "21.000 t",
-            thumbnail = FavoriteParkThumbnail.Alpen,
-        ),
-    ),
+    val parks: List<FavoriteParkUiModel> = emptyList(),
+    val recents: List<FavoriteParkUiModel> = emptyList(),
 )
+
 
 data class FavoriteParkUiModel(
     val id: String,
@@ -36,6 +13,7 @@ data class FavoriteParkUiModel(
     val production: String,
     val co2Reduction: String,
     val thumbnail: FavoriteParkThumbnail,
+    val isFavorite: Boolean,
 )
 
 enum class FavoriteParkThumbnail {

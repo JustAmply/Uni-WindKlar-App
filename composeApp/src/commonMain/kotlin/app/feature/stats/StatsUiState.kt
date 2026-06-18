@@ -30,7 +30,7 @@ data class StatsUiState(
     val co2Reduction: Co2Reduction = Co2Reduction(
         value = "18,5 Mio. t",
         label = "CO2 Einsparung 2025",
-        equivalent = "Entspricht 92,5 Millionen gepflanzten Baeumen",
+        equivalent = "Entspricht 92,5 Millionen gepflanzten Bäumen",
     ),
     val energyMix: List<EnergyMixValue> = listOf(
         EnergyMixValue("Wind", 42f),

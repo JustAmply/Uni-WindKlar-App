@@ -4,22 +4,26 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import app.data.repository.WindParkRepository
+import kotlinx.coroutines.launch
 
-class ProfileViewModel : ViewModel() {
+class ProfileViewModel(private val repository: WindParkRepository) : ViewModel() {
     var uiState: ProfileUiState by mutableStateOf(ProfileUiState())
         private set
 
-    fun setNotificationsEnabled(enabled: Boolean) {
-        uiState = uiState.copy(notificationsEnabled = enabled)
+    init {
+        loadMetadata()
     }
 
-    fun setDarkModeEnabled(enabled: Boolean) {
-        uiState = uiState.copy(darkModeEnabled = enabled)
+    private fun loadMetadata() {
+        viewModelScope.launch {
+            val attribution = repository.getSnapshotAttribution()
+            val limitations = repository.getSnapshotLimitations()
+            uiState = uiState.copy(
+                attribution = attribution,
+                limitations = limitations
+            )
+        }
     }
-
-    fun onLanguageClick() = Unit
-
-    fun onPrivacyClick() = Unit
-
-    fun onLogoutClick() = Unit
 }

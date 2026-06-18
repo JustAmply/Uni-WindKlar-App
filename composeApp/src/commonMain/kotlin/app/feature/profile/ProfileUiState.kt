@@ -1,10 +1,10 @@
 package app.feature.profile
 
 data class ProfileUiState(
-    val notificationsEnabled: Boolean = true,
-    val darkModeEnabled: Boolean = false,
-    val language: String = "Deutsch",
     val aboutTitle: String = "Über WindKlar",
-    val aboutText: String = "WindKlar ist eine Bürgerinitiative für Transparenz in der Windenergie. Gemeinsam schaffen wir Vertrauen in erneuerbare Energien.",
-    val version: String = "Version 1.0.0",
+    val aboutText: String = "WindKlar ist eine Bürgerplattform für Transparenz in der Windenergie. Diese Anwendung wurde im Rahmen eines universitären Projektseminars entwickelt und bereitet öffentlich verfügbare Daten verständlich auf.",
+    val version: String = "Version 1.0.0 (MVP)",
+    val attribution: String = "Marktstammdatenregister (MaStR)",
+    val limitations: List<String> = emptyList(),
 )
+
