@@ -1,14 +1,14 @@
 package app
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
 import app.core.ui.theme.WindklarTheme
+import app.data.local.db.AppDatabase
 import app.navigation.AppNavHost
 
 @Composable
-@Preview
-fun App() {
+fun App(database: AppDatabase) {
     WindklarTheme {
-        AppNavHost()
+        AppNavHost(database)
     }
 }
+

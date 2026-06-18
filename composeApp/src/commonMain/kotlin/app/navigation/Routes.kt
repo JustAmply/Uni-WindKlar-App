@@ -12,7 +12,7 @@ sealed interface Route {
     }
 
     data object Stats : Route {
-        override val title: String = "Stats"
+        override val title: String = "Statistiken"
     }
 
     data object Favorites : Route {
@@ -24,7 +24,7 @@ sealed interface Route {
     }
 
     data object Profile : Route {
-        override val title: String = "Profil"
+        override val title: String = "Einstellungen"
     }
 
     data class Detail(val parkId: String) : Route {
