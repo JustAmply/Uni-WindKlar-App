@@ -24,3 +24,4 @@ data/intermediate/*
 !data/intermediate/.gitkeep
 /data/snapshots/*
 !data/snapshots/.gitkeep
+screenshots/
