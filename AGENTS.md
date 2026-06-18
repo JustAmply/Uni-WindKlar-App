@@ -71,9 +71,9 @@ Target local model:
 - `data_hint`
 - optional `snapshot_metadata`
 
-Current schema notes:
-- `SearchHistory.sq` should become or wrap `recent_wind_park` so every opened park is recorded.
-- `Production.sq` can be replaced by or mapped into the generic `metric` model.
+- Source-data preprocessing lives in top-level `data/`; app runtime imports only the bundled app-ready JSON snapshot.
+- `RecentWindPark.sq` records every opened park.
+- Production and impact values belong in the generic `metric` model.
 - Source, timestamp, calculation note and data quality are first-class data.
 
 Data-quality labels: `official`, `measured`, `derived`, `estimated`, `simulated`, `missing`.
@@ -93,7 +93,7 @@ Data-quality labels: `official`, `measured`, `derived`, `estimated`, `simulated`
 ## Current Baseline
 - App root: `app.App`, wrapping `AppNavHost` in `WindklarTheme`.
 - Implemented visual slices: `StartScreen`, `MapScreen`, `FavoritesScreen`, `FaqScreen`, `StatsScreen`, `ProfileScreen`.
-- Scaffold slices: `SearchScreen`, `ParkDetailScreen`, map/search/detail viewmodels, database driver factory and seed importer.
+- Scaffold slices: `SearchScreen`, `ParkDetailScreen`, map/search/detail viewmodels, database driver factory and snapshot seed importer.
 - Missing slice: `ReportWindTurbine` route/package/form.
 - UI is mostly mock `UiState`; repositories/DAO contracts are not yet wired through generated SQLDelight APIs.
 - AGP 9.x/KMP compatibility warning is accepted for the seminar MVP unless the build breaks.

@@ -1,0 +1,18 @@
+CREATE TABLE recent_wind_park (
+    wind_park_id TEXT NOT NULL PRIMARY KEY REFERENCES wind_park(id) ON DELETE CASCADE,
+    opened_at_epoch_millis INTEGER NOT NULL
+);
+
+selectRecentWindParks:
+SELECT wind_park.*
+FROM recent_wind_park
+JOIN wind_park ON wind_park.id = recent_wind_park.wind_park_id
+ORDER BY recent_wind_park.opened_at_epoch_millis DESC
+LIMIT ?;
+
+recordRecentWindPark:
+INSERT OR REPLACE INTO recent_wind_park(wind_park_id, opened_at_epoch_millis)
+VALUES (?, ?);
+
+clearRecentWindParks:
+DELETE FROM recent_wind_park;

@@ -306,28 +306,31 @@ Der MVP konzentriert sich auf Transparenz mit hohem Nutzen fuer Buergerinnen und
 
 The repository already contains concrete SQLDelight schema files under `composeApp/src/commonMain/sqldelight/app/data/local/db`:
 
-- `WindPark.sq`: `wind_park` table with `id`, `name`, `municipality_id`, `municipality_name`, `latitude`, `longitude`, `turbine_count` and `installed_capacity_kw`; queries for select-all, select-by-id, text search and upsert.
+- `WindPark.sq`: `wind_park` table with aggregate fields, source metadata, grouping method and data quality; queries for select-all, select-by-id, text search and upsert.
+- `WindTurbine.sq`: `wind_turbine` table for atomic MaStR/Open-MaStR-backed installation master data.
+- `Metric.sq`: generic `metric` table for production and acceptance impact values with unit, period, source, data quality and calculation note.
 - `Favorite.sq`: `favorite_wind_park` table keyed by `wind_park_id`; queries for favorite ids, favorite existence, add and remove.
-- `SearchHistory.sq`: current `search_history` table keyed by `wind_park_id`; queries for recent history, record history and clear history.
-- `Production.sq`: `municipality_production` and `wind_park_production` tables with yearly production, consumption, renewable share and full-load-hour fields.
+- `RecentWindPark.sq`: `recent_wind_park` table keyed by `wind_park_id`; queries for recently opened wind parks, record and clear.
+- `DataHint.sq`: local `data_hint` table for structured Datenhinweise.
+- `SnapshotMetadata.sq`: imported snapshot identity, source, checksum and preprocessing metadata.
 
 Current gap: the Kotlin domain model and DAO interfaces are still thinner than the SQL schema. `WindPark` currently exposes only `id`, `name`, `municipality` and `isFavorite`; `WindParkEntity` currently exposes only `id`, `name` and `municipality`. The repository and DAO contracts need to be expanded or mapped explicitly before the SQL schema can drive the UI.
 
-Target local schema:
+Implemented local schema target:
 
 - `wind_turbine`: atomic MaStR/Open-MaStR installation master data with source and quality metadata.
 - `wind_park`: precomputed wind park aggregates for map, favorites, search and detail overview.
 - `metric`: production and acceptance impact values such as annual production, CO2 savings, household equivalents and municipal participation.
 - `favorite_wind_park`: saved wind parks.
-- `recent_wind_park`: recently opened wind parks, replacing or wrapping the current `search_history` concept.
+- `recent_wind_park`: recently opened wind parks.
 - `data_hint`: local Datenhinweise with category, subject reference, location, description, confidence and local status.
 - `snapshot_metadata`: optional metadata for source, import timestamp, version and calculation assumptions.
 
-Current SQLDelight files should be evolved toward this target model. `Production.sq` can either be replaced by or mapped into the generic `metric` model; `SearchHistory.sq` should become `recent_wind_park` or be wrapped to record opened parks rather than search-only events.
+The source-data pipeline now lives outside the app under `data/`, and the app imports only the app-ready JSON snapshot bundled under Compose resources. Raw and intermediate MaStR files are intentionally ignored.
 
-Updated modeling decision: the current SQL schema starts at wind park level, but the confirmed domain direction requires a `wind_turbine` / `wind_installation` table as the atomic MaStR/Open-MaStR-backed unit. Wind park rows should become aggregates or curated groupings over those turbine rows.
+Updated modeling decision: the SQL schema includes `wind_turbine` as the atomic MaStR/Open-MaStR-backed unit. Wind park rows are aggregates or curated groupings over those turbine rows.
 
-Updated local-state decision: the product concept is "Zuletzt angesehen", not a search-only history. The current `SearchHistory.sq` naming should be migrated or wrapped so every opened wind park can be recorded, regardless of entry path.
+Updated local-state decision: the product concept is "Zuletzt angesehen", not a search-only history. `RecentWindPark.sq` records opened wind parks regardless of entry path.
 
 Updated local persistence decision: favorites and recently viewed wind parks are SQLDelight-backed MVP behavior, not mock-only state.
 
@@ -337,7 +340,7 @@ Updated municipal participation decision: MVP municipal participation is shown a
 
 Updated impact calculation decision: annual production, CO2 savings and household equivalents are estimated from simple documented assumptions. Concrete values for full-load hours, emission factor and household consumption remain open until snapshot preparation, but each assumption must be stored in snapshot metadata with value, unit, source, source date or retrieval date, and calculation note.
 
-Updated local schema decision: SQLDelight should move toward `wind_turbine`, `wind_park`, `metric`, `favorite_wind_park`, `recent_wind_park`, `data_hint` and optional `snapshot_metadata`.
+Updated local schema decision: SQLDelight uses `wind_turbine`, `wind_park`, `metric`, `favorite_wind_park`, `recent_wind_park`, `data_hint` and `snapshot_metadata`.
 
 Updated scope decision: the MVP dataset should cover Germany rather than a Leipzig/Saxony-only demo region. This increases map-density and import requirements, so clustering/filtering and local cache design are part of the MVP data strategy.
 

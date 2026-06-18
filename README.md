@@ -72,11 +72,15 @@ Target local model:
 
 Current SQLDelight files live in `composeApp/src/commonMain/sqldelight/app/data/local/db`:
 - `WindPark.sq`
+- `WindTurbine.sq`
+- `Metric.sq`
 - `Favorite.sq`
-- `SearchHistory.sq`
-- `Production.sq`
+- `RecentWindPark.sq`
+- `DataHint.sq`
+- `SnapshotMetadata.sq`
 
-`SearchHistory.sq` should evolve toward `recent_wind_park`; `Production.sq` can be replaced by or mapped into the generic `metric` model.
+MaStR/Open-MaStR preprocessing lives outside the app in `data/`. The app imports
+only the app-ready JSON snapshot from Compose resources into SQLDelight.
 
 Data-quality labels: `official`, `measured`, `derived`, `estimated`, `simulated`, `missing`.
 
@@ -87,6 +91,7 @@ Data-quality labels: `official`, `measured`, `derived`, `estimated`, `simulated`
 - `composeApp/src/commonMain/kotlin/app/feature/*`: feature UI, state and viewmodels.
 - `composeApp/src/commonMain/kotlin/app/core`: shared UI, models, theme and utilities.
 - `composeApp/src/commonMain/kotlin/app/data`: repositories, DAO contracts, entities and seed import contracts.
+- `data`: source-data pipeline, ignored raw/intermediate MaStR files and generated snapshot releases.
 
 Platform-specific code should stay thin. Prefer shared code in `commonMain` unless a platform API requires otherwise.
 

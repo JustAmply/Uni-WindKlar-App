@@ -1,0 +1,49 @@
+CREATE TABLE wind_turbine (
+    id TEXT NOT NULL PRIMARY KEY,
+    wind_park_id TEXT NOT NULL REFERENCES wind_park(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    municipality_id TEXT NOT NULL,
+    municipality_name TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    installed_capacity_kw INTEGER,
+    status TEXT,
+    turbine_type TEXT,
+    manufacturer TEXT,
+    model TEXT,
+    hub_height_m REAL,
+    rotor_diameter_m REAL,
+    source_name TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    source_updated_at TEXT NOT NULL,
+    data_quality TEXT NOT NULL
+);
+
+selectWindTurbinesByParkId:
+SELECT *
+FROM wind_turbine
+WHERE wind_park_id = ?
+ORDER BY name;
+
+upsertWindTurbine:
+INSERT OR REPLACE INTO wind_turbine(
+    id,
+    wind_park_id,
+    name,
+    municipality_id,
+    municipality_name,
+    latitude,
+    longitude,
+    installed_capacity_kw,
+    status,
+    turbine_type,
+    manufacturer,
+    model,
+    hub_height_m,
+    rotor_diameter_m,
+    source_name,
+    source_url,
+    source_updated_at,
+    data_quality
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
