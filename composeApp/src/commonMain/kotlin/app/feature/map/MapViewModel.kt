@@ -91,11 +91,14 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
     }
 
     fun onSearchResultSelected(park: WindPark) {
+        val parkStatus = statusForPark(park.id)
         uiState = uiState.copy(
             mapCenterLat = park.latitude,
             mapCenterLon = park.longitude,
             zoomLevel = 12.0f,
             selectedPark = park,
+            selectedStatus = parkStatus,
+            filteredParks = parksForStatus(parkStatus),
             showSearchOverlay = false,
             searchQuery = ""
         )
@@ -188,10 +191,12 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
 
     private fun applyFilters() {
         val currentStatus = uiState.selectedStatus
-        val filtered = uiState.parks.filter { park ->
-            val status = parkStatuses[park.id] ?: "Aktiv"
-            status == currentStatus
-        }
-        uiState = uiState.copy(filteredParks = filtered)
+        uiState = uiState.copy(filteredParks = parksForStatus(currentStatus))
     }
+
+    private fun parksForStatus(status: String): List<WindPark> =
+        uiState.parks.filter { park -> statusForPark(park.id) == status }
+
+    private fun statusForPark(parkId: String): String =
+        parkStatuses[parkId] ?: "Aktiv"
 }
