@@ -25,40 +25,40 @@ GERMANY_LON_RANGE = (5.5, 15.5)
 
 DEFAULT_ASSUMPTIONS = {
     "full_load_hours": {
-        "label": "Assumed yearly full-load hours",
+        "label": "Angenommene jährliche Volllaststunden",
         "value": 2000.0,
         "unit": "h/a",
-        "sourceName": "WindKlar MVP assumption",
+        "sourceName": "WindKlar MVP-Annahme",
         "sourceUrl": SOURCE_URL,
         "sourceDate": "2026-06-18",
-        "calculationNote": "MVP estimate until a source-backed regional assumption is selected.",
+        "calculationNote": "MVP-Schätzung, bis eine regional belegte Annahme gewählt wird.",
     },
     "emission_factor_kg_per_kwh": {
-        "label": "Avoided CO2 per kWh",
+        "label": "Vermiedenes CO₂ pro kWh",
         "value": 0.38,
         "unit": "kg CO2/kWh",
-        "sourceName": "WindKlar MVP assumption",
+        "sourceName": "WindKlar MVP-Annahme",
         "sourceUrl": SOURCE_URL,
         "sourceDate": "2026-06-18",
-        "calculationNote": "MVP estimate for citizen-facing climate impact.",
+        "calculationNote": "MVP-Schätzung für die klimarelevante Wirkung aus Bürgersicht.",
     },
     "household_consumption_kwh": {
-        "label": "Average yearly household electricity demand",
+        "label": "Durchschnittlicher jährlicher Haushaltsstrombedarf",
         "value": 3500.0,
         "unit": "kWh/a",
-        "sourceName": "WindKlar MVP assumption",
+        "sourceName": "WindKlar MVP-Annahme",
         "sourceUrl": SOURCE_URL,
         "sourceDate": "2026-06-18",
-        "calculationNote": "MVP estimate for household equivalents.",
+        "calculationNote": "MVP-Schätzung für Haushaltsäquivalente.",
     },
     "municipal_benefit_eur_per_kwh": {
-        "label": "Estimated section 6 EEG municipal participation",
+        "label": "Geschätzte kommunale Beteiligung nach § 6 EEG",
         "value": 0.002,
         "unit": "EUR/kWh",
-        "sourceName": "WindKlar MVP assumption",
+        "sourceName": "WindKlar MVP-Annahme",
         "sourceUrl": SOURCE_URL,
         "sourceDate": "2026-06-18",
-        "calculationNote": "0.2 ct/kWh estimate; no confirmed payout.",
+        "calculationNote": "Schätzung von 0,2 ct/kWh; keine bestätigte Auszahlung.",
     },
 }
 
@@ -310,8 +310,8 @@ def build_snapshot(
             "pipelineVersion": PIPELINE_VERSION,
             "checksumSha256": "",
             "limitations": [
-                "Wind park grouping is derived preprocessing.",
-                "Impact metrics are MVP estimates, not official measurements.",
+                "Die Gruppierung von Windparks beruht auf einer algorithmischen Zuordnung bei der Vorverarbeitung.",
+                "Die berechneten Kennzahlen zur Klimawirkung sind Schätzwerte des MVP und keine offiziellen Messdaten.",
             ],
         },
         "assumptions": assumptions,
@@ -334,10 +334,10 @@ def build_metrics(parks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         annual_kwh = capacity * full_load_hours
         metrics.extend(
             [
-                metric(park["id"], "annual_production", annual_kwh, "kWh/a", "Installed capacity times assumed full-load hours."),
-                metric(park["id"], "co2_savings", annual_kwh * emission_factor, "kg CO2/a", "Estimated production times assumed avoided emissions."),
-                metric(park["id"], "household_equivalent", annual_kwh / household_consumption, "households", "Estimated production divided by assumed yearly household demand."),
-                metric(park["id"], "municipal_participation", annual_kwh * municipal_rate, "EUR/a", "Section 6 EEG estimate at 0.2 ct/kWh; no confirmed payout."),
+                metric(park["id"], "annual_production", annual_kwh, "kWh/a", "Installierte Leistung multipliziert mit den angenommenen Volllaststunden."),
+                metric(park["id"], "co2_savings", annual_kwh * emission_factor, "kg CO2/a", "Geschätzte Produktion multipliziert mit dem angenommenen CO₂-Vermeidungsfaktor."),
+                metric(park["id"], "household_equivalent", annual_kwh / household_consumption, "households", "Geschätzte Produktion geteilt durch den angenommenen jährlichen Haushaltsstrombedarf."),
+                metric(park["id"], "municipal_participation", annual_kwh * municipal_rate, "EUR/a", "Schätzung nach § 6 EEG mit 0,2 ct/kWh; keine bestätigte Auszahlung."),
             ]
         )
     return metrics
@@ -352,7 +352,7 @@ def metric(park_id: str, metric_type: str, value: float, unit: str, note: str) -
         "value": round(value, 3),
         "unit": unit,
         "period": "year",
-        "sourceName": "WindKlar MVP calculation",
+        "sourceName": "WindKlar MVP-Berechnung",
         "sourceUrl": SOURCE_URL,
         "sourceUpdatedAt": today(),
         "dataQuality": "estimated",
