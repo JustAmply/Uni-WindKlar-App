@@ -1,17 +1,18 @@
 {
   "schemaVersion": 1,
   "snapshotMetadata": {
-    "snapshotId": "2026-06-18-mvp",
-    "sourceName": "UBA/MaStR Snapshot",
-    "sourceUrl": "https://www.marktstammdatenregister.de/MaStR/Datendownload",
-    "attribution": "Datenquelle: Marktstammdatenregister (UBA-Aufbereitung)",
-    "mastrExportDate": "2025-02-10",
-    "processedAt": "2026-06-18T00:00:00Z",
-    "pipelineVersion": "2.0.0",
-    "checksumSha256": "f0fe085afb9e44cf956a1d625c84217b4d888d48ea542f418f252aaf1879df8b",
+    "attribution": "Quelle: Marktstammdatenregister der Bundesnetzagentur",
+    "checksumSha256": "b0d5ca671b3243c15ca775d392a81e99d88b400373320609628be6e5022c72a1",
     "limitations": [
-      "Nur Anlagen in Deutschland enthalten.",
-      "Berechnungen beruhen auf standardisierten Volllaststunden-Annahmen."
-    ]
+      "Die Gruppierung von Windparks beruht auf einer algorithmischen Zuordnung bei der Vorverarbeitung.",
+      "Die berechneten Kennzahlen zur Klimawirkung sind Schätzwerte des MVP und keine offiziellen Messdaten.",
+      "9377 Windanlagen wurden wegen nicht plausibler Gemeinde-Koordinaten-Zuordnung aus dem MVP-Snapshot ausgeschlossen."
+    ],
+    "mastrExportDate": "2025-02-10",
+    "pipelineVersion": "0.2.0",
+    "processedAt": "2026-06-18T22:32:20Z",
+    "snapshotId": "windklar-2025-02-10",
+    "sourceName": "Marktstammdatenregister der Bundesnetzagentur",
+    "sourceUrl": "https://www.marktstammdatenregister.de/MaStR/Datendownload"
   }
 }
