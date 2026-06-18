@@ -18,7 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.viewinterop.AndroidView
-import app.core.model.WindPark
+import app.core.model.MapMarkerUiModel
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -29,10 +29,11 @@ actual fun PlatformMapView(
     centerLat: Double,
     centerLon: Double,
     zoomLevel: Float,
-    parks: List<WindPark>,
+    markers: List<MapMarkerUiModel>,
     selectedParkId: String?,
     onMapMoved: (lat: Double, lon: Double, zoom: Float) -> Unit,
     onParkClicked: (String) -> Unit,
+    onClusterClicked: (lat: Double, lon: Double) -> Unit,
     modifier: Modifier
 ) {
     var isPageLoaded by remember { mutableStateOf(false) }
@@ -44,6 +45,7 @@ actual fun PlatformMapView(
 
     val currentOnMapMoved = rememberUpdatedState(onMapMoved)
     val currentOnParkClicked = rememberUpdatedState(onParkClicked)
+    val currentOnClusterClicked = rememberUpdatedState(onClusterClicked)
 
     LaunchedEffect(Unit) {
         try {
@@ -89,6 +91,21 @@ actual fun PlatformMapView(
                 }
                 .leaflet-control-zoom { display: none !important; }
                 .leaflet-control-attribution { font-size: 8px !important; }
+                .windklar-cluster {
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 999px;
+                    background: #2D5A2D;
+                    border: 2px solid #FFFFFF;
+                    color: #FFFFFF;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-family: sans-serif;
+                    font-weight: 700;
+                    font-size: 11px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+                }
             </style>
         </head>
         <body>
@@ -148,35 +165,60 @@ actual fun PlatformMapView(
                     }
                 }
 
-                function updateParks(parksJson, selectedId) {
+                function updateParks(markersJson, selectedId) {
                     if (!map) return;
                     map.invalidateSize();
                     if (!markersGroup) return;
                     
-                    var parks = JSON.parse(parksJson);
-                    var markers = [];
+                    var markers = JSON.parse(markersJson);
+                    var leafletMarkers = [];
                     
-                    parks.forEach(function(park) {
-                        var isSelected = park.id === selectedId;
-                        var marker = L.circleMarker([park.latitude, park.longitude], {
-                            radius: isSelected ? 8 : 4,
-                            fillColor: isSelected ? '#D32F2F' : '#2D5A2D',
-                            color: '#FFFFFF',
-                            weight: 2,
-                            fillOpacity: 1.0,
-                            opacity: 1.0
-                        });
-                        
-                        marker.on('click', function() {
-                            if (window.AndroidBridge && window.AndroidBridge.onParkClicked) {
-                                window.AndroidBridge.onParkClicked(park.id);
-                            }
-                        });
-                        markers.push(marker);
+                    markers.forEach(function(item) {
+                        if (item.kind === 'Cluster') {
+                            var label = formatClusterLabel(item.count);
+                            var clusterMarker = L.marker([item.latitude, item.longitude], {
+                                icon: L.divIcon({
+                                    className: '',
+                                    html: '<div class="windklar-cluster">' + label + '</div>',
+                                    iconSize: [30, 30],
+                                    iconAnchor: [15, 15]
+                                })
+                            });
+                            clusterMarker.on('click', function() {
+                                if (window.AndroidBridge && window.AndroidBridge.onClusterClicked) {
+                                    window.AndroidBridge.onClusterClicked(item.latitude, item.longitude);
+                                }
+                            });
+                            leafletMarkers.push(clusterMarker);
+                        } else {
+                            var isSelected = item.parkId === selectedId;
+                            var parkMarker = L.circleMarker([item.latitude, item.longitude], {
+                                radius: isSelected ? 8 : 4,
+                                fillColor: isSelected ? '#D32F2F' : '#2D5A2D',
+                                color: '#FFFFFF',
+                                weight: 2,
+                                fillOpacity: 1.0,
+                                opacity: 1.0
+                            });
+                            
+                            parkMarker.on('click', function() {
+                                if (window.AndroidBridge && window.AndroidBridge.onParkClicked) {
+                                    window.AndroidBridge.onParkClicked(item.parkId || item.id);
+                                }
+                            });
+                            leafletMarkers.push(parkMarker);
+                        }
                     });
                     
                     map.removeLayer(markersGroup);
-                    markersGroup = L.layerGroup(markers).addTo(map);
+                    markersGroup = L.layerGroup(leafletMarkers).addTo(map);
+                }
+
+                function formatClusterLabel(count) {
+                    if (count >= 1000) {
+                        return Math.round(count / 1000) + 'k';
+                    }
+                    return String(count);
                 }
 
                 function updateParksFromAndroid() {
@@ -209,13 +251,16 @@ actual fun PlatformMapView(
         """.trimIndent()
     }
 
-    val jsonString = remember(parks) {
+    val jsonString = remember(markers) {
         val arr = buildJsonArray {
-            parks.forEach { park ->
+            markers.forEach { marker ->
                 add(buildJsonObject {
-                    put("id", park.id)
-                    put("latitude", park.latitude)
-                    put("longitude", park.longitude)
+                    put("id", marker.id)
+                    put("latitude", marker.latitude)
+                    put("longitude", marker.longitude)
+                    put("kind", marker.kind.name)
+                    put("count", marker.count)
+                    put("parkId", marker.parkId ?: "")
                 })
             }
         }
@@ -277,6 +322,7 @@ actual fun PlatformMapView(
                         selectedParkIdProvider = { currentSelectedParkId.value },
                         onMapMovedCallback = { lat, lon, zoom -> currentOnMapMoved.value(lat, lon, zoom) },
                         onParkClickedCallback = { id -> currentOnParkClicked.value(id) },
+                        onClusterClickedCallback = { lat, lon -> currentOnClusterClicked.value(lat, lon) },
                         onMapReadyCallback = { isPageLoaded = true },
                         mainHandler = mainHandler
                     )
@@ -306,6 +352,7 @@ class AndroidMapBridge(
     private val selectedParkIdProvider: () -> String,
     private val onMapMovedCallback: (lat: Double, lon: Double, zoom: Float) -> Unit,
     private val onParkClickedCallback: (String) -> Unit,
+    private val onClusterClickedCallback: (lat: Double, lon: Double) -> Unit,
     private val onMapReadyCallback: () -> Unit,
     private val mainHandler: android.os.Handler
 ) {
@@ -326,8 +373,12 @@ class AndroidMapBridge(
     }
 
     @JavascriptInterface
+    fun onClusterClicked(lat: Double, lon: Double) {
+        mainHandler.post { onClusterClickedCallback(lat, lon) }
+    }
+
+    @JavascriptInterface
     fun onMapReady() {
         mainHandler.post { onMapReadyCallback() }
     }
 }
-

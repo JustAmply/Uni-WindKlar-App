@@ -14,6 +14,8 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -85,6 +87,7 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MapScreen(
     viewModel: MapViewModel,
@@ -113,10 +116,11 @@ fun MapScreen(
                 centerLat = uiState.mapCenterLat,
                 centerLon = uiState.mapCenterLon,
                 zoomLevel = uiState.zoomLevel,
-                parks = uiState.filteredParks,
+                markers = uiState.mapMarkers,
                 selectedParkId = uiState.selectedPark?.id,
                 onMapMoved = viewModel::onMapMoved,
                 onParkClicked = viewModel::onParkClickedById,
+                onClusterClicked = viewModel::onClusterClicked,
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -179,8 +183,11 @@ fun MapScreen(
             }
 
             // Status Filter Chips
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Aktiv", "Geplant", "Im Bau", "Stillgelegt").forEach { status ->
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf("Alle", "Aktiv", "Geplant", "Im Bau", "Stillgelegt").forEach { status ->
                     StatusChip(
                         text = status,
                         selected = uiState.selectedStatus == status,

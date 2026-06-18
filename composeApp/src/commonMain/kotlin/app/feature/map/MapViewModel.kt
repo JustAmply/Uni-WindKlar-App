@@ -5,9 +5,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.core.model.MapMarkerKind
+import app.core.model.MapMarkerUiModel
 import app.core.model.WindPark
 import app.data.repository.WindParkRepository
 import kotlinx.coroutines.launch
+import kotlin.math.floor
 
 class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
     var uiState by mutableStateOf(MapUiState(isLoading = true))
@@ -91,18 +94,18 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
     }
 
     fun onSearchResultSelected(park: WindPark) {
-        val parkStatus = statusForPark(park.id)
         uiState = uiState.copy(
             mapCenterLat = park.latitude,
             mapCenterLon = park.longitude,
             zoomLevel = 12.0f,
             selectedPark = park,
             previewSheetState = ParkPreviewSheetState.Expanded,
-            selectedStatus = parkStatus,
-            filteredParks = parksForStatus(parkStatus),
+            selectedStatus = "Alle",
+            filteredParks = parksForStatus("Alle"),
             showSearchOverlay = false,
             searchQuery = ""
         )
+        applyFilters()
         viewModelScope.launch {
             repository.recordRecentWindPark(park.id)
             val metrics = repository.getMetricsForPark(park.id)
@@ -184,10 +187,24 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
             mapCenterLon = lon,
             zoomLevel = 10.0f
         )
+        applyFilters()
     }
 
     fun onZoomChanged(zoom: Float) {
         uiState = uiState.copy(zoomLevel = zoom.coerceIn(5.0f, 18.0f))
+        applyFilters()
+    }
+
+    fun onClusterClicked(lat: Double, lon: Double) {
+        uiState = uiState.copy(
+            mapCenterLat = lat,
+            mapCenterLon = lon,
+            zoomLevel = (uiState.zoomLevel + 2.0f).coerceIn(5.0f, 18.0f),
+            selectedPark = null,
+            selectedParkMetrics = emptyList(),
+            previewSheetState = ParkPreviewSheetState.Expanded,
+        )
+        applyFilters()
     }
 
     fun onMapMoved(lat: Double, lon: Double, zoom: Float) {
@@ -199,6 +216,7 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
                 mapCenterLon = lon,
                 zoomLevel = zoom.coerceIn(5.0f, 18.0f)
             )
+            applyFilters()
         }
     }
 
@@ -211,12 +229,74 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
 
     private fun applyFilters() {
         val currentStatus = uiState.selectedStatus
-        uiState = uiState.copy(filteredParks = parksForStatus(currentStatus))
+        val filteredParks = parksForStatus(currentStatus)
+        uiState = uiState.copy(
+            filteredParks = filteredParks,
+            mapMarkers = markersForZoom(filteredParks, uiState.zoomLevel)
+        )
     }
 
     private fun parksForStatus(status: String): List<WindPark> =
-        uiState.parks.filter { park -> statusForPark(park.id) == status }
+        if (status == "Alle") {
+            uiState.parks
+        } else {
+            uiState.parks.filter { park -> statusForPark(park.id) == status }
+        }
 
     private fun statusForPark(parkId: String): String =
         parkStatuses[parkId] ?: "Aktiv"
+
+    private fun markersForZoom(parks: List<WindPark>, zoom: Float): List<MapMarkerUiModel> {
+        val gridSize = when {
+            zoom < 6.5f -> 1.5
+            zoom < 7.5f -> 1.0
+            zoom < 8.5f -> 0.65
+            zoom < 9.5f -> 0.4
+            zoom < 10.25f -> 0.22
+            else -> null
+        }
+
+        if (gridSize == null) {
+            return parks.map { park ->
+                MapMarkerUiModel(
+                    id = park.id,
+                    latitude = park.latitude,
+                    longitude = park.longitude,
+                    kind = MapMarkerKind.Park,
+                    count = 1,
+                    parkId = park.id,
+                )
+            }
+        }
+
+        return parks
+            .groupBy { park ->
+                val latBucket = floor(park.latitude / gridSize).toInt()
+                val lonBucket = floor(park.longitude / gridSize).toInt()
+                latBucket to lonBucket
+            }
+            .map { (bucket, bucketParks) ->
+                if (bucketParks.size == 1) {
+                    val park = bucketParks.first()
+                    MapMarkerUiModel(
+                        id = park.id,
+                        latitude = park.latitude,
+                        longitude = park.longitude,
+                        kind = MapMarkerKind.Park,
+                        count = 1,
+                        parkId = park.id,
+                    )
+                } else {
+                    val lat = bucketParks.map { it.latitude }.average()
+                    val lon = bucketParks.map { it.longitude }.average()
+                    MapMarkerUiModel(
+                        id = "cluster_${gridSize}_${bucket.first}_${bucket.second}",
+                        latitude = lat,
+                        longitude = lon,
+                        kind = MapMarkerKind.Cluster,
+                        count = bucketParks.size,
+                    )
+                }
+            }
+    }
 }
