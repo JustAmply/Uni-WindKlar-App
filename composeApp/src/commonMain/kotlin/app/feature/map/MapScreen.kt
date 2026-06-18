@@ -1,5 +1,10 @@
 package app.feature.map
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -43,6 +48,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -61,9 +68,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.graphicsLayer
 import app.core.model.WindPark
 import app.core.ui.components.PlatformMapView
 import app.feature.report.ReportWindTurbineDialog
@@ -244,8 +253,10 @@ fun MapScreen(
                 municipalityName = park.municipalityName,
                 productionVal = prodStr,
                 co2Val = co2Str,
+                sheetState = uiState.previewSheetState,
                 onDetailsClick = { onParkSelected(park.id) },
-                onDismiss = viewModel::dismissPreview,
+                onExpand = viewModel::expandPreview,
+                onMinimize = viewModel::minimizePreview,
             )
         }
         
@@ -388,28 +399,91 @@ private fun ParkPreviewSheet(
     municipalityName: String,
     productionVal: String,
     co2Val: String,
+    sheetState: ParkPreviewSheetState,
     onDetailsClick: () -> Unit,
-    onDismiss: () -> Unit,
+    onExpand: () -> Unit,
+    onMinimize: () -> Unit,
 ) {
     var dragOffsetY by remember { mutableStateOf(0f) }
-    val dismissThresholdPx = 96.dp
+    var isDragging by remember { mutableStateOf(false) }
+    val animatedOffsetY by animateFloatAsState(
+        targetValue = dragOffsetY,
+        animationSpec = if (isDragging) {
+            snap()
+        } else {
+            spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow,
+            )
+        },
+        label = "parkPreviewOffsetY",
+    )
+    val sheetScaleY = 1f + ((-animatedOffsetY).coerceAtLeast(0f) / 700f)
+    val sheetOffsetY = animatedOffsetY.coerceAtLeast(0f)
+
+    LaunchedEffect(sheetState) {
+        isDragging = false
+        dragOffsetY = 0f
+    }
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .offset { IntOffset(x = 0, y = dragOffsetY.roundToInt()) }
-            .pointerInput(Unit) {
+            .offset { IntOffset(x = 0, y = sheetOffsetY.roundToInt()) }
+            .graphicsLayer {
+                scaleY = sheetScaleY
+                transformOrigin = TransformOrigin(0.5f, 1f)
+            }
+            .clickable(
+                enabled = sheetState == ParkPreviewSheetState.Minimized,
+                onClick = onExpand,
+            )
+            .pointerInput(sheetState) {
+                val minimizeThresholdPx = 96.dp.toPx()
+                val expandThresholdPx = 44.dp.toPx()
+                val maxExpandedPullPx = 34.dp.toPx()
+                val maxMinimizedPullPx = 82.dp.toPx()
+
                 detectVerticalDragGestures(
                     onDragEnd = {
-                        if (dragOffsetY > dismissThresholdPx.toPx()) {
-                            onDismiss()
+                        isDragging = false
+                        when {
+                            sheetState == ParkPreviewSheetState.Expanded &&
+                                dragOffsetY > minimizeThresholdPx -> onMinimize()
+
+                            sheetState == ParkPreviewSheetState.Minimized &&
+                                dragOffsetY < -expandThresholdPx -> onExpand()
                         }
                         dragOffsetY = 0f
                     },
-                    onDragCancel = { dragOffsetY = 0f },
+                    onDragCancel = {
+                        isDragging = false
+                        dragOffsetY = 0f
+                    },
+                    onDragStart = {
+                        isDragging = true
+                    },
                     onVerticalDrag = { change, dragAmount ->
                         change.consume()
-                        dragOffsetY = (dragOffsetY + dragAmount).coerceAtLeast(0f)
+                        dragOffsetY = when (sheetState) {
+                            ParkPreviewSheetState.Expanded -> {
+                                val nextOffset = dragOffsetY + dragAmount
+                                if (nextOffset < 0f) {
+                                    (nextOffset * 0.38f).coerceAtLeast(-maxExpandedPullPx)
+                                } else {
+                                    (nextOffset * 0.9f).coerceAtMost(minimizeThresholdPx * 1.35f)
+                                }
+                            }
+
+                            ParkPreviewSheetState.Minimized -> {
+                                val nextOffset = dragOffsetY + dragAmount
+                                if (nextOffset < 0f) {
+                                    (nextOffset * 0.62f).coerceAtLeast(-maxMinimizedPullPx)
+                                } else {
+                                    (nextOffset * 0.28f).coerceAtMost(18.dp.toPx())
+                                }
+                            }
+                        }
                     },
                 )
             },
@@ -420,8 +494,16 @@ private fun ParkPreviewSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMedium,
+                    ),
+                )
                 .padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(
+                if (sheetState == ParkPreviewSheetState.Expanded) 16.dp else 10.dp
+            ),
         ) {
             Box(
                 modifier = Modifier
@@ -432,99 +514,158 @@ private fun ParkPreviewSheet(
                     .background(Color(0xFFD8E7D8)),
             )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(128.dp)
-                    .clip(RoundedCornerShape(16.dp)),
-            ) {
-                androidx.compose.foundation.Image(
-                    painter = painterResource(Res.drawable.start_background),
-                    contentDescription = "Windpark Vorschau",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp),
-                    shape = CircleShape,
-                    color = Color(0xFF43A047),
-                ) {
-                    Text(
-                        text = "Aktiv",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                    )
-                }
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = parkName,
-                    color = Color(0xFF1A3A1A),
-                    fontSize = 24.sp,
-                    lineHeight = 28.sp,
-                    fontWeight = FontWeight.Medium,
-                )
-
+            if (sheetState == ParkPreviewSheetState.Minimized) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.LocationOn,
-                        contentDescription = null,
-                        tint = Color(0xFF5A7A5A),
-                        modifier = Modifier.size(16.dp),
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = parkName,
+                            color = Color(0xFF1A3A1A),
+                            fontSize = 18.sp,
+                            lineHeight = 24.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.LocationOn,
+                                contentDescription = null,
+                                tint = Color(0xFF5A7A5A),
+                                modifier = Modifier.size(15.dp),
+                            )
+                            Text(
+                                text = "Gemeinde $municipalityName",
+                                color = Color(0xFF5A7A5A),
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFFE8F5E9),
+                    ) {
+                        Text(
+                            text = "Öffnen",
+                            color = Color(0xFF2D5A2D),
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(2.dp))
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(128.dp)
+                        .clip(RoundedCornerShape(16.dp)),
+                ) {
+                    androidx.compose.foundation.Image(
+                        painter = painterResource(Res.drawable.start_background),
+                        contentDescription = "Windpark Vorschau",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
                     )
+
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp),
+                        shape = CircleShape,
+                        color = Color(0xFF43A047),
+                    ) {
+                        Text(
+                            text = "Aktiv",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        )
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Gemeinde $municipalityName",
-                        color = Color(0xFF5A7A5A),
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp,
+                        text = parkName,
+                        color = Color(0xFF1A3A1A),
+                        fontSize = 24.sp,
+                        lineHeight = 28.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.LocationOn,
+                            contentDescription = null,
+                            tint = Color(0xFF5A7A5A),
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(
+                            text = "Gemeinde $municipalityName",
+                            color = Color(0xFF5A7A5A),
+                            fontSize = 14.sp,
+                            lineHeight = 20.sp,
+                        )
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    MetricCard(
+                        modifier = Modifier.weight(1f),
+                        label = "Jahresproduktion",
+                        value = productionVal,
+                        icon = Icons.Outlined.Bolt,
+                    )
+                    MetricCard(
+                        modifier = Modifier.weight(1f),
+                        label = "CO2 Einsparung",
+                        value = co2Val,
+                        icon = Icons.Outlined.Eco,
                     )
                 }
-            }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MetricCard(
-                    modifier = Modifier.weight(1f),
-                    label = "Jahresproduktion",
-                    value = productionVal,
-                    icon = Icons.Outlined.Bolt,
-                )
-                MetricCard(
-                    modifier = Modifier.weight(1f),
-                    label = "CO2 Einsparung",
-                    value = co2Val,
-                    icon = Icons.Outlined.Eco,
-                )
-            }
+                Button(
+                    onClick = onDetailsClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2D5A2D),
+                        contentColor = Color.White,
+                    ),
+                ) {
+                    Text(
+                        text = "Details anzeigen",
+                        fontSize = 16.sp,
+                        lineHeight = 24.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
 
-            Button(
-                onClick = onDetailsClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF2D5A2D),
-                    contentColor = Color.White,
-                ),
-            ) {
-                Text(
-                    text = "Details anzeigen",
-                    fontSize = 16.sp,
-                    lineHeight = 24.sp,
-                    fontWeight = FontWeight.Medium,
-                )
+                Spacer(modifier = Modifier.height(2.dp))
             }
-
-            Spacer(modifier = Modifier.height(2.dp))
         }
     }
 }

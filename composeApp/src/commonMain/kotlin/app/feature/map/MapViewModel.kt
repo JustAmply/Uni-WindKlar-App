@@ -97,6 +97,7 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
             mapCenterLon = park.longitude,
             zoomLevel = 12.0f,
             selectedPark = park,
+            previewSheetState = ParkPreviewSheetState.Expanded,
             selectedStatus = parkStatus,
             filteredParks = parksForStatus(parkStatus),
             showSearchOverlay = false,
@@ -110,7 +111,10 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
     }
 
     fun onParkClicked(park: WindPark) {
-        uiState = uiState.copy(selectedPark = park)
+        uiState = uiState.copy(
+            selectedPark = park,
+            previewSheetState = ParkPreviewSheetState.Expanded
+        )
         viewModelScope.launch {
             repository.recordRecentWindPark(park.id)
             val metrics = repository.getMetricsForPark(park.id)
@@ -154,9 +158,22 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
 
 
 
+    fun expandPreview() {
+        if (uiState.selectedPark != null) {
+            uiState = uiState.copy(previewSheetState = ParkPreviewSheetState.Expanded)
+        }
+    }
+
+    fun minimizePreview() {
+        if (uiState.selectedPark != null) {
+            uiState = uiState.copy(previewSheetState = ParkPreviewSheetState.Minimized)
+        }
+    }
+
     fun dismissPreview() {
         uiState = uiState.copy(
             selectedPark = null,
+            previewSheetState = ParkPreviewSheetState.Expanded,
             selectedParkMetrics = emptyList()
         )
     }

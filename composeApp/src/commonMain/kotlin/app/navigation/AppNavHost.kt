@@ -171,7 +171,7 @@ fun AppNavHost(database: AppDatabase) {
                             selected = isSelected,
                             onClick = {
                                 if (isSelected && route is Route.Map) {
-                                    mapViewModel.dismissPreview()
+                                    mapViewModel.minimizePreview()
                                 }
                                 currentRoute = route
                             },
