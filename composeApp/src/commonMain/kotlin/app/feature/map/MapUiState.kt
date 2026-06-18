@@ -15,7 +15,6 @@ data class MapUiState(
     val mapCenterLat: Double = 51.1657, // Default center of Germany
     val mapCenterLon: Double = 10.4515,
     val zoomLevel: Float = 6.0f,
-    val selectedStatus: String = "Aktiv", // "Aktiv", "Geplant", "Im Bau"
+    val selectedStatus: String = "Aktiv", // "Aktiv", "Geplant", "Im Bau", "Stillgelegt"
 )
-
 

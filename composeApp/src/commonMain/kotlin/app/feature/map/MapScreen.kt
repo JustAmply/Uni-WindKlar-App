@@ -166,7 +166,7 @@ fun MapScreen(
 
             // Status Filter Chips
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Aktiv", "Geplant", "Im Bau").forEach { status ->
+                listOf("Aktiv", "Geplant", "Im Bau", "Stillgelegt").forEach { status ->
                     StatusChip(
                         text = status,
                         selected = uiState.selectedStatus == status,

@@ -61,6 +61,9 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
         if (lowerStatuses.any { it.contains("betrieb") || it.contains("aktiv") }) {
             return "Aktiv"
         }
+        if (lowerStatuses.any { it.contains("stillgelegt") }) {
+            return "Stillgelegt"
+        }
         return "Geplant"
     }
 
