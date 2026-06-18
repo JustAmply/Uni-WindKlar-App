@@ -1,0 +1,7 @@
+# Source-bound FAQ assistant
+
+WindKlar may later add a quellengebundener FAQ-Assistent for natural-language education questions, but it will not be part of the required seminar MVP. The assistant is an explanation layer over curated WindKlar knowledge, local snapshot metadata, selected wind park context, metric source fields and data quality labels; it is not a general chatbot and must not invent live operating causes.
+
+For questions such as "Warum steht das gerade still?", the assistant must say when the current cause is unknown from the available public snapshot data, then explain common possible reasons such as low wind, maintenance, technical faults, grid curtailment, noise or shadow restrictions, nature protection rules or icing. It should separate known local data from general possibilities and show the source or data-quality basis used for the answer.
+
+The shared Kotlin code should own the feature state, knowledge retrieval contract and prompt/answer policy. Platform model calls should sit behind thin Android and iOS adapters: Android may use Gemini Nano through Google AI Edge or ML Kit GenAI/AICore where available; iOS may use Apple Foundation Models where available on Apple-Intelligence-capable devices. Both platforms need runtime availability checks and a deterministic fallback, such as curated FAQ matching or template-based answers, so the FAQ remains useful without an on-device model.

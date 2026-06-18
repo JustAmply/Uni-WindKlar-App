@@ -96,6 +96,14 @@ _Avoid_: live API when describing MVP data loading, raw CSV as the app-facing fo
 Metadata describing the bundled/imported snapshot, including source, import timestamp, version, and calculation assumptions.
 _Avoid_: hidden import constants
 
+**Quellengebundener FAQ-Assistent**:
+A later optional explanation assistant that answers natural-language questions only from curated WindKlar knowledge, selected app context, source metadata and data quality labels.
+_Avoid_: general chatbot, unsupported AI advice, live operations diagnosis
+
+**Live-Betriebsursache**:
+The current operational reason why a wind installation is running, curtailed or standing still, which WindKlar may only claim when a source-backed live status or event source exists.
+_Avoid_: presenting common possible reasons as known current facts
+
 **Windpark-Aggregat**:
 A precomputed grouping of wind installations in the snapshot, including representative location, turbine count, installed capacity, and municipality context for app display.
 _Avoid_: runtime grouping in the app for MVP

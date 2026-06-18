@@ -119,6 +119,7 @@ Der MVP konzentriert sich auf Transparenz mit hohem Nutzen fuer Buergerinnen und
 3. Buergerbudget-Demo fuer lokale Projektpriorisierung
 4. Fragen-Tracker fuer haeufige Einwaende und Antworten
 5. Szenario-Simulator fuer Variantenvergleich
+6. Quellengebundener FAQ-Assistent als optionaler Prototyp fuer erklaerende Fragen
 
 ### Won't Have in MVP
 
@@ -126,7 +127,8 @@ Der MVP konzentriert sich auf Transparenz mit hohem Nutzen fuer Buergerinnen und
 2. Rechtsverbindliche Abstimmungen
 3. Moderierte Kommentarbereiche oder Social Feed
 4. Vollautomatisierter Import aller Datenquellen in Produktionsqualitaet
-5. KI-Assistent mit Dokumenten-RAG
+5. Produktionsreifer oder frei halluzinierender KI-Chat
+6. KI-Antworten, die aktuelle Betriebsursachen ohne Live-Daten behaupten
 
 ## 9. User Stories
 
@@ -155,7 +157,9 @@ Der MVP konzentriert sich auf Transparenz mit hohem Nutzen fuer Buergerinnen und
 23. As a product owner, I want features prioritized by citizen value and implementation complexity, so that the MVP remains feasible.
 24. As a developer, I want a structured data model for turbines, wind parks and metrics, so that features can be implemented incrementally.
 25. As a tester, I want clear acceptance criteria for each feature, so that quality can be evaluated against external behavior.
-26. As a lecturer, I want the product to reflect consulting, analysis, concept, design, implementation and QA phases, so that it matches the module objectives.
+26. As a citizen, I want to ask natural-language follow-up questions in the FAQ, so that I can understand common situations without every wording being prewritten.
+27. As a citizen, I want the app to say when it cannot know an answer from public data, so that explanations remain trustworthy.
+28. As a lecturer, I want the product to reflect consulting, analysis, concept, design, implementation and QA phases, so that it matches the module objectives.
 
 ## 10. Functional Requirements
 
@@ -233,6 +237,12 @@ Der MVP konzentriert sich auf Transparenz mit hohem Nutzen fuer Buergerinnen und
 
 - The app shall provide short explanations for common topics: wind energy basics, energy production, CO2 savings, municipal participation, data sources and limitations.
 - FAQ content shall use neutral, accessible language.
+- A later FAQ assistant may answer natural-language questions only from a curated WindKlar knowledge base, local snapshot metadata, selected wind park context and visible metric/source metadata.
+- The FAQ assistant must distinguish known facts, estimates, plausible general explanations and unknowns.
+- The FAQ assistant must not claim a live operational reason for turbine standstill unless WindKlar has a source-backed live status or event source for that claim.
+- For questions such as "Warum steht das gerade still?", the assistant should explain that WindKlar cannot determine the current cause from the MVP snapshot, then list common possible reasons and show which local data is available.
+- FAQ assistant answers should expose the source chunks or data fields used, including data quality labels and timestamps where available.
+- The FAQ assistant shall have a deterministic fallback when no platform model is available, such as curated FAQ matches or template-based answers.
 
 ### Data Hints and Missing Data
 
@@ -558,6 +568,7 @@ Potential study questions:
 | Map performance issues | Medium | Low/Medium | Limit MVP dataset, cluster markers if needed. |
 | Security vulnerabilities | Low | Very High | Keep backend minimal, validate input, avoid unnecessary personal data. |
 | Scope creep | High | Medium/High | Keep MVP strict and move AR, AI and advanced simulations to later phases. |
+| Misleading AI answer | Medium | High | Limit the assistant to curated knowledge and app data, require uncertainty copy, source display and deterministic fallback. |
 | GPS inaccuracy | Low/Medium | Low | Provide manual search and avoid exact claims from user position. |
 
 ## 19. Roadmap
@@ -601,7 +612,10 @@ Potential study questions:
 ### Phase 5: Optional Advanced Features
 
 - Camera-based identification or AR overlay.
-- KI assistant based only on project documents and verified data.
+- Quellengebundener FAQ-Assistent based only on curated WindKlar knowledge, local snapshot metadata and selected wind park context.
+- Android implementation option: platform-local Gemini Nano through Google AI Edge or ML Kit GenAI/AICore where available, with runtime availability checks and fallback.
+- iOS implementation option: Apple Foundation Models where available on Apple-Intelligence-capable devices, wrapped behind a thin platform adapter.
+- Local model implementation option: small on-device open model through a dedicated inference runtime only if size, performance, licensing and QA risks are acceptable.
 - Buergerbudget and questions tracker.
 - Real-time or automated public data import.
 
@@ -613,6 +627,7 @@ Potential study questions:
 - Favorites and recently viewed wind parks work without user account.
 - Location permission is optional and handled gracefully.
 - FAQ and limitation text are available.
+- Optional AI or assistant prototypes are not required for MVP completion and must not weaken the source, data quality and limitation messaging.
 - Main user stories have manual acceptance checks.
 - Manual QA has been performed on Android; iOS smoke test has been performed where available.
 - The product can be demonstrated as a coherent WindKlar prototype.
@@ -646,6 +661,7 @@ Potential study questions:
 - Decided: `Profile` is `Info & Einstellungen` in the MVP, with no logout, no account language, and no controls for unimplemented notifications or dark mode.
 - Decided: The green Nature/Trust visual direction is accepted for MVP, but colors, typography, spacing, radii and elevation should be centralized as Compose theme/design tokens.
 - Decided: Figma is the functional/visual reference for screen set, information architecture, component intent, rough layout and copy, not a pixel-perfect contract.
+- Decided: A later FAQ assistant may be explored only as a quellengebundener Erklaer-Assistent, not as a general chatbot. It must use curated knowledge, app context and source metadata, and it must state clearly when WindKlar cannot know a live operational cause such as turbine standstill.
 - Decided: AGP 9.x/KMP compatibility warning is accepted as a documented seminar-MVP risk; no module migration before demo unless the build breaks.
 - Decided: Android manual QA is mandatory before demo; iOS simulator/device smoke test is optional where available and not a demo blocker.
 
