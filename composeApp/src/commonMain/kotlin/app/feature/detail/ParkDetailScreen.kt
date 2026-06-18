@@ -212,7 +212,7 @@ private fun SummaryCard(
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Anlagenanzahl", color = MutedGreen, fontSize = 12.sp)
-                    Text("$turbineCount Windräder", color = DarkGreen, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(formatTurbineCount(turbineCount), color = DarkGreen, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Gesamtleistung", color = MutedGreen, fontSize = 12.sp)
@@ -498,6 +498,11 @@ private fun Double.roundTo(decimals: Int): Double {
 
 private fun formatNumber(number: Int): String {
     return number.toString().reversed().chunked(3).joinToString(".").reversed()
+}
+
+private fun formatTurbineCount(count: Int): String {
+    val unit = if (count == 1) "Windrad" else "Windräder"
+    return "$count $unit"
 }
 
 private fun formatDataQuality(quality: String): String = when (quality.lowercase()) {
