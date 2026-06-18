@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -79,8 +78,8 @@ fun FavoritesScreen(
 
         Column(
             modifier = Modifier
-                .offset(y = (-16).dp)
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 20.dp)
+                .padding(top = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // Favorites Section
@@ -90,7 +89,6 @@ fun FavoritesScreen(
                 fontSize = 18.sp,
                 lineHeight = 24.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp)
             )
 
             if (uiState.parks.isEmpty()) {
