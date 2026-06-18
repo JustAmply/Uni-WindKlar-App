@@ -24,4 +24,5 @@ data/intermediate/*
 !data/intermediate/.gitkeep
 /data/snapshots/*
 !data/snapshots/.gitkeep
+!data/snapshots/windklar_cleaning_metrics*.json
 screenshots/
