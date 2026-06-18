@@ -1,423 +1,423 @@
 # WindKlar PRD
 
-Product Requirements Document fuer die WindKlar-App
+Produktanforderungsdokument für die WindKlar-App
 
-Status: Arbeitsfassung, aktualisiert gegen den aktuellen Stand des `windklar`-Repositories  
-Kontext: Modul "Digital Product Development and Lifecycle Management", Universitaet Leipzig, Sommersemester 2026  
-Produktname: WindKlar  
-Kurzpositionierung: Transparenz- und Beteiligungsplattform fuer Windenergie vor Ort
+Status: Arbeitsfassung, aktualisiert gegen den aktuellen Stand des `windklar`-Repositories
+Kontext: Modul "Digital Product Development and Lifecycle Management", Universität Leipzig, Sommersemester 2026
+Produktname: WindKlar
+Kurzpositionierung: Transparenz- und Beteiligungsplattform für Windenergie vor Ort
 
-## 1. Problem Statement
+## 1. Problemstellung
 
-Der Ausbau der Windenergie ist fuer Energiewende und Klimaschutz zentral, wird lokal aber haeufig durch unklare Informationen, fehlende Beteiligung und schwer einordenbare Auswirkungen begleitet. Viele Buergerinnen und Buerger sehen Windenergieanlagen im Alltag, koennen aber nicht einfach nachvollziehen, welche Anlage sie sehen, wie viel Strom sie erzeugt, welche lokalen Vorteile entstehen, welche Belastungen auftreten und welche Schutzmassnahmen gelten.
+Der Ausbau der Windenergie ist für Energiewende und Klimaschutz zentral, wird lokal aber häufig durch unklare Informationen, fehlende Beteiligung und schwer einordenbare Auswirkungen begleitet. Viele Bürgerinnen und Bürger sehen Windenergieanlagen im Alltag, können aber nicht einfach nachvollziehen, welche Anlage sie sehen, wie viel Strom sie erzeugt, welche lokalen Vorteile entstehen, welche Belastungen auftreten und welche Schutzmaßnahmen gelten.
 
-Bestehende Loesungen zeigen oft entweder technische Daten oder Karteninformationen. Was fehlt, ist eine verstaendliche mobile Anwendung, die technische Windparkdaten, lokale Auswirkungen, kommunalen Nutzen und Beteiligungsmoeglichkeiten in einem Produkt zusammenfuehrt.
+Bestehende Lösungen zeigen oft entweder technische Daten oder Karteninformationen. Was fehlt, ist eine verständliche mobile Anwendung, die technische Windparkdaten, lokale Auswirkungen, kommunalen Nutzen und Beteiligungsmöglichkeiten in einem Produkt zusammenführt.
 
-WindKlar soll diese Transparenzluecke schliessen. Die App soll nicht einseitig fuer Windenergie werben, sondern nachvollziehbar erklaeren, was ein konkreter Windpark leistet, welche Zielkonflikte bestehen und wie lokale Akteure informiert oder beteiligt werden koennen.
+WindKlar soll diese Transparenzlücke schließen. Die App soll nicht einseitig für Windenergie werben, sondern nachvollziehbar erklären, was ein konkreter Windpark leistet, welche Zielkonflikte bestehen und wie lokale Akteure informiert oder beteiligt werden können.
 
-## 2. Product Vision
+## 2. Produktvision
 
 WindKlar macht sichtbar, wo der Wind wirkt: Nutzerinnen und Nutzer erkennen Windenergieanlagen in ihrer Umgebung, verstehen deren Beitrag zur Energieversorgung und sehen, welcher Nutzen und welche Auswirkungen lokal entstehen.
 
 Die App beantwortet vier Kernfragen:
 
-1. Welcher Windpark befindet sich in meiner Naehe, und welche Anlagen gehoeren dazu?
+1. Welcher Windpark befindet sich in meiner Nähe, und welche Anlagen gehören dazu?
 2. Was leistet dieser Park technisch, energetisch und klimabezogen?
-3. Welcher konkrete Nutzen entsteht fuer Kommune und Buergerschaft?
-4. Welche Auswirkungen, Unsicherheiten und Beteiligungsmoeglichkeiten gibt es?
+3. Welcher konkrete Nutzen entsteht für Kommune und Bürgerschaft?
+4. Welche Auswirkungen, Unsicherheiten und Beteiligungsmöglichkeiten gibt es?
 
-## 3. Goals
+## 3. Ziele
 
-- Windenergieanlagen und Windparks in der Umgebung auffindbar und verstaendlich machen.
-- Oeffentliche Windenergiedaten in eine buergernahe Darstellung uebersetzen.
-- Vertrauen durch klare Quellen, Datenqualitaet und Zeitstempel foerdern.
-- Akzeptanzrelevante Informationen sichtbar machen, insbesondere CO2-Einsparung, Haushaltsaequivalente und kommunale Beteiligung.
-- Lokale Beteiligung durch Favoriten, Verlauf, Rueckmeldungen und perspektivisch Buergerbudget-Funktionen vorbereiten.
-- Einen MVP liefern, der im Rahmen eines studentischen Projekts realistisch umsetzbar, vorfuehrbar und evaluierbar ist.
+- Windenergieanlagen und Windparks in der Umgebung auffindbar und verständlich machen.
+- Öffentliche Windenergiedaten in eine bürgernahe Darstellung übersetzen.
+- Vertrauen durch klare Quellen, Datenqualität und Zeitstempel fördern.
+- Akzeptanzrelevante Informationen sichtbar machen, insbesondere CO2-Einsparung, Haushaltsäquivalente und kommunale Beteiligung.
+- Lokale Beteiligung durch Favoriten, Verlauf, Rückmeldungen und perspektivisch Bürgerbudget-Funktionen vorbereiten.
+- Einen MVP liefern, der im Rahmen eines studentischen Projekts realistisch umsetzbar, vorführbar und evaluierbar ist.
 
-## 4. Non-Goals
+## 4. Nicht-Ziele
 
 - WindKlar ersetzt kein formelles Genehmigungs- oder Beteiligungsverfahren.
 - WindKlar trifft keine rechtsverbindlichen Aussagen zu Schall, Schattenwurf, Artenschutz oder kommunalen Einnahmen.
 - WindKlar ist im MVP keine Social-Media-Plattform.
-- WindKlar ist im MVP keine vollstaendig automatisierte Echtzeit-Leitwarte fuer Windparkbetrieb.
+- WindKlar ist im MVP keine vollständig automatisierte Echtzeit-Leitwarte für Windparkbetrieb.
 - WindKlar soll keine politischen Bewertungen erzwingen; die App soll transparent informieren und Zielkonflikte sichtbar machen.
 
-## 5. Target Audience and Stakeholders
+## 5. Zielgruppen und Stakeholder
 
-### Primary Users
+### Primäre Nutzerinnen und Nutzer
 
-- Interessierte Buergerinnen und Buerger, die Windparks in ihrer Umgebung verstehen wollen.
+- Interessierte Bürgerinnen und Bürger, die Windparks in ihrer Umgebung verstehen wollen.
 - Anwohnerinnen und Anwohner, die konkrete Informationen zu sichtbaren Anlagen suchen.
-- Gemeindemitglieder, die den lokalen Nutzen und moegliche Belastungen einordnen moechten.
+- Gemeindemitglieder, die den lokalen Nutzen und mögliche Belastungen einordnen möchten.
 
-### Secondary Users
+### Sekundäre Nutzerinnen und Nutzer
 
-- Kommunen und oeffentliche Verwaltungen, die transparente Projektkommunikation unterstuetzen wollen.
-- Windparkbetreiber, die verstaendliche Informationen bereitstellen moechten.
-- Energie- und Klimaschutzagenturen, die Windenergie erklaeren und Akzeptanzarbeit leisten.
-- Lokale Unternehmen und Vereine, die von kommunalen Windparkertraegen oder Projekten betroffen sein koennen.
+- Kommunen und öffentliche Verwaltungen, die transparente Projektkommunikation unterstützen wollen.
+- Windparkbetreiber, die verständliche Informationen bereitstellen möchten.
+- Energie- und Klimaschutzagenturen, die Windenergie erklären und Akzeptanzarbeit leisten.
+- Lokale Unternehmen und Vereine, die von kommunalen Windparkerträgen oder Projekten betroffen sein können.
 - Hochschulteam und Lehrende, die Konzept, Prototyp, Umsetzung und Evaluation bewerten.
 
-## 6. Core Personas
+## 6. Kern-Personas
 
-### Persona 1: Die interessierte Buergerin
+### Persona 1: Die interessierte Bürgerin
 
-Sie sieht Windraeder in ihrer Umgebung und moechte wissen, welche Anlage das ist, wie weit sie entfernt ist und ob sie tatsaechlich einen relevanten Beitrag leistet. Sie braucht eine klare Karte, einfache Kennzahlen und kurze Erklaertexte ohne Fachjargon.
+Sie sieht Windräder in ihrer Umgebung und möchte wissen, welche Anlage das ist, wie weit sie entfernt ist und ob sie tatsächlich einen relevanten Beitrag leistet. Sie braucht eine klare Karte, einfache Kennzahlen und kurze Erklärtexte ohne Fachjargon.
 
 ### Persona 2: Der skeptische Anwohner
 
-Er sorgt sich um Belastungen und moechte verstehen, welche Auswirkungen realistisch sind. Er braucht transparente Datenqualitaet, Hinweise auf Unsicherheiten, sachliche Informationen zu Schutzmassnahmen und eine Moeglichkeit, Fragen oder fehlende Daten zu melden.
+Er sorgt sich um Belastungen und möchte verstehen, welche Auswirkungen realistisch sind. Er braucht transparente Datenqualität, Hinweise auf Unsicherheiten, sachliche Informationen zu Schutzmaßnahmen und eine Möglichkeit, Fragen oder fehlende Daten zu melden.
 
 ### Persona 3: Die kommunale Entscheiderin
 
-Sie moechte zeigen, welcher Nutzen aus Windenergie fuer die Kommune entsteht. Sie braucht eine Darstellung von kommunaler Beteiligung, Foerderprojekten, Ausgleichsmassnahmen und haeufigen Fragen.
+Sie möchte zeigen, welcher Nutzen aus Windenergie für die Kommune entsteht. Sie braucht eine Darstellung von kommunaler Beteiligung, Förderprojekten, Ausgleichsmaßnahmen und häufigen Fragen.
 
 ### Persona 4: Der Projektentwickler oder Betreiber
 
-Er moechte Stammdaten und Projektinformationen buergernah darstellen. Er braucht robuste Datenstrukturen, klare Quellenangaben und eine Darstellung, die Vorteile nicht ueberzeichnet.
+Er möchte Stammdaten und Projektinformationen bürgernah darstellen. Er braucht robuste Datenstrukturen, klare Quellenangaben und eine Darstellung, die Vorteile nicht überzeichnet.
 
-## 7. Competitive Landscape
+## 7. Wettbewerbsumfeld
 
-Die Konzeptpraesentation nennt bestehende Angebote wie WindPower, WindTurbineMap, ENMAP, EnBW E-Cockpit und Juvent. Diese Loesungen decken Teile des Problems ab, etwa Karten, technische Daten oder Betreiberinformationen. Die Differenzierung von WindKlar liegt in der Verbindung von:
+Die Konzeptpräsentation nennt bestehende Angebote wie WindPower, WindTurbineMap, ENMAP, EnBW E-Cockpit und Juvent. Diese Lösungen decken Teile des Problems ab, etwa Karten, technische Daten oder Betreiberinformationen. Die Differenzierung von WindKlar liegt in der Verbindung von:
 
-- Karte und Geolocation,
+- Karte und Geolokalisierung,
 - technischen Turbinendaten,
-- jaehrlicher Produktion und CO2-Wirkung,
+- jährlicher Produktion und CO2-Wirkung,
 - lokaler kommunaler Beteiligung,
-- buergernaher Sprache,
-- Datenqualitaetskennzeichnung,
-- Beteiligungs- und Rueckmeldeelementen.
+- bürgernaher Sprache,
+- Datenqualitätskennzeichnung,
+- Beteiligungs- und Rückmeldeelementen.
 
-## 8. MVP Scope
+## 8. MVP-Umfang
 
-Der MVP konzentriert sich auf Transparenz mit hohem Nutzen fuer Buergerinnen und Buerger bei mittlerer technischer Komplexitaet.
+Der MVP konzentriert sich auf Transparenz mit hohem Nutzen für Bürgerinnen und Bürger bei mittlerer technischer Komplexität.
 
-### Must Have
+### Muss enthalten
 
-1. Karte mit Windparks als primaerer UX-Ebene und Windanlagen als atomarer Datenbasis
-2. Detailansicht fuer einen Windpark
-3. Citizen Impact Dashboard
+1. Karte mit Windparks als primärer UX-Ebene und Windanlagen als atomarer Datenbasis
+2. Detailansicht für einen Windpark
+3. Wirkungsdashboard für Bürgerinnen und Bürger
 4. Kennzahlen zu Jahresproduktion, CO2-Einsparung und versorgten Haushalten
 5. Darstellung kommunaler Beteiligung oder lokaler Nutzenindikatoren
 6. Favoriten und zuletzt angesehene Windparks
-7. Datenquellen, Datenqualitaet und Zeitstempel je zentraler Kennzahl
+7. Datenquellen, Datenqualität und Zeitstempel je zentraler Kennzahl
 8. Basis-FAQ zu Windenergie, Datenherkunft und App-Grenzen
 
-### Should Have
+### Sollte enthalten
 
 1. Filter und Suche nach Standort, Anlage, Kommune oder Windpark
 2. Meldung fehlender oder fehlerhafter Anlagen
 3. Vergleich von zwei Anlagen oder Windparks
 4. Offline-nahe lokale Zwischenspeicherung zentraler Daten
-5. Einfache Projekt- oder Windparkuebersicht fuer Kommunen
+5. Einfache Projekt- oder Windparkübersicht für Kommunen
 
-### Could Have
+### Könnte enthalten
 
-1. Next-day forecast auf Basis von Wetterdaten und Leistungskurven
-2. Schattenwurf-, Abstand- oder Naturschutz-Layer als Demo-Daten
-3. Buergerbudget-Demo fuer lokale Projektpriorisierung
-4. Fragen-Tracker fuer haeufige Einwaende und Antworten
-5. Szenario-Simulator fuer Variantenvergleich
-6. Quellengebundener FAQ-Assistent als optionaler Prototyp fuer erklaerende Fragen
+1. Prognose für den nächsten Tag auf Basis von Wetterdaten und Leistungskurven
+2. Schattenwurf-, Abstands- oder Naturschutz-Ebene als Demo-Daten
+3. Bürgerbudget-Demo für lokale Projektpriorisierung
+4. Fragen-Tracker für häufige Einwände und Antworten
+5. Szenario-Simulator für Variantenvergleich
+6. Quellengebundener FAQ-Assistent als optionaler Prototyp für erklärende Fragen
 
-### Won't Have in MVP
+### Nicht im MVP enthalten
 
 1. Kamera- oder AR-basierte Anlagenidentifikation
 2. Rechtsverbindliche Abstimmungen
-3. Moderierte Kommentarbereiche oder Social Feed
-4. Vollautomatisierter Import aller Datenquellen in Produktionsqualitaet
+3. Moderierte Kommentarbereiche oder sozialer Feed
+4. Vollautomatisierter Import aller Datenquellen in Produktionsqualität
 5. Produktionsreifer oder frei halluzinierender KI-Chat
 6. KI-Antworten, die aktuelle Betriebsursachen ohne Live-Daten behaupten
 
-## 9. User Stories
-
-1. As an interested citizen, I want to see wind parks near my current location, so that I can understand what I am seeing in my environment.
-2. As an interested citizen, I want to open a wind park from a map, so that I can inspect its key information quickly.
-3. As a resident, I want to see the distance between my location and a wind park, so that I can better assess local relevance.
-4. As a resident, I want wind park and turbine data in plain language, so that I do not need technical expertise to understand the information.
-5. As a resident, I want to see whether data is official, measured, derived, estimated, simulated or missing, so that I can judge reliability.
-6. As a citizen, I want to see annual energy production, so that I can understand the contribution of a turbine or wind park.
-7. As a citizen, I want to see CO2 savings, so that the climate effect becomes more tangible.
-8. As a citizen, I want to see an estimate of households supplied, so that abstract energy values become easier to understand.
-9. As a citizen, I want to see municipal participation or local benefit, so that the local value of wind energy is visible.
-10. As a citizen, I want to see which sources were used, so that I can trust and verify the information.
-11. As a citizen, I want to save wind parks as favorites, so that I can revisit relevant locations quickly.
-12. As a citizen, I want to see recently viewed wind parks, so that I can continue earlier exploration.
-13. As a citizen, I want to search by municipality or location, so that I can inspect places that matter to me.
-14. As a citizen, I want to filter map results, so that dense areas remain understandable.
-15. As a citizen, I want to submit a structured data hint for missing or incorrect wind turbine data, so that data quality issues can become visible and reviewable.
-16. As a citizen, I want a FAQ about wind energy, so that common questions are answered without searching elsewhere.
-17. As a skeptical resident, I want transparent explanation of limitations, so that the app does not feel like advertising.
-18. As a skeptical resident, I want potential impacts to be acknowledged, so that benefits and burdens are presented fairly.
-19. As a municipality representative, I want to present local benefit data, so that citizens understand what reaches the community.
-20. As a municipality representative, I want to show funded local projects, so that wind energy revenue becomes concrete.
-21. As a wind park operator, I want turbine master data to be displayed consistently, so that users receive clear information.
-22. As an energy agency, I want to use WindKlar as an education tool, so that citizens understand wind energy in context.
-23. As a product owner, I want features prioritized by citizen value and implementation complexity, so that the MVP remains feasible.
-24. As a developer, I want a structured data model for turbines, wind parks and metrics, so that features can be implemented incrementally.
-25. As a tester, I want clear acceptance criteria for each feature, so that quality can be evaluated against external behavior.
-26. As a citizen, I want to ask natural-language follow-up questions in the FAQ, so that I can understand common situations without every wording being prewritten.
-27. As a citizen, I want the app to say when it cannot know an answer from public data, so that explanations remain trustworthy.
-28. As a lecturer, I want the product to reflect consulting, analysis, concept, design, implementation and QA phases, so that it matches the module objectives.
-
-## 10. Functional Requirements
-
-### Map and Geolocation
-
-- The app shall show wind parks on an interactive map; individual turbines may be added where the data model supports them.
-- The map shall use progressive disclosure: the default map level shows wind parks or clusters, while individual wind turbines become visible at higher zoom levels or inside a wind park detail context.
-- The map shall support a Germany-wide dataset by clustering, filtering or otherwise reducing marker density at low zoom levels.
-- The MVP map implementation should stay shared or data-driven and shall not require separate Android and iOS native map implementations.
-- The app shall request user location only when needed and explain why location is useful.
-- Location access shall be requested only after a user action such as "center on my location" or "near me".
-- The app shall not store the user's location in the MVP.
-- The app shall allow selecting a map marker to open a wind park detail view.
-- The app should allow selecting an individual turbine at detailed zoom levels, while keeping wind park and municipality context visible.
-- The app shall support manual location search as an alternative to GPS.
-- Data hints shall allow manually placing a pin instead of using GPS.
-- Search shall be part of the map flow as an overlay or sheet, not a bottom-navigation destination.
-- Search shall support wind park name, municipality/place, and optionally MaStR id or installation name.
-- Selecting a search result shall close the overlay, focus the map and open the selected wind park preview or detail.
-- The app shall handle unavailable or denied location permission gracefully.
-
-### Wind Park Detail View
-
-- The app shall show wind park name, municipality, location, turbine count, installed capacity and status if available.
-- The app should show individual turbine details such as identifier, manufacturer/model and nominal power where the dataset supports them.
-- The app shall keep wind park context visible when showing individual turbine details, so users understand which local project and municipality the turbine belongs to.
-- The app shall show production-related metrics where available or estimated.
-- The app shall clearly mark missing values instead of hiding them.
-- The app shall provide source and timestamp information for relevant fields.
-
-### Citizen Impact Dashboard
-
-- The app shall summarize key impact metrics: annual production, estimated CO2 savings, household equivalent and municipal benefit indicator.
-- The app shall use understandable units and contextual labels.
-- The app shall avoid overstating uncertain calculations.
-- The app shall explain how estimated metrics are calculated at a high level.
-- MVP annual production shall be estimated from installed capacity and documented assumed full-load hours.
-- MVP CO2 savings shall be estimated from estimated production and a documented emission factor.
-- MVP household equivalents shall be estimated from estimated production and a documented average household electricity consumption value.
-- Calculation assumptions shall live in configuration or snapshot metadata, not as hard-coded UI constants.
-- Concrete values for full-load hours, emission factor and household electricity consumption remain open until a source-backed snapshot is prepared.
-- Snapshot metadata shall include assumption value, unit, source, source date or retrieval date, and calculation note for each impact assumption.
-
-### Municipal Benefit
-
-- The app shall show whether a municipality has documented participation, expected benefit or demo benefit data.
-- The app shall distinguish real public data from demo or simulated data.
-- The app should support a simple breakdown of local uses, such as school, public transport, sports, nature compensation or community infrastructure.
-- For MVP, municipal participation should be shown as an estimated expected §6 EEG value, not as a confirmed payout unless a payment source exists.
-- Recommended short copy: "Geschätzte kommunale Beteiligung: ca. X EUR/Jahr. Grundlage: §6 EEG, 0,2 ct/kWh, geschätzte Jahresproduktion. Keine bestätigte Auszahlung."
-
-### Favorites and History
-
-- The app shall allow users to save wind parks locally as favorites.
-- The MVP shall not support separate favorites for individual wind turbines.
-- The app shall show recently viewed wind parks, regardless of whether they were opened from map, search or favorites.
-- The app shall not require a user account for MVP favorites.
-- Favorites and recently viewed wind parks shall be persisted through SQLDelight in the MVP.
-
-### Data Quality and Sources
-
-- Each key metric shall expose a data quality label: official, measured, derived, estimated, simulated or missing.
-- Each key metric shall expose a source label and timestamp where possible.
-- The UI shall make data quality visible without overwhelming the main screen.
-- The MVP shall use real MaStR/Open-MaStR-backed master data for wind installations where available.
-- The MVP shall load MaStR/Open-MaStR master data from a preprocessed local JSON snapshot rather than calling a live external API at app runtime.
-- The JSON snapshot shall contain both individual wind installations and precomputed wind park aggregates.
-- MaStR/Open-MaStR-backed installation master data shall be labelled as `official`.
-- Wind park aggregates computed during preprocessing shall be labelled as `derived`.
-- Production and acceptance impact values shall be labelled as `estimated` or `simulated` unless measured public values are available.
-- The MVP may use estimated or simulated impact values for yearly production, CO2 savings, household equivalents and municipal participation when measured public values are unavailable.
-- Estimated or simulated impact values shall be visibly labelled and must not be presented as official measurements.
+## 9. Nutzergeschichten
+
+1. Als interessierte Bürgerin oder interessierter Bürger möchte ich Windparks in der Nähe meines aktuellen Standorts sehen, damit ich verstehe, was ich in meiner Umgebung sehe.
+2. Als interessierte Bürgerin oder interessierter Bürger möchte ich einen Windpark von der Karte aus öffnen, damit ich seine wichtigsten Informationen schnell prüfen kann.
+3. Als Anwohnerin oder Anwohner möchte ich die Entfernung zwischen meinem Standort und einem Windpark sehen, damit ich die lokale Relevanz besser einschätzen kann.
+4. Als Anwohnerin oder Anwohner möchte ich Windpark- und Anlagendaten in verständlicher Sprache sehen, damit ich keine technische Expertise brauche, um die Informationen zu verstehen.
+5. Als Anwohnerin oder Anwohner möchte ich sehen, ob Daten offiziell, gemessen, abgeleitet, geschätzt, simuliert oder fehlend sind, damit ich ihre Verlässlichkeit einschätzen kann.
+6. Als Bürgerin oder Bürger möchte ich die jährliche Energieproduktion sehen, damit ich den Beitrag einer Anlage oder eines Windparks verstehen kann.
+7. Als Bürgerin oder Bürger möchte ich CO2-Einsparungen sehen, damit die Klimawirkung greifbarer wird.
+8. Als Bürgerin oder Bürger möchte ich eine Schätzung der versorgten Haushalte sehen, damit abstrakte Energiewerte leichter verständlich werden.
+9. Als Bürgerin oder Bürger möchte ich kommunale Beteiligung oder lokalen Nutzen sehen, damit der lokale Wert von Windenergie sichtbar wird.
+10. Als Bürgerin oder Bürger möchte ich sehen, welche Quellen verwendet wurden, damit ich den Informationen vertrauen und sie prüfen kann.
+11. Als Bürgerin oder Bürger möchte ich Windparks als Favoriten speichern, damit ich relevante Orte schnell wiederfinden kann.
+12. Als Bürgerin oder Bürger möchte ich zuletzt angesehene Windparks sehen, damit ich eine frühere Erkundung fortsetzen kann.
+13. Als Bürgerin oder Bürger möchte ich nach Kommune oder Standort suchen, damit ich Orte prüfen kann, die für mich relevant sind.
+14. Als Bürgerin oder Bürger möchte ich Kartenergebnisse filtern, damit dicht belegte Gebiete verständlich bleiben.
+15. Als Bürgerin oder Bürger möchte ich einen strukturierten Datenhinweis zu fehlenden oder fehlerhaften Windanlagendaten einreichen, damit Datenqualitätsprobleme sichtbar und prüfbar werden können.
+16. Als Bürgerin oder Bürger möchte ich eine FAQ zu Windenergie haben, damit häufige Fragen beantwortet werden, ohne anderswo suchen zu müssen.
+17. Als skeptische Anwohnerin oder skeptischer Anwohner möchte ich eine transparente Erklärung der Grenzen sehen, damit die App nicht wie Werbung wirkt.
+18. Als skeptische Anwohnerin oder skeptischer Anwohner möchte ich, dass mögliche Auswirkungen benannt werden, damit Nutzen und Belastungen fair dargestellt werden.
+19. Als Vertreterin oder Vertreter einer Kommune möchte ich lokale Nutzendaten darstellen, damit Bürgerinnen und Bürger verstehen, was in der Gemeinde ankommt.
+20. Als Vertreterin oder Vertreter einer Kommune möchte ich geförderte lokale Projekte zeigen, damit Einnahmen aus Windenergie konkret werden.
+21. Als Windparkbetreiber möchte ich Anlagen-Stammdaten konsistent darstellen, damit Nutzerinnen und Nutzer klare Informationen erhalten.
+22. Als Energieagentur möchte ich WindKlar als Bildungswerkzeug nutzen, damit Bürgerinnen und Bürger Windenergie im Kontext verstehen.
+23. Als Produktverantwortliche oder Produktverantwortlicher möchte ich Funktionen nach Bürgernutzen und Umsetzungskomplexität priorisieren, damit der MVP machbar bleibt.
+24. Als Entwicklerin oder Entwickler möchte ich ein strukturiertes Datenmodell für Anlagen, Windparks und Metriken haben, damit Funktionen inkrementell umgesetzt werden können.
+25. Als Testerin oder Tester möchte ich klare Akzeptanzkriterien für jede Funktion haben, damit Qualität anhand des externen Verhaltens bewertet werden kann.
+26. Als Bürgerin oder Bürger möchte ich in der FAQ natürlichsprachliche Anschlussfragen stellen, damit ich häufige Situationen verstehen kann, ohne dass jede Formulierung vorab geschrieben sein muss.
+27. Als Bürgerin oder Bürger möchte ich, dass die App sagt, wenn sie eine Antwort aus öffentlichen Daten nicht wissen kann, damit Erklärungen vertrauenswürdig bleiben.
+28. Als Lehrende oder Lehrender möchte ich, dass das Produkt Beratung, Analyse, Konzept, Design, Umsetzung und QA-Phasen widerspiegelt, damit es zu den Modulzielen passt.
+
+## 10. Funktionale Anforderungen
+
+### Karte und Geolokalisierung
+
+- Die App muss Windparks auf einer interaktiven Karte anzeigen; einzelne Windanlagen können ergänzt werden, wenn das Datenmodell sie unterstützt.
+- Die Karte muss progressive Offenlegung nutzen: Die Standard-Kartenebene zeigt Windparks oder Cluster, während einzelne Windanlagen erst bei höheren Zoomstufen oder im Kontext einer Windpark-Detailansicht sichtbar werden.
+- Die Karte muss einen deutschlandweiten Datensatz unterstützen, indem sie bei niedrigen Zoomstufen Marker clustert, filtert oder die Markerdichte auf andere Weise reduziert.
+- Die MVP-Kartenimplementierung sollte geteilt oder datengetrieben bleiben und keine getrennten nativen Kartenimplementierungen für Android und iOS erfordern.
+- Die App darf den Nutzerstandort nur bei Bedarf anfragen und muss erklären, warum der Standort nützlich ist.
+- Der Standortzugriff darf erst nach einer Nutzeraktion wie "auf meinen Standort zentrieren" oder "in meiner Nähe" angefragt werden.
+- Die App darf den Nutzerstandort im MVP nicht speichern.
+- Die App muss erlauben, einen Kartenmarker auszuwählen, um eine Windpark-Detailansicht zu öffnen.
+- Die App sollte erlauben, bei detaillierten Zoomstufen eine einzelne Windanlage auszuwählen, während Windpark- und Gemeindekontext sichtbar bleiben.
+- Die App muss als Alternative zu GPS eine manuelle Standortsuche unterstützen.
+- Datenhinweise müssen erlauben, statt GPS manuell einen Pin zu setzen.
+- Suche muss Teil des Kartenflusses als Overlay oder Sheet sein, nicht ein Ziel der unteren Navigation.
+- Suche muss Windparkname, Kommune/Ort und optional MaStR-ID oder Anlagenname unterstützen.
+- Die Auswahl eines Suchergebnisses muss das Overlay schließen, die Karte fokussieren und die ausgewählte Windpark-Vorschau oder Detailansicht öffnen.
+- Die App muss nicht verfügbaren oder verweigerten Standortzugriff verständlich behandeln.
+
+### Windpark-Detailansicht
+
+- Die App muss Windparkname, Kommune, Standort, Anlagenanzahl, installierte Leistung und Status anzeigen, wenn diese verfügbar sind.
+- Die App sollte einzelne Anlagendetails wie Kennung, Hersteller/Modell und Nennleistung anzeigen, wenn der Datensatz sie unterstützt.
+- Die App muss den Windpark-Kontext sichtbar halten, wenn einzelne Anlagendetails angezeigt werden, damit Nutzerinnen und Nutzer verstehen, zu welchem lokalen Projekt und zu welcher Gemeinde die Anlage gehört.
+- Die App muss produktionsbezogene Metriken anzeigen, wenn sie verfügbar oder geschätzt sind.
+- Die App muss fehlende Werte klar markieren, statt sie zu verstecken.
+- Die App muss Quellen- und Zeitstempelinformationen für relevante Felder bereitstellen.
+
+### Wirkungsübersicht für Bürgerinnen und Bürger
+
+- Die App muss zentrale Wirkungsmetriken zusammenfassen: Jahresproduktion, geschätzte CO2-Einsparung, Haushaltsäquivalent und kommunaler Nutzenindikator.
+- Die App muss verständliche Einheiten und kontextuelle Labels verwenden.
+- Die App darf unsichere Berechnungen nicht überzeichnen.
+- Die App muss auf hoher Ebene erklären, wie geschätzte Metriken berechnet werden.
+- Die Jahresproduktion im MVP muss aus installierter Leistung und dokumentierten angenommenen Volllaststunden geschätzt werden.
+- Die CO2-Einsparung im MVP muss aus geschätzter Produktion und einem dokumentierten Emissionsfaktor geschätzt werden.
+- Haushaltsäquivalente im MVP müssen aus geschätzter Produktion und einem dokumentierten durchschnittlichen Haushaltsstromverbrauch geschätzt werden.
+- Berechnungsannahmen müssen in Konfiguration oder Snapshot-Metadaten liegen, nicht als hartcodierte UI-Konstanten.
+- Konkrete Werte für Volllaststunden, Emissionsfaktor und Haushaltsstromverbrauch bleiben offen, bis ein quellenbasierter Snapshot vorbereitet ist.
+- Snapshot-Metadaten müssen für jede Wirkungsannahme Annahmewert, Einheit, Quelle, Quelldatum oder Abrufdatum und Berechnungshinweis enthalten.
+
+### Kommunaler Nutzen
+
+- Die App muss anzeigen, ob für eine Gemeinde dokumentierte Beteiligung, erwarteter Nutzen oder Demo-Nutzendaten vorliegen.
+- Die App muss echte öffentliche Daten von Demo- oder simulierten Daten unterscheiden.
+- Die App sollte eine einfache Aufschlüsselung lokaler Verwendungszwecke unterstützen, etwa Schule, öffentlicher Nahverkehr, Sport, Naturschutzausgleich oder Gemeinschaftsinfrastruktur.
+- Für den MVP sollte kommunale Beteiligung als geschätzter erwarteter §6-EEG-Wert angezeigt werden, nicht als bestätigte Auszahlung, sofern keine Zahlungsquelle existiert.
+- Empfohlener Kurztext: "Geschätzte kommunale Beteiligung: ca. X EUR/Jahr. Grundlage: §6 EEG, 0,2 ct/kWh, geschätzte Jahresproduktion. Keine bestätigte Auszahlung."
+
+### Favoriten und Verlauf
+
+- Die App muss Nutzerinnen und Nutzern erlauben, Windparks lokal als Favoriten zu speichern.
+- Der MVP darf keine separaten Favoriten für einzelne Windanlagen unterstützen.
+- Die App muss zuletzt angesehene Windparks anzeigen, unabhängig davon, ob sie über Karte, Suche oder Favoriten geöffnet wurden.
+- Die App darf für MVP-Favoriten kein Nutzerkonto erfordern.
+- Favoriten und zuletzt angesehene Windparks müssen im MVP über SQLDelight persistiert werden.
+
+### Datenqualität und Quellen
+
+- Jede zentrale Metrik muss ein Datenqualitätslabel offenlegen: `official`, `measured`, `derived`, `estimated`, `simulated` oder `missing`.
+- Jede zentrale Metrik muss, soweit möglich, ein Quellenlabel und einen Zeitstempel offenlegen.
+- Die UI muss Datenqualität sichtbar machen, ohne den Hauptscreen zu überladen.
+- Der MVP muss echte MaStR/Open-MaStR-basierte Stammdaten für Windanlagen nutzen, sofern verfügbar.
+- Der MVP muss MaStR/Open-MaStR-Stammdaten aus einem vorverarbeiteten lokalen JSON-Snapshot laden, statt zur App-Laufzeit eine externe Live-API aufzurufen.
+- Der JSON-Snapshot muss sowohl einzelne Windanlagen als auch vorberechnete Windpark-Aggregate enthalten.
+- MaStR/Open-MaStR-basierte Anlagen-Stammdaten müssen als `official` gekennzeichnet werden.
+- Windpark-Aggregate, die während der Vorverarbeitung berechnet wurden, müssen als `derived` gekennzeichnet werden.
+- Produktions- und Akzeptanzwirkungswerte müssen als `estimated` oder `simulated` gekennzeichnet werden, sofern keine gemessenen öffentlichen Werte verfügbar sind.
+- Der MVP darf geschätzte oder simulierte Wirkungswerte für Jahresproduktion, CO2-Einsparung, Haushaltsäquivalente und kommunale Beteiligung nutzen, wenn gemessene öffentliche Werte nicht verfügbar sind.
+- Geschätzte oder simulierte Wirkungswerte müssen sichtbar gekennzeichnet sein und dürfen nicht als offizielle Messungen dargestellt werden.
 
-### FAQ and Education
+### FAQ und Bildung
 
-- The app shall provide short explanations for common topics: wind energy basics, energy production, CO2 savings, municipal participation, data sources and limitations.
-- FAQ content shall use neutral, accessible language.
-- A later FAQ assistant may answer natural-language questions only from a curated WindKlar knowledge base, local snapshot metadata, selected wind park context and visible metric/source metadata.
-- The FAQ assistant must distinguish known facts, estimates, plausible general explanations and unknowns.
-- The FAQ assistant must not claim a live operational reason for turbine standstill unless WindKlar has a source-backed live status or event source for that claim.
-- For questions such as "Warum steht das gerade still?", the assistant should explain that WindKlar cannot determine the current cause from the MVP snapshot, then list common possible reasons and show which local data is available.
-- FAQ assistant answers should expose the source chunks or data fields used, including data quality labels and timestamps where available.
-- The FAQ assistant shall have a deterministic fallback when no platform model is available, such as curated FAQ matches or template-based answers.
+- Die App muss kurze Erklärungen zu häufigen Themen bereitstellen: Grundlagen der Windenergie, Energieproduktion, CO2-Einsparung, kommunale Beteiligung, Datenquellen und Grenzen.
+- FAQ-Inhalte müssen neutrale, zugängliche Sprache verwenden.
+- Ein späterer FAQ-Assistent darf natürlichsprachliche Fragen nur aus einer kuratierten WindKlar-Wissensbasis, lokalen Snapshot-Metadaten, ausgewähltem Windpark-Kontext und sichtbaren Metrik-/Quellenmetadaten beantworten.
+- Der FAQ-Assistent muss bekannte Fakten, Schätzungen, plausible allgemeine Erklärungen und Unbekanntes unterscheiden.
+- Der FAQ-Assistent darf keinen aktuellen Live-Betriebsgrund für Anlagenstillstand behaupten, sofern WindKlar keine quellenbasierte Live-Status- oder Ereignisquelle für diese Aussage hat.
+- Bei Fragen wie "Warum steht das gerade still?" sollte der Assistent erklären, dass WindKlar die aktuelle Ursache aus dem MVP-Snapshot nicht bestimmen kann, dann häufige mögliche Gründe nennen und zeigen, welche lokalen Daten verfügbar sind.
+- Antworten des FAQ-Assistenten sollten die verwendeten Quellenabschnitte oder Datenfelder offenlegen, einschließlich Datenqualitätslabels und Zeitstempeln, soweit verfügbar.
+- Der FAQ-Assistent muss eine deterministische Ausweichlösung haben, wenn kein Plattformmodell verfügbar ist, etwa kuratierte FAQ-Treffer oder vorlagenbasierte Antworten.
 
-### Data Hints and Missing Data
+### Datenhinweise und fehlende Daten
 
-- The app should allow users to submit structured data hints for missing or incorrect wind turbines from the map flow.
-- Data hints shall support the MVP categories `missing_installation`, `wrong_location`, `wrong_status`, `wrong_wind_park_assignment`, `wrong_technical_data`, `installation_removed`, and `other`.
-- Data hints should be linked to a MaStR id, wind turbine id, wind park id, municipality id or map coordinate where possible.
-- A data hint shall require category, location or existing object reference, short description, and confidence (`unsure`, `likely`, `certain`).
-- A data hint may include an optional image or suggested corrected value.
-- Contact information is not required for MVP data hints and should be avoided unless explicitly introduced later.
-- Data hints shall be stored locally in SQLDelight in the MVP.
-- Data hints should carry a local status such as `draft`, `ready_for_review` or `exported`.
-- Data hints should be exportable in a simple reviewable format in a later slice, but the MVP shall not require a backend.
-- The MVP shall not claim to submit official corrections to MaStR or another public register.
-- The MVP shall avoid collecting unnecessary personal data.
+- Die App sollte Nutzerinnen und Nutzern erlauben, strukturierte Datenhinweise für fehlende oder fehlerhafte Windanlagen aus dem Kartenfluss heraus einzureichen.
+- Datenhinweise müssen die MVP-Kategorien `missing_installation`, `wrong_location`, `wrong_status`, `wrong_wind_park_assignment`, `wrong_technical_data`, `installation_removed` und `other` unterstützen.
+- Datenhinweise sollten nach Möglichkeit mit einer MaStR-ID, Windanlagen-ID, Windpark-ID, Gemeinde-ID oder Kartenkoordinate verknüpft werden.
+- Ein Datenhinweis muss Kategorie, Standort oder bestehende Objektreferenz, Kurzbeschreibung und Hinweissicherheit (`unsure`, `likely`, `certain`) erfordern.
+- Ein Datenhinweis darf optional ein Bild oder einen vorgeschlagenen korrigierten Wert enthalten.
+- Kontaktinformationen sind für MVP-Datenhinweise nicht erforderlich und sollten vermieden werden, sofern sie nicht später ausdrücklich eingeführt werden.
+- Datenhinweise müssen im MVP lokal in SQLDelight gespeichert werden.
+- Datenhinweise sollten einen lokalen Status wie `draft`, `ready_for_review` oder `exported` tragen.
+- Datenhinweise sollten in einem späteren Umsetzungsschritt in einem einfachen prüfbaren Format exportierbar sein, aber der MVP darf kein Backend erfordern.
+- Der MVP darf nicht behaupten, offizielle Korrekturen an MaStR oder einem anderen öffentlichen Register einzureichen.
+- Der MVP muss das Sammeln unnötiger personenbezogener Daten vermeiden.
 
-## 11. Non-Functional Requirements
+## 11. Nicht-funktionale Anforderungen
 
-### Usability
+### Benutzbarkeit
 
-- The app shall follow mobile-first navigation with predictable map, detail and dashboard flows.
-- Important status and error states shall be visible.
-- Technical terms shall be explained or replaced with everyday language.
-- Interface elements shall be consistent and recognizable.
+- Die App muss einer Mobile-First-Navigation mit vorhersehbaren Karten-, Detail- und Übersichtsabläufen folgen.
+- Wichtige Status- und Fehlerzustände müssen sichtbar sein.
+- Fachbegriffe müssen erklärt oder durch Alltagssprache ersetzt werden.
+- Interface-Elemente müssen konsistent und wiedererkennbar sein.
 
-### Accessibility
+### Barrierefreiheit
 
-- The app shall use sufficient contrast, scalable text and accessible labels.
-- Map-based information shall have non-map alternatives where relevant.
-- Critical information shall not be communicated by color alone.
+- Die App muss ausreichenden Kontrast, skalierbaren Text und zugängliche Labels verwenden.
+- Kartenbasierte Informationen müssen dort, wo es relevant ist, Alternativen außerhalb der Karte haben.
+- Kritische Informationen dürfen nicht allein über Farbe kommuniziert werden.
 
-### Performance
+### Leistung
 
-- The map shall remain responsive for a Germany-wide MVP dataset.
-- Detail views should open quickly after selecting a marker.
-- Cached data should be used where appropriate to reduce repeated loading.
+- Die Karte muss für einen deutschlandweiten MVP-Datensatz reaktionsfähig bleiben.
+- Detailansichten sollten nach Auswahl eines Markers schnell öffnen.
+- Zwischengespeicherte Daten sollten dort verwendet werden, wo sie wiederholtes Laden reduzieren.
 
-### Privacy
+### Datenschutz
 
-- Location access shall be optional.
-- Location access shall be user-initiated and not requested during onboarding.
-- User location shall not be stored in the MVP.
-- MVP favorites and history should be stored locally by default.
-- No personal account shall be required for MVP use.
-- If data hints are exported or transmitted, personal data shall be minimized.
+- Standortzugriff muss optional sein.
+- Standortzugriff muss nutzerinitiiert sein und darf nicht während des Onboardings angefragt werden.
+- Der Nutzerstandort darf im MVP nicht gespeichert werden.
+- MVP-Favoriten und Verlauf sollten standardmäßig lokal gespeichert werden.
+- Für die MVP-Nutzung darf kein persönliches Konto erforderlich sein.
+- Wenn Datenhinweise exportiert oder übertragen werden, müssen personenbezogene Daten minimiert werden.
 
-### Reliability
+### Zuverlässigkeit
 
-- The app shall handle external API downtime by showing cached or fallback data.
-- The app shall show clear empty, loading and error states.
-- The app shall distinguish unavailable data from zero values.
+- Die App muss Ausfälle externer APIs behandeln, indem sie zwischengespeicherte Daten oder Ausweichdaten zeigt.
+- Die App muss klare Leer-, Lade- und Fehlerzustände zeigen.
+- Die App muss nicht verfügbare Daten von Nullwerten unterscheiden.
 
-### Transparency
+### Transparenz
 
-- The app shall make uncertainty explicit.
-- Simulated or demo values shall be labelled as such.
-- The product tone shall be factual, not promotional.
+- Die App muss Unsicherheit explizit machen.
+- Simulierte oder Demo-Werte müssen als solche gekennzeichnet werden.
+- Der Produkton sollte sachlich, nicht werbend sein.
 
-## 12. Data Requirements
+## 12. Datenanforderungen
 
-### Core Entities
+### Kernentitäten
 
-- Wind turbine / Windanlage: id, wind park id, name or identifier, coordinates, manufacturer, model, type, hub height or total height if available, installed capacity, status, operator, source metadata. This is the atomic source-data and coordinate unit.
-- Wind park: id, name, municipality, representative coordinates or geometry, turbine count, aggregated installed capacity, aggregated metrics, source metadata. This is the primary citizen-facing UX unit for map overview, favorites and municipality context.
-- Metric: value, unit, period, data quality, source, timestamp, calculation note.
-- Municipality benefit: municipality, benefit type, amount or qualitative indicator, period, source, data quality.
-- User local state: favorites, recently viewed wind parks, optional dismissed onboarding hints.
-- Data hint: hint category, subject type, subject id if available, municipality id if available, coordinates, description, confidence, optional local image reference, optional suggested value, created timestamp, local review/export status.
-- Snapshot metadata: snapshot source, source version or timestamp, import timestamp, calculation assumptions and preprocessing notes.
+- Windanlage: ID, Windpark-ID, Name oder Kennung, Koordinaten, Hersteller, Modell, Typ, Nabenhöhe oder Gesamthöhe, sofern verfügbar, installierte Leistung, Status, Betreiber, Quellenmetadaten. Dies ist die atomare Quellen- und Koordinateneinheit.
+- Windpark: ID, Name, Gemeinde, repräsentative Koordinaten oder Geometrie, Anlagenanzahl, aggregierte installierte Leistung, aggregierte Metriken, Quellenmetadaten. Dies ist die primäre bürgernahe UX-Einheit für Kartenübersicht, Favoriten und Gemeindekontext.
+- Metrik: Wert, Einheit, Zeitraum, Datenqualität, Quelle, Zeitstempel, Berechnungshinweis.
+- Kommunaler Nutzen: Gemeinde, Nutzentyp, Betrag oder qualitativer Indikator, Zeitraum, Quelle, Datenqualität.
+- Lokaler Nutzerzustand: Favoriten, zuletzt angesehene Windparks, optional ausgeblendete Onboarding-Hinweise.
+- Datenhinweis: Hinweiskategorie, Betrefftyp, Betreff-ID, sofern verfügbar, Gemeinde-ID, sofern verfügbar, Koordinaten, Beschreibung, Hinweissicherheit, optionale lokale Bildreferenz, optional vorgeschlagener Wert, Erstellungszeitstempel, lokaler Prüf-/Exportstatus.
+- Snapshot-Metadaten: Snapshot-Quelle, Quellversion oder Zeitstempel, Importzeitstempel, Berechnungsannahmen und Vorverarbeitungshinweise.
 
-### Current SQLDelight Schema in Repository
+### Aktuelles SQLDelight-Schema im Repository
 
-The repository already contains concrete SQLDelight schema files under `composeApp/src/commonMain/sqldelight/app/data/local/db`:
+Das Repository enthält bereits konkrete SQLDelight-Schemadateien unter `composeApp/src/commonMain/sqldelight/app/data/local/db`:
 
-- `WindPark.sq`: `wind_park` table with aggregate fields, source metadata, grouping method and data quality; queries for select-all, select-by-id, text search and upsert.
-- `WindTurbine.sq`: `wind_turbine` table for atomic MaStR/Open-MaStR-backed installation master data.
-- `Metric.sq`: generic `metric` table for production and acceptance impact values with unit, period, source, data quality and calculation note.
-- `Favorite.sq`: `favorite_wind_park` table keyed by `wind_park_id`; queries for favorite ids, favorite existence, add and remove.
-- `RecentWindPark.sq`: `recent_wind_park` table keyed by `wind_park_id`; queries for recently opened wind parks, record and clear.
-- `DataHint.sq`: local `data_hint` table for structured Datenhinweise.
-- `SnapshotMetadata.sq`: imported snapshot identity, source, checksum and preprocessing metadata.
+- `WindPark.sq`: Tabelle `wind_park` mit Aggregatfeldern, Quellenmetadaten, Gruppierungsmethode und Datenqualität; Queries für Auswahl aller Einträge, Auswahl per ID, Textsuche und Upsert.
+- `WindTurbine.sq`: Tabelle `wind_turbine` für atomare MaStR/Open-MaStR-basierte Anlagen-Stammdaten.
+- `Metric.sq`: generische Tabelle `metric` für Produktions- und Akzeptanzwirkungswerte mit Einheit, Zeitraum, Quelle, Datenqualität und Berechnungshinweis.
+- `Favorite.sq`: Tabelle `favorite_wind_park`, geschlüsselt über `wind_park_id`; Queries für Favoriten-IDs, Favoritenexistenz, Hinzufügen und Entfernen.
+- `RecentWindPark.sq`: Tabelle `recent_wind_park`, geschlüsselt über `wind_park_id`; Queries für zuletzt geöffnete Windparks, Erfassen und Leeren.
+- `DataHint.sq`: lokale Tabelle `data_hint` für strukturierte Datenhinweise.
+- `SnapshotMetadata.sq`: importierte Snapshot-Identität, Quelle, Prüfsumme und Vorverarbeitungsmetadaten.
 
-Current gap: the Kotlin domain model and DAO interfaces are still thinner than the SQL schema. `WindPark` currently exposes only `id`, `name`, `municipality` and `isFavorite`; `WindParkEntity` currently exposes only `id`, `name` and `municipality`. The repository and DAO contracts need to be expanded or mapped explicitly before the SQL schema can drive the UI.
+Aktuelle Lücke: Das Kotlin-Domainmodell und die DAO-Interfaces sind noch schmaler als das SQL-Schema. `WindPark` stellt aktuell nur `id`, `name`, `municipality` und `isFavorite` bereit; `WindParkEntity` stellt aktuell nur `id`, `name` und `municipality` bereit. Repository- und DAO-Verträge müssen erweitert oder explizit gemappt werden, bevor das SQL-Schema die UI antreiben kann.
 
-Implemented local schema target:
+Implementiertes lokales Zielschema:
 
-- `wind_turbine`: atomic MaStR/Open-MaStR installation master data with source and quality metadata.
-- `wind_park`: precomputed wind park aggregates for map, favorites, search and detail overview.
-- `metric`: production and acceptance impact values such as annual production, CO2 savings, household equivalents and municipal participation.
-- `favorite_wind_park`: saved wind parks.
-- `recent_wind_park`: recently opened wind parks.
-- `data_hint`: local Datenhinweise with category, subject reference, location, description, confidence and local status.
-- `snapshot_metadata`: optional metadata for source, import timestamp, version and calculation assumptions.
+- `wind_turbine`: atomare MaStR/Open-MaStR-Anlagen-Stammdaten mit Quellen- und Qualitätsmetadaten.
+- `wind_park`: vorberechnete Windpark-Aggregate für Karte, Favoriten, Suche und Detailübersicht.
+- `metric`: Produktions- und Akzeptanzwirkungswerte wie Jahresproduktion, CO2-Einsparung, Haushaltsäquivalente und kommunale Beteiligung.
+- `favorite_wind_park`: gespeicherte Windparks.
+- `recent_wind_park`: zuletzt geöffnete Windparks.
+- `data_hint`: lokale Datenhinweise mit Kategorie, Betreffreferenz, Standort, Beschreibung, Hinweissicherheit und lokalem Status.
+- `snapshot_metadata`: optionale Metadaten für Quelle, Importzeitstempel, Version und Berechnungsannahmen.
 
-The source-data pipeline now lives outside the app under `data/`, and the app imports only the app-ready JSON snapshot bundled under Compose resources. Raw and intermediate MaStR files are intentionally ignored.
+Die Quellen-Datenpipeline lebt jetzt außerhalb der App unter `data/`, und die App importiert nur den appfertigen JSON-Snapshot, der unter Compose-Ressourcen gebündelt ist. Rohe und intermediäre MaStR-Dateien werden bewusst ignoriert.
 
-Updated modeling decision: the SQL schema includes `wind_turbine` as the atomic MaStR/Open-MaStR-backed unit. Wind park rows are aggregates or curated groupings over those turbine rows.
+Aktualisierte Modellierungsentscheidung: Das SQL-Schema enthält `wind_turbine` als atomare MaStR/Open-MaStR-basierte Einheit. Windpark-Zeilen sind Aggregate oder kuratierte Gruppierungen über diese Anlagenzeilen.
 
-Updated local-state decision: the product concept is "Zuletzt angesehen", not a search-only history. `RecentWindPark.sq` records opened wind parks regardless of entry path.
+Aktualisierte lokale Zustandsentscheidung: Das Produktkonzept ist "Zuletzt angesehen", nicht ein reiner Suchverlauf. `RecentWindPark.sq` erfasst geöffnete Windparks unabhängig vom Einstiegspfad.
 
-Updated local persistence decision: favorites and recently viewed wind parks are SQLDelight-backed MVP behavior, not mock-only state.
+Aktualisierte lokale Persistenzentscheidung: Favoriten und zuletzt angesehene Windparks sind SQLDelight-gestütztes MVP-Verhalten, nicht nur Mock-Zustand.
 
-Updated data-source decision: the MVP uses real MaStR/Open-MaStR-backed master data for wind installations where available. Installation master data is labelled `official`; preprocessing aggregates are labelled `derived`; production, CO2, household equivalents and municipal participation may be `estimated` or `simulated` if measured public data is unavailable.
+Aktualisierte Datenquellenentscheidung: Der MVP nutzt echte MaStR/Open-MaStR-basierte Stammdaten für Windanlagen, sofern verfügbar. Anlagen-Stammdaten werden als `official` gekennzeichnet; Vorverarbeitungsaggregate werden als `derived` gekennzeichnet; Produktion, CO2, Haushaltsäquivalente und kommunale Beteiligung können `estimated` oder `simulated` sein, wenn gemessene öffentliche Daten nicht verfügbar sind.
 
-Updated municipal participation decision: MVP municipal participation is shown as a short estimated expected §6 EEG value, based on 0.2 ct/kWh and estimated yearly production, with a clear "no confirmed payout" note unless a payment source exists.
+Aktualisierte Entscheidung zur kommunalen Beteiligung: Kommunale Beteiligung im MVP wird als kurzer geschätzter erwarteter §6-EEG-Wert angezeigt, basierend auf 0,2 ct/kWh und geschätzter Jahresproduktion, mit einem klaren Hinweis "keine bestätigte Auszahlung", sofern keine Zahlungsquelle existiert.
 
-Updated impact calculation decision: annual production, CO2 savings and household equivalents are estimated from simple documented assumptions. Concrete values for full-load hours, emission factor and household consumption remain open until snapshot preparation, but each assumption must be stored in snapshot metadata with value, unit, source, source date or retrieval date, and calculation note.
+Aktualisierte Entscheidung zur Wirkungsberechnung: Jahresproduktion, CO2-Einsparung und Haushaltsäquivalente werden aus einfachen dokumentierten Annahmen geschätzt. Konkrete Werte für Volllaststunden, Emissionsfaktor und Haushaltsstromverbrauch bleiben offen, bis der Snapshot vorbereitet wird; jede Annahme muss jedoch in den Snapshot-Metadaten mit Wert, Einheit, Quelle, Quelldatum oder Abrufdatum und Berechnungshinweis gespeichert werden.
 
-Updated local schema decision: SQLDelight uses `wind_turbine`, `wind_park`, `metric`, `favorite_wind_park`, `recent_wind_park`, `data_hint` and `snapshot_metadata`.
+Aktualisierte lokale Schemaentscheidung: SQLDelight nutzt `wind_turbine`, `wind_park`, `metric`, `favorite_wind_park`, `recent_wind_park`, `data_hint` und `snapshot_metadata`.
 
-Updated scope decision: the MVP dataset should cover Germany rather than a Leipzig/Saxony-only demo region. This increases map-density and import requirements, so clustering/filtering and local cache design are part of the MVP data strategy.
+Aktualisierte Umfangsentscheidung: Der MVP-Datensatz soll Deutschland abdecken und nicht nur eine Demo-Region wie Leipzig/Sachsen. Dadurch steigen Anforderungen an Kartendichte und Import, weshalb Clustering/Filterung und lokales Cache-Design Teil der MVP-Datenstrategie sind.
 
-Updated integration decision: the MVP uses a preprocessed local MaStR/Open-MaStR JSON snapshot instead of runtime live API access. The app should import or bundle this snapshot into local SQLDelight-backed storage.
+Aktualisierte Integrationsentscheidung: Der MVP nutzt einen vorverarbeiteten lokalen MaStR/Open-MaStR-JSON-Snapshot statt Live-API-Zugriff zur Laufzeit. Die App sollte diesen Snapshot in SQLDelight-gestützte lokale Speicherung importieren oder bündeln.
 
-Updated aggregation decision: wind park grouping and aggregate fields should be computed during snapshot preprocessing. The app imports both wind park aggregates and individual wind installations instead of computing Germany-wide groupings at runtime.
+Aktualisierte Aggregationsentscheidung: Windpark-Gruppierung und Aggregatfelder sollten während der Snapshot-Vorverarbeitung berechnet werden. Die App importiert sowohl Windpark-Aggregate als auch einzelne Windanlagen, statt deutschlandweite Gruppierungen zur Laufzeit zu berechnen.
 
-Updated metadata decision: source and data-quality metadata should be stored directly on source-backed master-data tables for wind installations and wind park aggregates. User-facing impact values should be stored in a separate metric model with its own unit, period, source, quality label and calculation note.
+Aktualisierte Metadatenentscheidung: Quellen- und Datenqualitätsmetadaten sollten direkt auf quellenbasierten Stammdatentabellen für Windanlagen und Windpark-Aggregate gespeichert werden. Nutzerseitige Wirkungswerte sollten in einem separaten Metrikmodell mit eigener Einheit, eigenem Zeitraum, eigener Quelle, eigenem Qualitätslabel und eigenem Berechnungshinweis gespeichert werden.
 
-Updated participation decision: the report flow is a `Datenhinweis` workflow. It collects structured hints about missing or incorrect wind installations or master data, but does not promise an official MaStR correction.
+Aktualisierte Beteiligungsentscheidung: Der Meldefluss ist ein `Datenhinweis`-Workflow. Er sammelt strukturierte Hinweise zu fehlenden oder fehlerhaften Windanlagen oder Stammdaten, verspricht aber keine offizielle MaStR-Korrektur.
 
-Updated data-hint persistence decision: Datenhinweise are stored locally in SQLDelight for the MVP, with a local review/export status. No backend submission or account-based workflow is required.
+Aktualisierte Entscheidung zur Datenhinweis-Persistenz: Datenhinweise werden im MVP lokal in SQLDelight gespeichert, mit lokalem Prüf-/Exportstatus. Es ist kein Backend-Submit oder kontobasierter Workflow erforderlich.
 
-Updated data-hint category decision: MVP data hints use exactly these categories: `missing_installation`, `wrong_location`, `wrong_status`, `wrong_wind_park_assignment`, `wrong_technical_data`, `installation_removed`, and `other`.
+Aktualisierte Datenhinweis-Kategorieentscheidung: MVP-Datenhinweise nutzen exakt diese Kategorien: `missing_installation`, `wrong_location`, `wrong_status`, `wrong_wind_park_assignment`, `wrong_technical_data`, `installation_removed` und `other`.
 
-Updated data-hint input decision: MVP data hints require category, location or existing object reference, short description, and confidence. Image and suggested corrected value are optional; contact information is not required.
+Aktualisierte Datenhinweis-Eingabeentscheidung: MVP-Datenhinweise erfordern Kategorie, Standort oder bestehende Objektreferenz, Kurzbeschreibung und Hinweissicherheit. Bild und vorgeschlagener korrigierter Wert sind optional; Kontaktinformationen sind nicht erforderlich.
 
-Updated search decision: search belongs to the map flow as an overlay or sheet. It is not a bottom-navigation destination.
+Aktualisierte Suchentscheidung: Suche gehört in den Kartenfluss als Overlay oder Sheet. Sie ist kein Ziel der unteren Navigation.
 
-Updated map implementation decision: the MVP should use a shared or data-driven map approach, preferably OSM-compatible if feasible, and should not require separate native Android and iOS map implementations.
+Aktualisierte Kartenimplementierungsentscheidung: Der MVP sollte einen geteilten oder datengetriebenen Kartenansatz verwenden, bevorzugt OSM-kompatibel, sofern machbar, und keine getrennten nativen Kartenimplementierungen für Android und iOS erfordern.
 
-Updated location decision: location access is optional, requested only after user action, and not stored in the MVP. Manual search and manual pin placement remain alternatives.
+Aktualisierte Standortentscheidung: Standortzugriff ist optional, wird erst nach Nutzeraktion angefragt und im MVP nicht gespeichert. Manuelle Suche und manuelles Pin-Setzen bleiben Alternativen.
 
-Updated navigation decision: top-level screens use bottom navigation only and should not show a back button to `Map`. Back behavior is reserved for subflows.
+Aktualisierte Navigationsentscheidung: Ansichten der obersten Ebene nutzen nur die untere Navigation und sollten keinen Zurück-Button zu `Map` zeigen. Zurückverhalten ist Unterabläufen vorbehalten.
 
-Updated profile decision: Profile is an `Info & Einstellungen` area in the MVP. It should not include logout, account language, or controls for unimplemented behavior such as notifications or dark mode.
+Aktualisierte Profilentscheidung: `Profile` ist im MVP ein Bereich `Info & Einstellungen`. Er sollte keinen Logout, keine Kontosprache und keine Bedienelemente für nicht implementiertes Verhalten wie Benachrichtigungen oder Dunkelmodus enthalten.
 
-Updated design decision: the green Nature/Trust visual direction is accepted for MVP, but colors, typography, spacing, radii and elevation should be centralized as Compose theme/design tokens.
+Aktualisierte Designentscheidung: Die grüne Nature/Trust-Designrichtung ist für den MVP akzeptiert, aber Farben, Typografie, Abstände, Radien und Elevation sollten als Compose-Theme-/Designtokens zentralisiert werden.
 
-Updated Figma decision: Figma is a functional and visual reference for screen set, information architecture, component intent, rough layout and copy. It is not a pixel-perfect implementation contract for the MVP.
+Aktualisierte Figma-Entscheidung: Figma ist eine funktionale und visuelle Referenz für Screenset, Informationsarchitektur, Komponentenabsicht, grobes Layout und Copy. Es ist kein pixelgenauer Implementierungsvertrag für den MVP.
 
-Updated build-tooling decision: the AGP 9.x / Kotlin Multiplatform compatibility warning is accepted as a documented seminar-MVP risk. Do not migrate to a separate Android app module before the demo unless the build breaks.
+Aktualisierte Build-Tooling-Entscheidung: Die AGP-9.x-/Kotlin-Multiplatform-Kompatibilitätswarnung ist als dokumentiertes Seminar-MVP-Risiko akzeptiert. Vor der Demo soll nicht auf ein separates Android-App-Modul migriert werden, sofern der Build nicht bricht.
 
-Updated QA decision: Android manual QA is required before the demo. iOS simulator/device smoke testing is desirable where available but not a demo blocker if the shared KMP entry point remains intact.
+Aktualisierte QA-Entscheidung: Android-Manuelle-QA ist vor der Demo erforderlich. Ein kurzer iOS-Test im Simulator oder auf einem iOS-Gerät ist wünschenswert, soweit verfügbar, aber kein Demo-Hindernis, sofern der gemeinsame KMP-Einstiegspunkt intakt bleibt.
 
-### Candidate Sources
+### Mögliche Quellen
 
-- Marktstammdatenregister for turbine master data.
-- Open-MaStR for accessible turbine master data exports or integration.
-- OpenStreetMap for basemap and geographic context.
-- DWD weather data for optional forecast or production estimation.
-- SMARD or public energy statistics for contextual energy data.
-- Umweltbundesamt, BWE or Fachagentur Wind und Solar for explanatory context and acceptance-related information.
-- Demo datasets for municipal benefit, shadow, sound, nature protection or scenario data until verified public data is available.
+- Marktstammdatenregister für Anlagen-Stammdaten.
+- Open-MaStR für zugängliche Anlagen-Stammdatenexporte oder Integration.
+- OpenStreetMap für Basiskarte und geografischen Kontext.
+- DWD-Wetterdaten für optionale Prognosen oder Produktionsschätzung.
+- SMARD oder öffentliche Energiestatistiken für kontextuelle Energiedaten.
+- Umweltbundesamt, BWE oder Fachagentur Wind und Solar für Erklärungskontext und akzeptanzbezogene Informationen.
+- Demo-Datensätze für kommunalen Nutzen, Schatten, Schall, Naturschutz oder Szenariodaten, bis verifizierte öffentliche Daten verfügbar sind.
 
-### Data Quality Labels
+### Datenqualitätslabels
 
-- official: published by an official or authoritative public source.
-- measured: measured operational or sensor data.
-- derived: mechanically computed from official or source-backed fields without additional modelling assumptions.
-- estimated: calculated from model, weather, power curve or public assumptions.
-- simulated: demo or scenario value.
-- missing: intentionally shown as unavailable.
+- `official`: veröffentlicht von einer offiziellen oder autoritativen öffentlichen Quelle.
+- `measured`: gemessene Betriebs- oder Sensordaten.
+- `derived`: mechanisch aus offiziellen oder quellenbasierten Feldern berechnet, ohne zusätzliche Modellannahmen.
+- `estimated`: aus Modell, Wetter, Leistungskurve oder öffentlichen Annahmen berechnet.
+- `simulated`: Demo- oder Szenariowert.
+- `missing`: bewusst als nicht verfügbar angezeigt.
 
-## 13. Information Architecture
+## 13. Informationsarchitektur
 
-Current repository navigation:
+Aktuelle Repository-Navigation:
 
-1. `Start`: full-screen entry with CTA, no bottom navigation.
-2. `Map`: primary discovery surface with integrated search field, filter chips, map actions and preview sheet.
-3. `Stats`: production and energy context screen with Compose/Canvas charts.
-4. `Favorites`: saved wind parks list.
-5. `Faq`: accordion-based education and skepticism-answering screen.
-6. `Profile`: local `Info & Einstellungen` screen without account or logout behavior.
-7. `Detail(parkId)`: wind park detail route reachable from map and favorites.
+1. `Start`: vollflächiger Einstieg mit CTA, ohne untere Navigation.
+2. `Map`: primäre Entdeckungsfläche mit integriertem Suchfeld, Filterchips, Kartenaktionen und Vorschau-Sheet.
+3. `Stats`: Produktions- und Energiekontext-Ansicht mit Compose-/Canvas-Diagrammen.
+4. `Favorites`: Liste gespeicherter Windparks.
+5. `Faq`: akkordeonbasierte Bildungs- und Skepsisbeantwortungs-Ansicht.
+6. `Profile`: lokale Ansicht `Info & Einstellungen` ohne Konto- oder Logout-Verhalten.
+7. `Detail(parkId)`: Windpark-Detailroute, erreichbar aus Karte und Favoriten.
 
-Current bottom navigation:
+Aktuelle untere Navigation:
 
 1. `Map`
 2. `Stats`
@@ -425,248 +425,248 @@ Current bottom navigation:
 4. `Faq`
 5. `Profile` / `Info & Einstellungen`
 
-Current flow notes:
+Aktuelle Ablaufnotizen:
 
-- `Start` is the entry route and navigates to `Map`.
-- `Search` exists as a feature package and placeholder screen, but the confirmed product behavior is a map overlay/sheet rather than a top-level route or bottom-nav item.
-- `ReportWindTurbine` is now defined as a Datenhinweis flow and represented by a map action icon, but no route, package or form implementation exists yet.
-- The confirmed map behavior is progressive disclosure: wind parks or clusters first, individual wind turbines only at higher zoom levels or in detail context.
-- The confirmed favorites behavior is wind park-only for MVP; individual turbines are not separately favorited.
-- Top-level feature screens should not include their own back affordance to `Map`; bottom navigation owns top-level movement.
-- Back affordances belong only to subflows such as detail, search overlay/sheet, data hint form and individual turbine subdetail.
-- `Profile` should be treated as `Info & Einstellungen`, not as an authenticated account area.
+- `Start` ist die Einstiegsroute und navigiert zu `Map`.
+- `Search` existiert als Funktionspaket und Platzhalteransicht, aber das bestätigte Produktverhalten ist ein Karten-Overlay/-Sheet statt einer Route der obersten Ebene oder eines Elements der unteren Navigation.
+- `ReportWindTurbine` ist jetzt als Datenhinweis-Ablauf definiert und durch ein Kartenaktions-Icon repräsentiert, aber es gibt noch keine Route, kein Paket und keine Formularimplementierung.
+- Das bestätigte Kartenverhalten ist progressive Offenlegung: zuerst Windparks oder Cluster, einzelne Windanlagen nur bei höheren Zoomstufen oder im Detailkontext.
+- Das bestätigte Favoritenverhalten ist im MVP nur Windpark-bezogen; einzelne Anlagen werden nicht separat favorisiert.
+- Ansichten der obersten Ebene sollten kein eigenes Zurück-Bedienelement zu `Map` enthalten; die untere Navigation besitzt die Bewegung auf oberster Ebene.
+- Zurück-Bedienelemente gehören nur zu Unterabläufen wie Detail, Such-Overlay/-Sheet, Datenhinweisformular und einzelner Anlagenunterdetailansicht.
+- `Profile` sollte als `Info & Einstellungen` behandelt werden, nicht als authentifizierter Kontobereich.
 
-Possible future navigation:
+Mögliche spätere Navigation:
 
-1. Wind park detail with production context
-2. Turbine detail where individual turbine data is available
-3. Municipal benefit
-4. Participation
-5. Scenarios
-6. Documents
-7. Data hint submitted / export confirmation
+1. Windpark-Detail mit Produktionskontext
+2. Anlagendetail, sofern einzelne Anlagendaten verfügbar sind
+3. Kommunaler Nutzen
+4. Beteiligung
+5. Szenarien
+6. Dokumente
+7. Datenhinweis eingereicht / Exportbestätigung
 
-## 14. UX and Design Requirements
+## 14. UX- und Designanforderungen
 
-The design should follow the lecture focus on UX, UI, usability heuristics, Gestalt principles, prototyping and user acceptance tests.
+Das Design sollte dem Fokus der Lehrveranstaltung auf UX, UI, Usability-Heuristiken, Gestaltprinzipien, Prototyping und Nutzerakzeptanztests folgen.
 
-The accepted MVP visual direction is green, nature-oriented and trust-focused. Colors, typography, spacing, radii and elevation should be centralized as Compose theme/design tokens instead of repeated as screen-local constants.
+Die akzeptierte visuelle MVP-Richtung ist grün, naturorientiert und vertrauensfokussiert. Farben, Typografie, Abstände, Radien und Elevation sollten als Compose-Theme-/Designtokens zentralisiert werden, statt sie als ansichtslokale Konstanten zu wiederholen.
 
-Figma is the source of truth for screen set, information architecture, component intent, rough layout and available copy. Compose implementation should preserve the user-facing structure and intent, but pixel-perfect parity is not required for the seminar MVP.
+Figma ist die Quelle der Wahrheit für Screenset, Informationsarchitektur, Komponentenabsicht, grobes Layout und verfügbare Copy. Die Compose-Implementierung sollte die nutzerseitige Struktur und Absicht erhalten, aber pixelgenaue Parität ist für den Seminar-MVP nicht erforderlich.
 
-- Visibility of system status: loading, GPS, stale data and missing data states must be clear.
-- Match with the real world: wording should use familiar terms such as "Strom fuer Haushalte" instead of only technical units.
-- User control and freedom: users can browse without location permission and clear local history if implemented.
-- Consistency: map markers, data cards, source labels and status chips should behave consistently.
-- Error prevention: permission and data hint flows should prevent accidental submissions.
-- Recognition over recall: key metrics, saved items and recently viewed entries should be easy to find.
-- Minimalist design: the dashboard should prioritize a few strong metrics instead of overwhelming users.
-- Help and documentation: FAQ and source explanations should be reachable from data-heavy screens.
+- Sichtbarkeit des Systemstatus: Lade-, GPS-, veraltete Daten- und Fehlende-Daten-Zustände müssen klar sein.
+- Übereinstimmung mit der realen Welt: Formulierungen sollten vertraute Begriffe wie "Strom für Haushalte" statt nur technischer Einheiten verwenden.
+- Nutzerkontrolle und Freiheit: Nutzerinnen und Nutzer können ohne Standortberechtigung browsen und den lokalen Verlauf löschen, sofern implementiert.
+- Konsistenz: Kartenmarker, Datenkarten, Quellenlabels und Statuschips sollten sich konsistent verhalten.
+- Fehlervermeidung: Berechtigungs- und Datenhinweis-Flows sollten versehentliche Einreichungen verhindern.
+- Wiedererkennen statt Erinnern: zentrale Metriken, gespeicherte Einträge und zuletzt angesehene Einträge sollten leicht auffindbar sein.
+- Minimalistisches Design: Die Übersicht sollte wenige starke Metriken priorisieren, statt Nutzerinnen und Nutzer zu überfordern.
+- Hilfe und Dokumentation: FAQ und Quellenerklärungen sollten aus datenreichen Ansichten erreichbar sein.
 
-## 15. Implementation Decisions
+## 15. Implementierungsentscheidungen
 
-- Build the MVP as a Kotlin Multiplatform mobile app for Android and iOS.
-- Implement shared UI and state in Compose Multiplatform under `composeApp/src/commonMain`.
-- Keep Android and iOS entry points thin: Android launches `App()` from `MainActivity`; iOS launches `App()` through `ComposeUIViewController`.
-- Use SQLDelight as the local-first persistence layer.
-- Use a clear domain model around turbines, wind parks, municipalities, metrics, sources and local user state.
-- Treat source metadata and data quality as first-class data, not as UI afterthoughts.
-- Use a hybrid metadata schema: source fields on master-data tables and a separate metric model for production and acceptance impact values.
-- Use real MaStR/Open-MaStR-backed master data for the MVP baseline where available.
-- Load the public-source master data through a preprocessed local JSON snapshot for MVP reliability.
-- Keep wind park aggregation in preprocessing, not runtime app logic.
-- Keep map behavior shared or data-driven for MVP; avoid separate Android/iOS native map stacks unless later required.
-- Treat user location as optional, user-initiated context; do not store it in MVP.
-- Use local demo or derived data only for impact values that cannot be sourced as measured public data within the seminar scope, and label them as estimated or simulated.
-- Store Datenhinweise locally in SQLDelight for MVP; do not require a backend.
-- Keep municipal benefit separate from turbine technical data because availability, source and confidence differ.
-- Keep favorites and history local in the MVP to avoid authentication and privacy overhead.
-- Defer camera-based identification and AR overlay because the value is interesting but complexity is XL.
-- Defer social features because moderation risk is high compared to MVP value.
-- Prepare the product backlog in small vertical slices: map browsing, detail view, impact metrics, saved items, data quality, FAQ, feedback.
+- Den MVP als Kotlin-Multiplatform-Mobile-App für Android und iOS bauen.
+- Geteilte UI und State in Compose Multiplatform unter `composeApp/src/commonMain` umsetzen.
+- Android- und iOS-Einstiegspunkte dünn halten: Android startet `App()` aus `MainActivity`; iOS startet `App()` über `ComposeUIViewController`.
+- SQLDelight als local-first Persistenzschicht verwenden.
+- Ein klares Domainmodell rund um Anlagen, Windparks, Gemeinden, Metriken, Quellen und lokalen Nutzerzustand verwenden.
+- Quellenmetadaten und Datenqualität als Daten erster Klasse behandeln, nicht als UI-Nachgedanken.
+- Ein hybrides Metadatenschema verwenden: Quellenfelder auf Stammdatentabellen und ein separates Metrikmodell für Produktions- und Akzeptanzwirkungswerte.
+- Echte MaStR/Open-MaStR-basierte Stammdaten für die MVP-Basis nutzen, sofern verfügbar.
+- Die öffentlichen Quellen-Stammdaten für MVP-Zuverlässigkeit über einen vorverarbeiteten lokalen JSON-Snapshot laden.
+- Windpark-Aggregation in der Vorverarbeitung halten, nicht in der App-Laufzeitlogik.
+- Kartenverhalten für den MVP geteilt oder datengetrieben halten; getrennte native Android-/iOS-Kartenstacks vermeiden, sofern sie später nicht erforderlich werden.
+- Nutzerstandort als optionalen, nutzerinitiierten Kontext behandeln; im MVP nicht speichern.
+- Lokale Demo- oder abgeleitete Daten nur für Wirkungswerte verwenden, die im Seminarumfang nicht als gemessene öffentliche Daten beschafft werden können, und sie als geschätzt oder simuliert kennzeichnen.
+- Datenhinweise im MVP lokal in SQLDelight speichern; kein Backend erfordern.
+- Kommunalen Nutzen von technischen Anlagendaten getrennt halten, weil Verfügbarkeit, Quelle und Vertrauensniveau unterschiedlich sind.
+- Favoriten und Verlauf im MVP lokal halten, um Authentifizierung und Datenschutzaufwand zu vermeiden.
+- Kamera-basierte Identifikation und AR-Overlay zurückstellen, weil der Wert interessant ist, die Komplexität aber XL ist.
+- Soziale Funktionen zurückstellen, weil das Moderationsrisiko im Verhältnis zum MVP-Wert hoch ist.
+- Den Produktarbeitsvorrat in kleinen vertikalen Umsetzungsschritten vorbereiten: Kartenbrowsing, Detailansicht, Wirkungsmetriken, gespeicherte Einträge, Datenqualität, FAQ, Rückmeldung.
 
-### Current Repository Baseline
+### Aktuelle Repository-Basis
 
-- Project type: Kotlin Multiplatform with Compose Multiplatform and Android application packaging.
-- Targets: Android, `iosArm64` and `iosSimulatorArm64`.
-- Main module: `composeApp`; native iOS launcher: `iosApp`.
-- Package namespace/application id: `product.lifecycle.windenergy`.
-- Current libraries: Kotlin 2.3.21, Compose Multiplatform 1.10.3, Material 3 1.10.0-alpha05, SQLDelight 2.3.2, Android compile/target SDK 36 and min SDK 24.
-- Shared app root: `app.App`, wrapping `AppNavHost` in `WindklarTheme`.
-- Current route model: `Start`, `Map`, `Stats`, `Favorites`, `Faq`, `Profile`, `Detail(parkId)`.
-- Current top-level routes in bottom navigation: `Map`, `Stats`, `Favorites`, `Faq`, `Profile` / `Info & Einstellungen`.
-- Implemented visual slices: `StartScreen`, `MapScreen`, `FavoritesScreen`, `FaqScreen`, `StatsScreen` and `ProfileScreen`.
-- Placeholder or scaffold slices: `SearchScreen`, `ParkDetailScreen`, `MapViewModel`, `SearchViewModel`, `ParkDetailViewModel`, database driver factory and seed importer.
-- Missing slice: `ReportWindTurbine` route/package/form is not implemented yet.
-- Current data state: UI is mostly backed by mock `UiState` defaults; repository and DAO contracts exist but are not yet wired through generated SQLDelight database APIs.
-- Current assets: start background/icon and favorite wind park thumbnails are bundled under `composeResources/drawable`.
-- Current build risk: the Gradle problems report flags a Kotlin Multiplatform/Android Gradle Plugin compatibility warning for using `org.jetbrains.kotlin.multiplatform` with `com.android.application` on AGP 9.x. This is accepted for the seminar MVP; a future migration may need a separate Android application subproject if the app continues beyond the seminar or the build breaks.
+- Projekttyp: Kotlin Multiplatform mit Compose Multiplatform und Android-App-Packaging.
+- Zielplattformen: Android, `iosArm64` und `iosSimulatorArm64`.
+- Hauptmodul: `composeApp`; nativer iOS-Launcher: `iosApp`.
+- Paket-Namespace/Application-ID: `product.lifecycle.windenergy`.
+- Aktuelle Bibliotheken: Kotlin 2.3.21, Compose Multiplatform 1.10.3, Material 3 1.10.0-alpha05, SQLDelight 2.3.2, Android compile/target SDK 36 und min SDK 24.
+- Geteilte App-Wurzel: `app.App`, umschließt `AppNavHost` in `WindklarTheme`.
+- Aktuelles Routenmodell: `Start`, `Map`, `Stats`, `Favorites`, `Faq`, `Profile`, `Detail(parkId)`.
+- Aktuelle Routen der obersten Ebene in der unteren Navigation: `Map`, `Stats`, `Favorites`, `Faq`, `Profile` / `Info & Einstellungen`.
+- Implementierte visuelle Umsetzungsschritte: `StartScreen`, `MapScreen`, `FavoritesScreen`, `FaqScreen`, `StatsScreen` und `ProfileScreen`.
+- Platzhalter- oder Gerüst-Umsetzungsschritte: `SearchScreen`, `ParkDetailScreen`, `MapViewModel`, `SearchViewModel`, `ParkDetailViewModel`, Datenbank-Driver-Factory und Seed-Importer.
+- Fehlender Umsetzungsschritt: `ReportWindTurbine`-Route/-Paket/-Formular ist noch nicht implementiert.
+- Aktueller Datenstand: Die UI ist überwiegend durch Mock-`UiState`-Defaults gestützt; Repository- und DAO-Verträge existieren, sind aber noch nicht über generierte SQLDelight-Datenbank-APIs verdrahtet.
+- Aktuelle Assets: Start-Hintergrund/Icon und Favoriten-Windpark-Thumbnails sind unter `composeResources/drawable` gebündelt.
+- Aktuelles Build-Risiko: Der Gradle-Problems-Report markiert eine Kotlin-Multiplatform-/Android-Gradle-Plugin-Kompatibilitätswarnung für die Nutzung von `org.jetbrains.kotlin.multiplatform` mit `com.android.application` unter AGP 9.x. Dies ist für den Seminar-MVP akzeptiert; eine spätere Migration könnte ein separates Android-App-Subprojekt erfordern, wenn die App über das Seminar hinaus weitergeführt wird oder der Build bricht.
 
-## 16. Testing Decisions
+## 16. Testentscheidungen
 
-For the current seminar project, new automated tests are not part of the stated delivery goal. Quality work should therefore focus on acceptance criteria, manual QA, build verification and presentation-ready flows. If the project later moves beyond the seminar MVP, automated tests should verify external behavior rather than implementation details.
+Für das aktuelle Seminarprojekt sind neue automatisierte Tests kein Teil des angegebenen Lieferziels. Qualitätsarbeit sollte sich daher auf Akzeptanzkriterien, manuelle QA, Build-Verifikation und präsentationsfähige Flows konzentrieren. Wenn das Projekt später über den Seminar-MVP hinausgeht, sollten automatisierte Tests externes Verhalten statt Implementierungsdetails prüfen.
 
-### Manual QA Checkpoints
+### Manuelle QA-Prüfpunkte
 
-- Data transformation checkpoint: raw source/demo wind park data becomes app-ready wind park and metric objects.
-- Map interaction checkpoint: selecting a map preview opens the correct `Detail(parkId)` route.
-- Detail view checkpoint: missing, derived, estimated and official values render with correct labels once source metadata is implemented.
-- Impact calculation checkpoint: household and CO2 equivalent calculations are deterministic and labelled as estimates.
-- Local state checkpoint: favorites and recently viewed wind parks persist locally and can be changed by the user once SQLDelight wiring is complete.
-- Permission checkpoint: location denied, unavailable or granted states lead to understandable UI states once location support is implemented.
-- Error checkpoint: failed source/API loading shows fallback or error states without crashing if external data is introduced.
+- Datentransformations-Prüfpunkt: rohe Quellen-/Demo-Windparkdaten werden zu appfertigen Windpark- und Metrikobjekten.
+- Karteninteraktions-Prüfpunkt: Die Auswahl einer Kartenvorschau öffnet die korrekte Route `Detail(parkId)`.
+- Detailansichts-Prüfpunkt: fehlende, abgeleitete, geschätzte und offizielle Werte werden mit korrekten Labels gerendert, sobald Quellenmetadaten implementiert sind.
+- Wirkungsberechnungs-Prüfpunkt: Haushalts- und CO2-Äquivalent-Berechnungen sind deterministisch und als Schätzungen gekennzeichnet.
+- Lokaler-Zustands-Prüfpunkt: Favoriten und zuletzt angesehene Windparks bleiben lokal erhalten und können von Nutzerinnen und Nutzern geändert werden, sobald die SQLDelight-Verdrahtung abgeschlossen ist.
+- Berechtigungs-Prüfpunkt: verweigerter, nicht verfügbarer oder gewährter Standortzugriff führt zu verständlichen UI-Zuständen, sobald Standortunterstützung implementiert ist.
+- Fehler-Prüfpunkt: fehlgeschlagenes Quellen-/API-Laden zeigt Ausweich- oder Fehlerzustände ohne Absturz, falls externe Daten eingeführt werden.
 
-### Acceptance Checks
+### Akzeptanzprüfungen
 
-- A user can open the app, move from `Start` to `Map`, inspect a demo wind park preview and open its detail page.
-- A user can understand at least annual production, CO2 savings and household equivalent from the dashboard.
-- A user can identify whether a displayed metric is official, measured, derived, estimated, simulated or missing.
-- A user can save and revisit a wind park without creating an account once persistence is wired.
-- A user can use the app without granting location permission.
-- A user can read sources and limitations for key data.
+- Eine Nutzerin oder ein Nutzer kann die App öffnen, von `Start` zu `Map` wechseln, eine Demo-Windpark-Vorschau prüfen und ihre Detailseite öffnen.
+- Eine Nutzerin oder ein Nutzer kann mindestens Jahresproduktion, CO2-Einsparung und Haushaltsäquivalent aus der Übersicht verstehen.
+- Eine Nutzerin oder ein Nutzer kann erkennen, ob eine angezeigte Metrik offiziell, gemessen, abgeleitet, geschätzt, simuliert oder fehlend ist.
+- Eine Nutzerin oder ein Nutzer kann einen Windpark speichern und wieder aufrufen, ohne ein Konto zu erstellen, sobald Persistenz verdrahtet ist.
+- Eine Nutzerin oder ein Nutzer kann die App verwenden, ohne Standortberechtigung zu erteilen.
+- Eine Nutzerin oder ein Nutzer kann Quellen und Grenzen für zentrale Daten lesen.
 
-### Manual QA
+### Manuelle QA
 
-- Test on at least one Android emulator or Android device before the demo.
-- Run an iOS simulator/device smoke test where available; iOS smoke test is desirable but not a demo blocker if the shared KMP entry point remains intact.
-- Check map marker density and detail navigation.
-- Check empty, loading, error and missing-data states.
-- Check wording with non-technical users where possible.
-- Manual demo path checklist: Start to Map, Search overlay, Park preview to Detail, favorite add/remove, recently viewed, local data hint save, FAQ, Stats, Info & Einstellungen, and denied/no-location path.
+- Vor der Demo auf mindestens einem Android-Emulator oder Android-Gerät testen.
+- Einen kurzen iOS-Test im Simulator oder auf einem iOS-Gerät ausführen, soweit verfügbar; dieser iOS-Kurztest ist wünschenswert, aber kein Demo-Hindernis, sofern der gemeinsame KMP-Einstiegspunkt intakt bleibt.
+- Kartemarkerdichte und Detailnavigation prüfen.
+- Leer-, Lade-, Fehler- und Fehlende-Daten-Zustände prüfen.
+- Formulierungen mit nicht-technischen Nutzerinnen und Nutzern prüfen, soweit möglich.
+- Manueller Demo-Pfad als Checkliste: Start zu Map, Such-Overlay, Park-Vorschau zu Detail, Favorit hinzufügen/entfernen, zuletzt angesehen, lokalen Datenhinweis speichern, FAQ, Stats, Info & Einstellungen und verweigerter/kein-Standort-Pfad.
 
-## 17. Analytics and Evaluation
+## 17. Analyse und Evaluation
 
-Evaluation should focus on whether WindKlar improves understanding and perceived transparency.
+Die Evaluation sollte darauf fokussieren, ob WindKlar Verständnis und wahrgenommene Transparenz verbessert.
 
-Potential product metrics:
+Mögliche Produktmetriken:
 
-- Map-to-detail conversion rate.
-- Share of users opening source or data quality explanations.
-- Number of favorites created.
-- Number of FAQ entries opened.
-- Number of submitted data hints.
-- Completion rate for a test task such as "find a wind park near Leipzig and explain its contribution."
+- Konversionsrate von Karte zu Detailansicht.
+- Anteil der Nutzerinnen und Nutzer, die Quellen- oder Datenqualitätserklärungen öffnen.
+- Anzahl erstellter Favoriten.
+- Anzahl geöffneter FAQ-Einträge.
+- Anzahl eingereichter Datenhinweise.
+- Abschlussrate für eine Testaufgabe wie "Finde einen Windpark in der Nähe von Leipzig und erkläre seinen Beitrag."
 
-Potential study questions:
+Mögliche Studienfragen:
 
-- I understand better what a local wind park contributes.
-- I can distinguish measured data from estimates.
-- I can name at least one local benefit or limitation.
-- The app feels factual rather than promotional.
-- I would use this app before or during local wind energy discussions.
+- Ich verstehe besser, welchen Beitrag ein lokaler Windpark leistet.
+- Ich kann gemessene Daten von Schätzungen unterscheiden.
+- Ich kann mindestens einen lokalen Nutzen oder eine Einschränkung nennen.
+- Die App wirkt sachlich statt werbend.
+- Ich würde diese App vor oder während lokaler Windenergie-Diskussionen nutzen.
 
-## 18. Risk Register
+## 18. Risikoregister
 
-| Risk | Probability | Impact | Mitigation |
+| Risiko | Wahrscheinlichkeit | Auswirkung | Gegenmaßnahme |
 |---|---:|---:|---|
-| Incomplete or outdated wind farm data | High | High | Show data quality, timestamps, sources and missing states clearly. |
-| Privacy or GDPR issue | Medium | Very High | Make location optional, avoid accounts in MVP, minimize feedback data. |
-| Low user adoption | Medium | High | Focus MVP on immediate map value and understandable impact metrics. |
-| External API downtime | Medium | Medium | Use demo data, caching and fallback states. |
-| Platform build or distribution friction | Low/Medium | Medium | Validate Android and iOS build paths early and keep platform-specific code thin. |
-| Social feature misuse | High | Low/Medium | Defer comments/social feed beyond MVP. |
-| Map performance issues | Medium | Low/Medium | Limit MVP dataset, cluster markers if needed. |
-| Security vulnerabilities | Low | Very High | Keep backend minimal, validate input, avoid unnecessary personal data. |
-| Scope creep | High | Medium/High | Keep MVP strict and move AR, AI and advanced simulations to later phases. |
-| Misleading AI answer | Medium | High | Limit the assistant to curated knowledge and app data, require uncertainty copy, source display and deterministic fallback. |
-| GPS inaccuracy | Low/Medium | Low | Provide manual search and avoid exact claims from user position. |
+| Unvollständige oder veraltete Windparkdaten | Hoch | Hoch | Datenqualität, Zeitstempel, Quellen und fehlende Zustände klar anzeigen. |
+| Datenschutz- oder DSGVO-Problem | Mittel | Sehr hoch | Standort optional machen, Konten im MVP vermeiden, Feedback-Daten minimieren. |
+| Geringe Nutzerakzeptanz | Mittel | Hoch | MVP auf unmittelbaren Kartenwert und verständliche Wirkungsmetriken fokussieren. |
+| Ausfall externer APIs | Mittel | Mittel | Demo-Daten, Caching und Ausweichzustände verwenden. |
+| Reibung bei Plattform-Build oder Distribution | Niedrig/Mittel | Mittel | Android- und iOS-Buildpfade früh validieren und plattformspezifischen Code dünn halten. |
+| Missbrauch sozialer Funktionen | Hoch | Niedrig/Mittel | Kommentare/sozialen Feed über den MVP hinaus zurückstellen. |
+| Performanceprobleme der Karte | Mittel | Niedrig/Mittel | MVP-Datensatz begrenzen, Marker bei Bedarf clustern. |
+| Sicherheitslücken | Niedrig | Sehr hoch | Backend minimal halten, Eingaben validieren, unnötige personenbezogene Daten vermeiden. |
+| Ausufernder Umfang | Hoch | Mittel/Hoch | MVP strikt halten und AR, KI und erweiterte Simulationen in spätere Phasen verschieben. |
+| Irreführende KI-Antwort | Mittel | Hoch | Assistent auf kuratiertes Wissen und App-Daten begrenzen, Unsicherheitstext, Quellenanzeige und deterministische Ausweichlösung erfordern. |
+| GPS-Ungenauigkeit | Niedrig/Mittel | Niedrig | Manuelle Suche anbieten und exakte Aussagen aus der Nutzerposition vermeiden. |
 
-## 19. Roadmap
+## 19. Projektfahrplan
 
-### Phase 1: Foundation
+### Phase 1: Fundament
 
-- Align Kotlin domain models and SQLDelight schema with the target local model.
-- Wire generated SQLDelight database APIs through DAO/repository contracts.
-- Implement or adapt seed import for a Germany-wide preprocessed MaStR/Open-MaStR-derived JSON wind installation snapshot.
-- Keep app shell and bottom navigation owned by `AppNavHost`.
-- Replace placeholder detail view with repository-backed wind park detail.
-- Add source and data quality fields to schema or a companion metric/source model.
-- Add a metric table for yearly production, CO2 savings, household equivalents and municipal participation values.
-- Add `wind_turbine`, `recent_wind_park`, `data_hint` and optional `snapshot_metadata` schema support.
+- Kotlin-Domainmodelle und SQLDelight-Schema mit dem lokalen Zielmodell abgleichen.
+- Generierte SQLDelight-Datenbank-APIs über DAO-/Repository-Verträge verdrahten.
+- Seed-Import für einen deutschlandweiten vorverarbeiteten MaStR/Open-MaStR-abgeleiteten JSON-Windanlagen-Snapshot implementieren oder anpassen.
+- App-Shell und untere Navigation in Besitz von `AppNavHost` halten.
+- Platzhalter-Detailansicht durch repository-gestützte Windpark-Details ersetzen.
+- Quellen- und Datenqualitätsfelder zum Schema oder einem begleitenden Metrik-/Quellenmodell hinzufügen.
+- Metriktabelle für Jahresproduktion, CO2-Einsparung, Haushaltsäquivalente und kommunale Beteiligungswerte hinzufügen.
+- Schema-Unterstützung für `wind_turbine`, `recent_wind_park`, `data_hint` und optional `snapshot_metadata` hinzufügen.
 
-### Phase 2: MVP Transparency
+### Phase 2: MVP-Transparenz
 
-- Connect `Map`, `Favorites`, `Search` and `Stats` screens to local data.
-- Add citizen impact dashboard for selected wind parks and municipalities.
-- Add annual production, CO2 savings and household equivalent.
-- Add estimated expected §6 EEG municipal participation with short "no confirmed payout" copy.
-- Store impact calculation assumptions in configuration or snapshot metadata, including value, unit, source, source date or retrieval date, and calculation note.
-- Add favorites and recently viewed wind parks.
-- Persist favorites and recently viewed wind parks through SQLDelight.
-- Keep FAQ and limitations content accessible from data-heavy flows.
+- Ansichten `Map`, `Favorites`, `Search` und `Stats` mit lokalen Daten verbinden.
+- Wirkungsdashboard für ausgewählte Windparks und Gemeinden hinzufügen.
+- Jahresproduktion, CO2-Einsparung und Haushaltsäquivalent hinzufügen.
+- Geschätzte erwartete §6-EEG-kommunale Beteiligung mit kurzem Hinweis "keine bestätigte Auszahlung" hinzufügen.
+- Wirkungsberechnungsannahmen in Konfiguration oder Snapshot-Metadaten speichern, einschließlich Wert, Einheit, Quelle, Quelldatum oder Abrufdatum und Berechnungshinweis.
+- Favoriten und zuletzt angesehene Windparks hinzufügen.
+- Favoriten und zuletzt angesehene Windparks über SQLDelight persistieren.
+- FAQ- und Grenzentexte aus datenreichen Flows erreichbar halten.
 
-### Phase 3: Validation and Polish
+### Phase 3: Validierung und Feinschliff
 
-- Execute manual acceptance checks and document any known demo limitations.
-- Improve empty, error and permission states.
-- Refine copywriting and accessibility.
-- Prepare presentation-ready demo data.
+- Manuelle Akzeptanzprüfungen ausführen und bekannte Demo-Grenzen dokumentieren.
+- Leer-, Fehler- und Berechtigungszustände verbessern.
+- Texte und Barrierefreiheit verfeinern.
+- Präsentationsreife Demo-Daten vorbereiten.
 
-### Phase 4: Extension
+### Phase 4: Erweiterung
 
-- Add structured data hints through `ReportWindTurbine` if confirmed for MVP.
-- Add comparison view.
-- Add forecast or scenario functionality.
-- Add richer municipal benefit and participation modules.
+- Strukturierte Datenhinweise über `ReportWindTurbine` hinzufügen, sofern für den MVP bestätigt.
+- Vergleichsansicht hinzufügen.
+- Prognose- oder Szenariofunktionalität hinzufügen.
+- Umfangreichere Module für kommunalen Nutzen und Beteiligung hinzufügen.
 
-### Phase 5: Optional Advanced Features
+### Phase 5: Optionale fortgeschrittene Funktionen
 
-- Camera-based identification or AR overlay.
-- Quellengebundener FAQ-Assistent based only on curated WindKlar knowledge, local snapshot metadata and selected wind park context.
-- Android implementation option: platform-local Gemini Nano through Google AI Edge or ML Kit GenAI/AICore where available, with runtime availability checks and fallback.
-- iOS implementation option: Apple Foundation Models where available on Apple-Intelligence-capable devices, wrapped behind a thin platform adapter.
-- Local model implementation option: small on-device open model through a dedicated inference runtime only if size, performance, licensing and QA risks are acceptable.
-- Buergerbudget and questions tracker.
-- Real-time or automated public data import.
+- Kamera-basierte Identifikation oder AR-Overlay.
+- Quellengebundener FAQ-Assistent ausschließlich auf Basis von kuratiertem WindKlar-Wissen, lokalen Snapshot-Metadaten und ausgewähltem Windpark-Kontext.
+- Android-Implementierungsoption: plattformlokales Gemini Nano über Google AI Edge oder ML Kit GenAI/AICore, sofern verfügbar, mit Laufzeit-Verfügbarkeitsprüfung und Ausweichlösung.
+- iOS-Implementierungsoption: Apple Foundation Models, sofern auf Apple-Intelligence-fähigen Geräten verfügbar, hinter einem dünnen Plattformadapter.
+- Lokale Modellimplementierungsoption: kleines offenes Modell auf dem Gerät über eine dedizierte Inferenzlaufzeit nur dann, wenn Größe, Leistung, Lizenzierung und QA-Risiken akzeptabel sind.
+- Bürgerbudget und Fragen-Tracker.
+- Echtzeit- oder automatisierter öffentlicher Datenimport.
 
-## 20. Definition of Done for MVP
+## 20. Fertigstellungskriterien für den MVP
 
-- Core start, map, preview and wind park detail flow works end to end.
-- A Germany-wide public-source-backed JSON wind installation snapshot is available locally or through an import/cache path.
-- Central metrics show value, unit, period, source and data quality.
-- Favorites and recently viewed wind parks work without user account.
-- Location permission is optional and handled gracefully.
-- FAQ and limitation text are available.
-- Optional AI or assistant prototypes are not required for MVP completion and must not weaken the source, data quality and limitation messaging.
-- Main user stories have manual acceptance checks.
-- Manual QA has been performed on Android; iOS smoke test has been performed where available.
-- The product can be demonstrated as a coherent WindKlar prototype.
+- Kernfluss aus Start, Karte, Vorschau und Windpark-Detail funktioniert Ende zu Ende.
+- Ein deutschlandweiter, öffentlich quellenbasierter JSON-Windanlagen-Snapshot ist lokal verfügbar oder über einen Import-/Cache-Pfad vorhanden.
+- Zentrale Metriken zeigen Wert, Einheit, Zeitraum, Quelle und Datenqualität.
+- Favoriten und zuletzt angesehene Windparks funktionieren ohne Nutzerkonto.
+- Standortberechtigung ist optional und wird verständlich behandelt.
+- FAQ- und Grenzentexte sind verfügbar.
+- Optionale KI- oder Assistentenprototypen sind für MVP-Abschluss nicht erforderlich und dürfen die Quellen-, Datenqualitäts- und Grenzenkommunikation nicht schwächen.
+- Haupt-User-Stories haben manuelle Akzeptanzprüfungen.
+- Manuelle QA wurde auf Android durchgeführt; ein iOS-Kurztest wurde durchgeführt, soweit verfügbar.
+- Das Produkt kann als kohärenter WindKlar-Prototyp demonstriert werden.
 
-## 21. Open Questions for the App Repository
+## 21. Offene Fragen für das App-Repository
 
-- Decided: Windanlagen are the atomic source-data and coordinate unit; Windparks are the primary citizen-facing UX unit for map overview, favorites and municipality context.
-- Decided: The map uses progressive disclosure. Users first see wind parks or clusters; individual wind turbines appear only at higher zoom levels or in a wind park detail context.
-- Decided: Favorites are wind park-only in the MVP. Individual wind turbines can be inspected but not separately saved.
-- Decided: The MVP uses real MaStR/Open-MaStR master data for wind installations where available, while production and acceptance impact values may be estimated or simulated with explicit data quality labels.
-- Decided: MaStR/Open-MaStR installation master data is `official`; preprocessing-generated wind park aggregates are `derived`; production and acceptance impact values are `estimated` or `simulated` unless measured public values are available.
-- Decided: The MVP dataset should cover Germany, not only Leipzig/Saxony or another local demo region.
-- Decided: The MVP uses a preprocessed local MaStR/Open-MaStR JSON snapshot instead of live API access inside the app, then imports that snapshot into SQLDelight.
-- Decided: `ReportWindTurbine` is a Datenhinweis flow for structured, local/exportable data-quality hints. It must not promise official MaStR correction.
-- Decided: Datenhinweise are stored locally in SQLDelight in the MVP and may be exported later; no backend or account flow is required.
-- Decided: Datenhinweise use the categories `missing_installation`, `wrong_location`, `wrong_status`, `wrong_wind_park_assignment`, `wrong_technical_data`, `installation_removed`, and `other`.
-- Decided: Datenhinweise require category, location or existing object reference, description and confidence; image and suggested corrected value are optional, contact information is not part of the MVP.
-- Decided: Search remains part of the map flow as an overlay or sheet, not a bottom-nav route.
-- Decided: The MVP map should be shared/OSM-compatible or data-driven and must not require separate Android and iOS native map implementations.
-- Decided: The app-facing snapshot format is JSON. Source preprocessing may use CSV or other raw formats, but the app imports JSON into SQLDelight.
-- Decided: The JSON snapshot contains both individual Windanlagen and precomputed Windpark aggregates; the app does not perform Germany-wide wind park grouping at runtime.
-- Decided: Use a hybrid source/quality schema. Master-data tables carry simple source fields; production and acceptance impact values live in a dedicated metric model.
-- Decided: Target SQLDelight/domain model is `wind_turbine`, `wind_park`, `metric`, `favorite_wind_park`, `recent_wind_park`, `data_hint` and optional `snapshot_metadata`.
-- Decided: Annual production, CO2 savings and household equivalents are estimated from simple documented assumptions; full-load hours, emission factor and household consumption live in configuration or snapshot metadata.
-- Decided: Concrete assumption values remain open until snapshot preparation, but snapshot metadata must include value, unit, source, source/retrieval date and calculation note.
-- Decided: Municipal participation is shown as a short estimated expected §6 EEG value using 0.2 ct/kWh and estimated yearly production, with "Keine bestätigte Auszahlung" unless a payment source exists.
-- Decided: The local history concept is "Zuletzt angesehen". Every opened wind park is recorded, regardless of whether it was reached from map, search or favorites.
-- Decided: Favorites and recently viewed wind parks are SQLDelight-backed in the MVP.
-- Decided: Location is optional, requested only after user action, not stored, and replaceable by manual search or pin placement.
-- Decided: Top-level screens do not show back buttons to `Map`; bottom navigation handles top-level movement and back affordances are reserved for subflows.
-- Decided: `Profile` is `Info & Einstellungen` in the MVP, with no logout, no account language, and no controls for unimplemented notifications or dark mode.
-- Decided: The green Nature/Trust visual direction is accepted for MVP, but colors, typography, spacing, radii and elevation should be centralized as Compose theme/design tokens.
-- Decided: Figma is the functional/visual reference for screen set, information architecture, component intent, rough layout and copy, not a pixel-perfect contract.
-- Decided: A later FAQ assistant may be explored only as a quellengebundener Erklaer-Assistent, not as a general chatbot. It must use curated knowledge, app context and source metadata, and it must state clearly when WindKlar cannot know a live operational cause such as turbine standstill.
-- Decided: AGP 9.x/KMP compatibility warning is accepted as a documented seminar-MVP risk; no module migration before demo unless the build breaks.
-- Decided: Android manual QA is mandatory before demo; iOS simulator/device smoke test is optional where available and not a demo blocker.
+- Entschieden: Windanlagen sind die atomare Quellen- und Koordinateneinheit; Windparks sind die primäre bürgernahe UX-Einheit für Kartenübersicht, Favoriten und Gemeindekontext.
+- Entschieden: Die Karte nutzt progressive Offenlegung. Nutzerinnen und Nutzer sehen zuerst Windparks oder Cluster; einzelne Windanlagen erscheinen nur bei höheren Zoomstufen oder im Windpark-Detailkontext.
+- Entschieden: Favoriten sind im MVP nur Windpark-bezogen. Einzelne Windanlagen können geprüft, aber nicht separat gespeichert werden.
+- Entschieden: Der MVP nutzt echte MaStR/Open-MaStR-Stammdaten für Windanlagen, sofern verfügbar, während Produktions- und Akzeptanzwirkungswerte mit expliziten Datenqualitätslabels geschätzt oder simuliert sein dürfen.
+- Entschieden: MaStR/Open-MaStR-Anlagen-Stammdaten sind `official`; vorverarbeitungsgenerierte Windpark-Aggregate sind `derived`; Produktions- und Akzeptanzwirkungswerte sind `estimated` oder `simulated`, sofern gemessene öffentliche Werte nicht verfügbar sind.
+- Entschieden: Der MVP-Datensatz soll Deutschland abdecken, nicht nur Leipzig/Sachsen oder eine andere lokale Demo-Region.
+- Entschieden: Der MVP nutzt einen vorverarbeiteten lokalen MaStR/Open-MaStR-JSON-Snapshot statt Live-API-Zugriff innerhalb der App und importiert diesen Snapshot anschließend in SQLDelight.
+- Entschieden: `ReportWindTurbine` ist ein Datenhinweis-Ablauf für strukturierte, lokale/exportierbare Datenqualitätshinweise. Er darf keine offizielle MaStR-Korrektur versprechen.
+- Entschieden: Datenhinweise werden im MVP lokal in SQLDelight gespeichert und können später exportiert werden; kein Backend- oder Kontoablauf ist erforderlich.
+- Entschieden: Datenhinweise nutzen die Kategorien `missing_installation`, `wrong_location`, `wrong_status`, `wrong_wind_park_assignment`, `wrong_technical_data`, `installation_removed` und `other`.
+- Entschieden: Datenhinweise erfordern Kategorie, Standort oder bestehende Objektreferenz, Beschreibung und Hinweissicherheit; Bild und vorgeschlagener korrigierter Wert sind optional, Kontaktinformationen sind nicht Teil des MVP.
+- Entschieden: Suche bleibt Teil des Kartenflusses als Overlay oder Sheet, nicht als Route der unteren Navigation.
+- Entschieden: Die MVP-Karte sollte geteilt/OSM-kompatibel oder datengetrieben sein und darf keine getrennten nativen Android- und iOS-Kartenimplementierungen erfordern.
+- Entschieden: Das appseitige Snapshot-Format ist JSON. Quellenvorverarbeitung darf CSV oder andere Rohformate verwenden, aber die App importiert JSON in SQLDelight.
+- Entschieden: Der JSON-Snapshot enthält sowohl einzelne Windanlagen als auch vorberechnete Windpark-Aggregate; die App führt zur Laufzeit keine deutschlandweite Windpark-Gruppierung durch.
+- Entschieden: Ein hybrides Quellen-/Qualitätsschema verwenden. Stammdatentabellen tragen einfache Quellenfelder; Produktions- und Akzeptanzwirkungswerte liegen in einem dedizierten Metrikmodell.
+- Entschieden: SQLDelight-/Domain-Zielmodell ist `wind_turbine`, `wind_park`, `metric`, `favorite_wind_park`, `recent_wind_park`, `data_hint` und optional `snapshot_metadata`.
+- Entschieden: Jahresproduktion, CO2-Einsparung und Haushaltsäquivalente werden aus einfachen dokumentierten Annahmen geschätzt; Volllaststunden, Emissionsfaktor und Haushaltsverbrauch liegen in Konfiguration oder Snapshot-Metadaten.
+- Entschieden: Konkrete Annahmewerte bleiben bis zur Snapshot-Vorbereitung offen, aber Snapshot-Metadaten müssen Wert, Einheit, Quelle, Quellen-/Abrufdatum und Berechnungshinweis enthalten.
+- Entschieden: Kommunale Beteiligung wird als kurzer geschätzter erwarteter §6-EEG-Wert auf Basis von 0,2 ct/kWh und geschätzter Jahresproduktion angezeigt, mit "Keine bestätigte Auszahlung", sofern keine Zahlungsquelle existiert.
+- Entschieden: Das lokale Verlaufskonzept ist "Zuletzt angesehen". Jeder geöffnete Windpark wird erfasst, unabhängig davon, ob er über Karte, Suche oder Favoriten erreicht wurde.
+- Entschieden: Favoriten und zuletzt angesehene Windparks sind im MVP SQLDelight-gestützt.
+- Entschieden: Standort ist optional, wird nur nach Nutzeraktion angefragt, nicht gespeichert und kann durch manuelle Suche oder Pin-Platzierung ersetzt werden.
+- Entschieden: Ansichten der obersten Ebene zeigen keine Zurück-Buttons zu `Map`; die untere Navigation behandelt Bewegung auf oberster Ebene, und Zurück-Bedienelemente sind Unterabläufen vorbehalten.
+- Entschieden: `Profile` ist im MVP `Info & Einstellungen`, ohne Logout, ohne Kontosprache und ohne Bedienelemente für nicht implementierte Benachrichtigungen oder Dunkelmodus.
+- Entschieden: Die grüne Nature/Trust-Designrichtung ist für den MVP akzeptiert, aber Farben, Typografie, Abstände, Radien und Elevation sollten als Compose-Theme-/Designtokens zentralisiert werden.
+- Entschieden: Figma ist die funktionale/visuelle Referenz für Screenset, Informationsarchitektur, Komponentenabsicht, grobes Layout und Copy, kein pixelgenauer Vertrag.
+- Entschieden: Ein späterer FAQ-Assistent darf nur als quellengebundener Erklär-Assistent erkundet werden, nicht als allgemeiner Chatbot. Er muss kuratiertes Wissen, App-Kontext und Quellenmetadaten verwenden und klar sagen, wenn WindKlar eine Live-Betriebsursache wie Anlagenstillstand nicht kennen kann.
+- Entschieden: Die AGP-9.x-/KMP-Kompatibilitätswarnung ist als Seminar-MVP-Risiko akzeptiert; keine Modulmigration vor der Demo, sofern der Build nicht bricht.
+- Entschieden: Android-Manuelle-QA ist vor der Demo verpflichtend; ein kurzer Test im iOS-Simulator oder auf einem iOS-Gerät ist optional, soweit verfügbar, und kein Demo-Hindernis.
 
-## 22. Further Notes
+## 22. Weitere Hinweise
 
-This PRD intentionally combines the lecture structure with the WindKlar concept. It reflects the module phases: consulting and analysis, stakeholder and requirements work, feature prioritization via benefit and complexity, concept and design principles, implementation choices, QA and release thinking.
+Dieses PRD verbindet bewusst die Struktur der Lehrveranstaltung mit dem WindKlar-Konzept. Es spiegelt die Modulphasen wider: Beratung und Analyse, Stakeholder- und Anforderungsarbeit, Funktionspriorisierung nach Nutzen und Komplexität, Konzept- und Designprinzipien, Implementierungsentscheidungen sowie QA- und Release-Denken.
 
-The strongest MVP is not the most feature-rich version. The strongest MVP is a trustworthy, understandable transparency flow: map, wind park detail, citizen impact, local benefit, data quality and saved context.
+Der stärkste MVP ist nicht die funktionsreichste Version. Der stärkste MVP ist ein vertrauenswürdiger, verständlicher Transparenzfluss: Karte, Windpark-Detail, Bürgerwirkung, lokaler Nutzen, Datenqualität und gespeicherter Kontext.
