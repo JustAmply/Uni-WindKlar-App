@@ -1,68 +1,80 @@
 package app.feature.stats
 
 data class StatsUiState(
-    val metrics: List<StatsMetric> = listOf(
-        StatsMetric(
-            value = "1.250",
-            label = "Windparks",
-            icon = StatsMetricIcon.Wind,
-        ),
-        StatsMetric(
-            value = "615 TWh",
-            label = "Produktion",
-            icon = StatsMetricIcon.Production,
-        ),
-        StatsMetric(
-            value = "42%",
-            label = "Erneuerbar",
-            icon = StatsMetricIcon.Renewable,
-        ),
-    ),
-    val growthPercentage: String = "+18%",
-    val annualProduction: List<AnnualProductionPoint> = listOf(
-        AnnualProductionPoint("2020", 250f),
-        AnnualProductionPoint("2021", 310f),
-        AnnualProductionPoint("2022", 380f),
-        AnnualProductionPoint("2023", 450f),
-        AnnualProductionPoint("2024", 520f),
-        AnnualProductionPoint("2025", 615f),
-    ),
-    val co2Reduction: Co2Reduction = Co2Reduction(
-        value = "18,5 Mio. t",
-        label = "CO2 Einsparung 2025",
-        equivalent = "Entspricht 92,5 Millionen gepflanzten Bäumen",
-    ),
-    val energyMix: List<EnergyMixValue> = listOf(
-        EnergyMixValue("Wind", 42f),
-        EnergyMixValue("Solar", 28f),
-        EnergyMixValue("Andere", 30f),
-    ),
+    val subtitle: String = "Snapshot wird geladen",
+    val overviewCards: List<StatsOverviewCard> = emptyList(),
+    val impactCards: List<StatsImpactCard> = emptyList(),
+    val topDistricts: List<DistrictStat> = emptyList(),
+    val districtComparison: DistrictComparison? = null,
+    val co2Summary: String = "",
+    val co2Comparisons: List<Co2Comparison> = emptyList(),
+    val capacityClasses: List<CapacityClassStat> = emptyList(),
+    val qualityNotes: List<StatsQualityNote> = emptyList(),
+    val attribution: String = "",
+    val isLoading: Boolean = true,
 )
 
-data class StatsMetric(
+data class StatsOverviewCard(
     val value: String,
     val label: String,
-    val icon: StatsMetricIcon,
+    val icon: StatsIcon,
 )
 
-enum class StatsMetricIcon {
+data class StatsImpactCard(
+    val title: String,
+    val value: String,
+    val description: String,
+    val quality: String,
+    val icon: StatsIcon,
+)
+
+data class DistrictStat(
+    val districtId: String,
+    val label: String,
+    val contextLabel: String,
+    val windParkCount: Int,
+    val turbineCount: Int,
+    val installedCapacityMw: Double,
+    val shareOfNationalCapacity: Float,
+)
+
+data class DistrictComparison(
+    val label: String,
+    val contextLabel: String,
+    val rankText: String,
+    val installedCapacity: String,
+    val windParks: String,
+    val turbines: String,
+    val nationalShare: String,
+    val shareProgress: Float,
+    val isFallback: Boolean,
+)
+
+data class Co2Comparison(
+    val label: String,
+    val value: String,
+    val description: String,
+)
+
+data class CapacityClassStat(
+    val label: String,
+    val count: Int,
+    val share: Float,
+)
+
+data class StatsQualityNote(
+    val label: String,
+    val quality: String,
+    val description: String,
+)
+
+enum class StatsIcon {
     Wind,
     Production,
-    Renewable,
+    Capacity,
+    Household,
+    Co2,
+    Money,
+    District,
+    DataQuality,
 }
-
-data class AnnualProductionPoint(
-    val year: String,
-    val value: Float,
-)
-
-data class Co2Reduction(
-    val value: String,
-    val label: String,
-    val equivalent: String,
-)
-
-data class EnergyMixValue(
-    val label: String,
-    val percentage: Float,
-)
