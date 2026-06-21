@@ -90,6 +90,7 @@ FIELD_ALIASES = {
     "model": ["model", "typ", "anlagenmodell"],
     "hubHeightM": ["hubheightm", "nabenhoehe", "nabenhohe"],
     "rotorDiameterM": ["rotordiameterm", "rotordurchmesser"],
+    "commissioningDate": ["commissioningdate", "inbetriebnahmedatum", "inbetriebnahme"],
 }
 
 MUNICIPALITY_FIELD_ALIASES = {
@@ -281,6 +282,9 @@ def clean(
         else:
             excluded.append(exclusion(turbine, "coordinate_outside_municipality_reference"))
 
+    for turbine in kept:
+        repair_physical_characteristics(turbine, warnings)
+
     warnings.extend(mixed_municipality_wind_park_warnings(kept))
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -445,6 +449,9 @@ def repair(
         else:
             excluded.append(repair_exclusion(turbine, "coordinate_outside_municipality_reference"))
 
+    for turbine in kept:
+        repair_physical_characteristics(turbine, warnings)
+
     warnings.extend(mixed_municipality_wind_park_warnings(kept))
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -497,9 +504,7 @@ def repair(
 
 def aggregate(input_path: Path, output_path: Path) -> int:
     turbines = list(read_jsonl(input_path))
-    parks_by_key: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for turbine in turbines:
-        parks_by_key[park_group_key(turbine)].append(turbine)
+    parks_by_key = group_turbines(turbines)
 
     parks = []
     for key, group in sorted(parks_by_key.items()):
@@ -507,7 +512,7 @@ def aggregate(input_path: Path, output_path: Path) -> int:
         lon = sum(t["longitude"] for t in group) / len(group)
         capacity = sum(t.get("installedCapacityKw") or 0 for t in group) or None
         municipality_id, municipality_name = representative_municipality(group)
-        wind_park_name = first_present(group, "windParkName") or f"Windpark {municipality_name}"
+        wind_park_name = representative_park_name(group, f"Windpark {municipality_name}")
         park_id = first_present(group, "windParkId")
         if not park_id:
             park_id = "wp_" + stable_hash(key)[:12]
@@ -522,7 +527,7 @@ def aggregate(input_path: Path, output_path: Path) -> int:
                 "turbineCount": len(group),
                 "installedCapacityKw": capacity,
                 "turbineIds": sorted(t["id"] for t in group),
-                "groupingMethod": grouping_method(group),
+                "groupingMethod": grouping_method(group, key),
                 "sourceName": SOURCE_NAME,
                 "sourceUrl": SOURCE_URL,
                 "sourceUpdatedAt": today(),
@@ -646,7 +651,7 @@ def build_snapshot(
         {"id": key, **value}
         for key, value in sorted(DEFAULT_ASSUMPTIONS.items())
     ]
-    metrics = build_metrics(parks)
+    metrics = build_metrics(parks, turbines)
     limitations = [
         "Die Gruppierung von Windparks beruht auf einer algorithmischen Zuordnung bei der Vorverarbeitung.",
         "Die berechneten Kennzahlen zur Klimawirkung sind Schätzwerte des MVP und keine offiziellen Messdaten.",
@@ -675,18 +680,61 @@ def build_snapshot(
     return snapshot
 
 
-def build_metrics(parks: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    full_load_hours = DEFAULT_ASSUMPTIONS["full_load_hours"]["value"]
+def build_metrics(parks: list[dict[str, Any]], turbines: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    # Map turbine ID to turbine dictionary for fast lookup
+    turbine_by_id = {t["id"]: t for t in turbines}
+    
     emission_factor = DEFAULT_ASSUMPTIONS["emission_factor_kg_per_kwh"]["value"]
     household_consumption = DEFAULT_ASSUMPTIONS["household_consumption_kwh"]["value"]
     municipal_rate = DEFAULT_ASSUMPTIONS["municipal_benefit_eur_per_kwh"]["value"]
+    
+    def get_year_multiplier(year: int) -> float:
+        if year < 2000:
+            return 0.75
+        elif year < 2005:
+            return 0.85
+        elif year < 2010:
+            return 0.95
+        elif year < 2015:
+            return 1.05
+        elif year < 2020:
+            return 1.15
+        else:
+            return 1.30
+
     metrics: list[dict[str, Any]] = []
     for park in parks:
-        capacity = park.get("installedCapacityKw") or 0
-        annual_kwh = capacity * full_load_hours
+        park_turbines = [turbine_by_id[tid] for tid in park.get("turbineIds", []) if tid in turbine_by_id]
+        
+        # Calculate custom production for each turbine in the park
+        annual_kwh = 0.0
+        for t in park_turbines:
+            capacity = t.get("installedCapacityKw") or 0
+            
+            # Determine base hours from location (municipalityId prefix / offshore ID)
+            muni_id = t.get("municipalityId") or ""
+            if muni_id in ("offshore_north_sea", "offshore_baltic_sea"):
+                base_hours = 4000.0
+            elif muni_id.startswith(("01", "02", "03", "04", "13")):
+                base_hours = 2200.0
+            else:
+                base_hours = 1700.0
+                
+            # Determine year factor from commissioningDate
+            comm_date = t.get("commissioningDate")
+            year = extract_year(comm_date)
+            year_factor = get_year_multiplier(year) if year is not None else 1.0
+            
+            annual_kwh += capacity * base_hours * year_factor
+            
+        note_annual = (
+            "Geschätzte Jahresproduktion basierend auf lage- und altersabhängigen Volllaststunden der einzelnen Anlagen "
+            "(Basis: Inland 1.700h, Küste 2.200h, Offshore 4.000h, skaliert nach Inbetriebnahmejahr)."
+        )
+        
         metrics.extend(
             [
-                metric(park["id"], "annual_production", annual_kwh, "kWh/a", "Installierte Leistung multipliziert mit den angenommenen Volllaststunden."),
+                metric(park["id"], "annual_production", annual_kwh, "kWh/a", note_annual),
                 metric(park["id"], "co2_savings", annual_kwh * emission_factor, "kg CO2/a", "Geschätzte Produktion multipliziert mit dem angenommenen CO₂-Vermeidungsfaktor."),
                 metric(park["id"], "household_equivalent", annual_kwh / household_consumption, "households", "Geschätzte Produktion geteilt durch den angenommenen jährlichen Haushaltsstrombedarf."),
                 metric(park["id"], "municipal_participation", annual_kwh * municipal_rate, "EUR/a", "Schätzung nach § 6 EEG mit 0,2 ct/kWh; keine bestätigte Auszahlung."),
@@ -787,6 +835,7 @@ def normalize_row(row: dict[str, Any]) -> dict[str, Any] | None:
         "model": as_text(pick(normalized_keys, "model")),
         "hubHeightM": parse_float(pick(normalized_keys, "hubHeightM")),
         "rotorDiameterM": parse_float(pick(normalized_keys, "rotorDiameterM")),
+        "commissioningDate": as_text(pick(normalized_keys, "commissioningDate")),
         "sourceName": SOURCE_NAME,
         "sourceUrl": SOURCE_URL,
         "sourceUpdatedAt": today(),
@@ -863,6 +912,34 @@ def normalize_municipality_id(value: Any) -> str | None:
     if len(digits) > 8:
         return digits[:8]
     return None
+
+
+def repair_physical_characteristics(turbine: dict[str, Any], warnings: list[dict[str, Any]]) -> None:
+    hub_height = turbine.get("hubHeightM")
+    if hub_height is not None:
+        if hub_height <= 0.0 or hub_height > 300.0:
+            warnings.append(
+                warning(
+                    "invalid_hub_height",
+                    turbine,
+                    originalValue=hub_height,
+                )
+            )
+            turbine["hubHeightM"] = None
+            turbine["dataQuality"] = "derived"
+
+    rotor_diameter = turbine.get("rotorDiameterM")
+    if rotor_diameter is not None:
+        if rotor_diameter <= 0.0 or rotor_diameter > 250.0:
+            warnings.append(
+                warning(
+                    "invalid_rotor_diameter",
+                    turbine,
+                    originalValue=rotor_diameter,
+                )
+            )
+            turbine["rotorDiameterM"] = None
+            turbine["dataQuality"] = "derived"
 
 
 def apply_municipality_repair(turbine: dict[str, Any], municipality: dict[str, Any]) -> None:
@@ -1009,20 +1086,22 @@ def warning(
 
 def mixed_municipality_wind_park_warnings(turbines: list[dict[str, Any]]) -> list[dict[str, Any]]:
     warnings = []
-    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for turbine in turbines:
-        groups[park_group_key(turbine)].append(turbine)
+    groups = group_turbines(turbines)
     for key, group in sorted(groups.items()):
         municipality_ids = {turbine.get("municipalityId") for turbine in group if turbine.get("municipalityId")}
         if len(municipality_ids) <= 1:
             continue
         representative_id, representative_name = representative_municipality(group)
+        wind_park_id = first_present(group, "windParkId")
+        if not wind_park_id:
+            wind_park_id = "wp_" + stable_hash(key)[:12]
+        wind_park_name = representative_park_name(group, f"Windpark {representative_name}")
         warnings.append(
             {
                 "reasonCode": "mixed_municipality_wind_park",
                 "windParkKey": key,
-                "windParkId": first_present(group, "windParkId"),
-                "windParkName": first_present(group, "windParkName"),
+                "windParkId": wind_park_id,
+                "windParkName": wind_park_name,
                 "representativeMunicipalityId": representative_id,
                 "representativeMunicipalityName": representative_name,
                 "municipalityIds": sorted(municipality_ids),
@@ -1368,6 +1447,17 @@ def as_text(value: Any) -> str | None:
     return text or None
 
 
+def extract_year(date_str: Any) -> int | None:
+    if not date_str:
+        return None
+    date_str = str(date_str).strip()
+    import re
+    match = re.search(r'\b(19\d{2}|20\d{2})\b', date_str)
+    if match:
+        return int(match.group(1))
+    return None
+
+
 def parse_float(value: Any) -> float | None:
     text = as_text(value)
     if text is None:
@@ -1403,29 +1493,96 @@ def local_name(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
-def park_group_key(turbine: dict[str, Any]) -> str:
-    park_id = turbine.get("windParkId")
-    if park_id:
-        return f"source:{park_id}"
-    park_name = turbine.get("windParkName")
-    if park_name:
-        return f"name:{turbine.get('municipalityId')}:{park_name.strip().lower()}"
-    lat_bucket = round(float(turbine["latitude"]) * 10)
-    lon_bucket = round(float(turbine["longitude"]) * 10)
-    return f"fallback:{turbine.get('municipalityId')}:{lat_bucket}:{lon_bucket}"
+def spatial_clustering(turbines: list[dict[str, Any]], eps_km: float = 2.0) -> list[list[dict[str, Any]]]:
+    if not turbines:
+        return []
+    cell_size = eps_km / 111.32
+    buckets = defaultdict(list)
+    for t in turbines:
+        lat = t["latitude"]
+        lon = t["longitude"]
+        lat_cell = int(lat / cell_size)
+        lon_cell = int(lon / cell_size)
+        buckets[(lat_cell, lon_cell)].append(t)
+        
+    def get_distance(t1, t2):
+        lat1, lon1 = t1["latitude"], t1["longitude"]
+        lat2, lon2 = t2["latitude"], t2["longitude"]
+        ref_lat = radians((lat1 + lat2) / 2)
+        dx = (lon1 - lon2) * 111.32 * cos(ref_lat)
+        dy = (lat1 - lat2) * 111.32
+        return sqrt(dx * dx + dy * dy)
+        
+    visited = set()
+    clusters = []
+    for t in turbines:
+        t_id = t["id"]
+        if t_id in visited:
+            continue
+        cluster = []
+        queue = [t]
+        visited.add(t_id)
+        while queue:
+            current = queue.pop(0)
+            cluster.append(current)
+            lat = current["latitude"]
+            lon = current["longitude"]
+            lat_cell = int(lat / cell_size)
+            lon_cell = int(lon / cell_size)
+            for d_lat in (-1, 0, 1):
+                for d_lon in (-1, 0, 1):
+                    neighbor_cell = (lat_cell + d_lat, lon_cell + d_lon)
+                    for candidate in buckets[neighbor_cell]:
+                        cand_id = candidate["id"]
+                        if cand_id not in visited:
+                            if get_distance(current, candidate) <= eps_km:
+                                visited.add(cand_id)
+                                queue.append(candidate)
+        clusters.append(cluster)
+    return clusters
 
 
-def grouping_method(group: list[dict[str, Any]]) -> str:
-    if first_present(group, "windParkId"):
+def group_turbines(turbines: list[dict[str, Any]], eps_km: float = 2.0) -> dict[str, list[dict[str, Any]]]:
+    source_groups = defaultdict(list)
+    to_cluster = []
+    for t in turbines:
+        park_id = t.get("windParkId")
+        if park_id:
+            source_groups[f"source:{park_id}"].append(t)
+        else:
+            to_cluster.append(t)
+    clusters = spatial_clustering(to_cluster, eps_km)
+    grouped = dict(source_groups)
+    for cluster in clusters:
+        sorted_ids = sorted(t["id"] for t in cluster)
+        key_hash = stable_hash("_".join(sorted_ids))[:12]
+        has_name = any(t.get("windParkName") for t in cluster)
+        prefix = "spatial_named" if has_name else "spatial"
+        cluster_key = f"{prefix}:{key_hash}"
+        grouped[cluster_key] = cluster
+    return grouped
+
+
+def representative_park_name(group: list[dict[str, Any]], default_name: str) -> str:
+    names = [t.get("windParkName").strip() for t in group if t.get("windParkName") and t.get("windParkName").strip()]
+    if not names:
+        return default_name
+    from collections import Counter
+    return Counter(names).most_common(1)[0][0]
+
+
+def grouping_method(group: list[dict[str, Any]], key: str) -> str:
+    if key.startswith("source:"):
         return "source_wind_park_id"
-    if first_present(group, "windParkName"):
-        return "wind_park_name_fallback"
-    return "municipality_spatial_fallback"
+    if key.startswith("spatial_named:"):
+        return "spatial_clustering_name_fallback"
+    return "spatial_clustering_fallback"
 
 
 def snapshot_turbine(turbine: dict[str, Any]) -> dict[str, Any]:
     result = dict(turbine)
     result.pop("windParkName", None)
+    result.pop("commissioningDate", None)
     return result
 
 
