@@ -1,10 +1,15 @@
 plugins {
     alias(libs.plugins.androidApplication)
+    alias(libs.plugins.composeCompiler)
 }
 
 android {
     namespace = "product.lifecycle.windenergy.android"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
+
+    buildFeatures {
+        compose = true
+    }
 
     defaultConfig {
         applicationId = "product.lifecycle.windenergy"
