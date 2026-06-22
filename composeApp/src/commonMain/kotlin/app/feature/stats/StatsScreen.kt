@@ -97,6 +97,8 @@ private data class ImpactTone(
 @Composable
 fun StatsScreen(
     viewModel: StatsViewModel,
+    onNavigateToParkDetail: (String) -> Unit,
+    onNavigateToRegionDetail: (type: String, id: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState = viewModel.uiState
@@ -160,6 +162,14 @@ fun StatsScreen(
                             scrollState.animateScrollTo(scrollState.maxValue)
                         }
                     },
+                    onDetailsClick = { itemId ->
+                        when (uiState.rankingType) {
+                            RankingType.PARKS -> onNavigateToParkDetail(itemId)
+                            RankingType.CITIES -> onNavigateToRegionDetail("city", itemId)
+                            RankingType.DISTRICTS -> onNavigateToRegionDetail("district", itemId)
+                            RankingType.STATES -> onNavigateToRegionDetail("state", itemId)
+                        }
+                    }
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
@@ -253,6 +263,15 @@ fun StatsScreen(
                 showFullRankingDialog = false
                 coroutineScope.launch {
                     scrollState.animateScrollTo(scrollState.maxValue)
+                }
+            },
+            onDetailsClick = { itemId ->
+                showFullRankingDialog = false
+                when (uiState.rankingType) {
+                    RankingType.PARKS -> onNavigateToParkDetail(itemId)
+                    RankingType.CITIES -> onNavigateToRegionDetail("city", itemId)
+                    RankingType.DISTRICTS -> onNavigateToRegionDetail("district", itemId)
+                    RankingType.STATES -> onNavigateToRegionDetail("state", itemId)
                 }
             }
         )
@@ -702,6 +721,7 @@ private fun RankingTypeSegment(
 private fun RankingList(
     values: List<RankingItem>,
     onActionClick: (String) -> Unit,
+    onDetailsClick: (String) -> Unit,
 ) {
     if (values.isEmpty()) {
         EmptyText(text = "Keine Ranglisteneinträge verfügbar.")
@@ -718,6 +738,7 @@ private fun RankingList(
                     expandedItemId = if (expandedItemId == item.id) null else item.id
                 },
                 onActionClick = onActionClick,
+                onDetailsClick = onDetailsClick,
             )
         }
     }
@@ -729,6 +750,7 @@ private fun RankingItemRow(
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
     onActionClick: (String) -> Unit,
+    onDetailsClick: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -819,16 +841,36 @@ private fun RankingItemRow(
                         )
                     }
                 }
-                Button(
-                    onClick = { onActionClick(item.id) },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = Color.White),
-                    shape = RoundedCornerShape(8.dp),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "Im Vergleichsrechner anzeigen",
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                    )
+                    Button(
+                        onClick = { onDetailsClick(item.id) },
+                        colors = ButtonDefaults.buttonColors(containerColor = SoftGreen, contentColor = PrimaryGreen),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Details",
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            maxLines = 1,
+                        )
+                    }
+                    Button(
+                        onClick = { onActionClick(item.id) },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = Color.White),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Vergleichen",
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
         }
@@ -841,6 +883,7 @@ private fun FullRankingDialog(
     rankingItems: List<RankingItem>,
     onDismiss: () -> Unit,
     onActionClick: (String) -> Unit,
+    onDetailsClick: (String) -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
     val filteredItems = remember(query, rankingItems) {
@@ -911,6 +954,7 @@ private fun FullRankingDialog(
                                 expandedItemId = if (expandedItemId == item.id) null else item.id
                             },
                             onActionClick = onActionClick,
+                            onDetailsClick = onDetailsClick,
                         )
                         HorizontalDivider(color = TrackGreen.copy(alpha = 0.5f))
                     }

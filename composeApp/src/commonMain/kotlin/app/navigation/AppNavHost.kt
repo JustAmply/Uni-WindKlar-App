@@ -47,6 +47,8 @@ import app.data.seed.SnapshotSeedDataImporter
 import app.data.snapshot.ComposeResourceSnapshotProvider
 import app.feature.detail.ParkDetailScreen
 import app.feature.detail.ParkDetailViewModel
+import app.feature.detail.RegionDetailScreen
+import app.feature.detail.RegionDetailViewModel
 import app.feature.favorites.FavoritesScreen
 import app.feature.favorites.FavoritesViewModel
 import app.feature.faq.FaqScreen
@@ -154,7 +156,21 @@ fun AppNavHost(database: AppDatabase, locationProvider: LocationProvider) {
 
     val repository = remember(database) { SqlDelightWindParkRepository(database) }
     var currentRoute: Route by remember { mutableStateOf(Route.Start) }
-    var detailBackRoute: Route by remember { mutableStateOf(Route.Map) }
+    var routeHistory by remember { mutableStateOf(listOf<Route>()) }
+
+    val navigateTo: (Route) -> Unit = { newRoute ->
+        routeHistory = routeHistory + currentRoute
+        currentRoute = newRoute
+    }
+    
+    val navigateBack: () -> Unit = {
+        if (routeHistory.isNotEmpty()) {
+            currentRoute = routeHistory.last()
+            routeHistory = routeHistory.dropLast(1)
+        } else {
+            currentRoute = Route.Map
+        }
+    }
 
     val mapViewModel = remember(repository, locationProvider) { MapViewModel(repository, locationProvider) }
     val favoritesViewModel = remember(repository) { FavoritesViewModel(repository) }
@@ -175,6 +191,7 @@ fun AppNavHost(database: AppDatabase, locationProvider: LocationProvider) {
                                 if (isSelected && route is Route.Map) {
                                     mapViewModel.minimizePreview()
                                 }
+                                routeHistory = emptyList()
                                 currentRoute = route
                             },
                         )
@@ -192,20 +209,24 @@ fun AppNavHost(database: AppDatabase, locationProvider: LocationProvider) {
                 Route.Map -> MapScreen(
                     viewModel = mapViewModel,
                     onParkSelected = { parkId ->
-                        detailBackRoute = Route.Map
-                        currentRoute = Route.Detail(parkId)
+                        navigateTo(Route.Detail(parkId))
                     },
                 )
 
                 Route.Stats -> StatsScreen(
                     viewModel = statsViewModel,
+                    onNavigateToParkDetail = { parkId ->
+                        navigateTo(Route.Detail(parkId))
+                    },
+                    onNavigateToRegionDetail = { type, id ->
+                        navigateTo(Route.RegionDetail(type, id))
+                    },
                 )
 
                 Route.Favorites -> FavoritesScreen(
                     viewModel = favoritesViewModel,
                     onParkSelected = { parkId ->
-                        detailBackRoute = Route.Favorites
-                        currentRoute = Route.Detail(parkId)
+                        navigateTo(Route.Detail(parkId))
                     },
                 )
 
@@ -219,7 +240,26 @@ fun AppNavHost(database: AppDatabase, locationProvider: LocationProvider) {
                     val detailViewModel = remember(route.parkId) { ParkDetailViewModel(route.parkId, repository) }
                     ParkDetailScreen(
                         viewModel = detailViewModel,
-                        onBack = { currentRoute = detailBackRoute },
+                        onBack = { navigateBack() },
+                        onNavigateToRegion = { type, id ->
+                            navigateTo(Route.RegionDetail(type, id))
+                        },
+                    )
+                }
+
+                is Route.RegionDetail -> {
+                    val regionViewModel = remember(route.type, route.id) {
+                        RegionDetailViewModel(route.type, route.id, repository)
+                    }
+                    RegionDetailScreen(
+                        viewModel = regionViewModel,
+                        onBack = { navigateBack() },
+                        onParkSelected = { parkId ->
+                            navigateTo(Route.Detail(parkId))
+                        },
+                        onRegionSelected = { type, id ->
+                            navigateTo(Route.RegionDetail(type, id))
+                        },
                     )
                 }
             }
@@ -245,4 +285,5 @@ private fun Route.navIcon(selected: Boolean): ImageVector = when (this) {
     Route.Profile -> if (selected) Icons.Filled.Info else Icons.Outlined.Info
     Route.Start -> Icons.Outlined.Map
     is Route.Detail -> Icons.Outlined.Map
+    is Route.RegionDetail -> Icons.Outlined.Map
 }

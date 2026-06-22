@@ -21,8 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.Home
@@ -33,6 +32,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,14 +41,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.core.model.Metric
 import app.core.model.SnapshotAssumption
-import app.core.model.WindTurbine
+import app.core.model.WindPark
 import app.core.ui.components.formatDataQuality
 import app.core.ui.components.qualityColors
-import androidx.compose.ui.text.style.TextOverflow
 
 private val ScreenBackground = Color(0xFFF8FAF7)
 private val PrimaryGreen = Color(0xFF2D5A2D)
@@ -56,13 +55,14 @@ private val HeaderEndGreen = Color(0xFF43A047)
 private val DarkGreen = Color(0xFF1A3A1A)
 private val MutedGreen = Color(0xFF5A7A5A)
 private val PaleGreen = Color(0xFFE8F5E9)
-private val HeartRed = Color(0xFFE53935)
+private val TrackGreen = Color(0xFFDDEBDD)
 
 @Composable
-fun ParkDetailScreen(
-    viewModel: ParkDetailViewModel,
+fun RegionDetailScreen(
+    viewModel: RegionDetailViewModel,
     onBack: () -> Unit,
-    onNavigateToRegion: (type: String, id: String) -> Unit,
+    onParkSelected: (String) -> Unit,
+    onRegionSelected: (String, String) -> Unit,
 ) {
     val uiState = viewModel.uiState
 
@@ -74,19 +74,6 @@ fun ParkDetailScreen(
             contentAlignment = Alignment.Center
         ) {
             CircularProgressIndicator(color = PrimaryGreen)
-        }
-        return
-    }
-
-    val park = uiState.park
-    if (park == null) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(ScreenBackground),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Windpark konnte nicht geladen werden.", color = DarkGreen)
         }
         return
     }
@@ -112,7 +99,6 @@ fun ParkDetailScreen(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
@@ -130,42 +116,48 @@ fun ParkDetailScreen(
                         modifier = Modifier.size(20.dp),
                     )
                 }
-
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.2f), CircleShape)
-                        .clickable(onClick = viewModel::toggleFavorite),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = if (uiState.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = "Favorit",
-                        tint = if (uiState.isFavorite) HeartRed else Color.White,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = park.name,
+                text = uiState.regionName,
                 color = Color.White,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
             )
 
             Text(
-                text = "Gemeinde ${park.municipalityName}",
+                text = uiState.regionTypeLabel,
                 color = Color.White.copy(alpha = 0.9f),
                 fontSize = 16.sp,
                 modifier = Modifier.padding(top = 4.dp)
             )
+
+            // Parent hierarchy links if available
+            if (uiState.parentDistrictId != null || uiState.parentStateId != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    uiState.parentDistrictId?.let { distId ->
+                        RegionChip(
+                            label = "Kreis: ${uiState.parentDistrictName}",
+                            onClick = { onRegionSelected("district", distId) }
+                        )
+                    }
+                    uiState.parentStateId?.let { stateId ->
+                        RegionChip(
+                            label = "Land: ${uiState.parentStateName}",
+                            onClick = { onRegionSelected("state", stateId) }
+                        )
+                    }
+                }
+            }
         }
 
-        // Content
+        // Content Area
         Column(
             modifier = Modifier
                 .offset(y = (-32).dp)
@@ -173,18 +165,32 @@ fun ParkDetailScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             // Summary Card
-            SummaryCard(
-                park = park,
-                onNavigateToRegion = onNavigateToRegion
+            RegionSummaryCard(
+                windParkCount = uiState.windParkCount,
+                turbineCount = uiState.turbineCount,
+                installedCapacityMw = uiState.installedCapacityMw,
+                shareOfStateCapacity = uiState.shareOfStateCapacity,
+                shareOfNationalCapacity = uiState.shareOfNationalCapacity,
+                parentStateName = uiState.parentStateName ?: uiState.regionName
             )
 
-            // Citizen Impact Dashboard
-            CitizenImpactDashboard(metrics = uiState.metrics)
+            // Aggregated Citizen Impact Dashboard
+            RegionCitizenImpactDashboard(
+                productionGwh = uiState.annualProductionGwh,
+                co2SavingsTons = uiState.co2SavingsTons,
+                householdsSupplied = uiState.householdsSupplied,
+                municipalBenefitEur = uiState.municipalBenefitEur,
+                regionTypeLabel = uiState.regionTypeLabel
+            )
 
+            // List of wind parks inside the region
+            WindParksSection(
+                windParks = uiState.windParks,
+                onParkSelected = onParkSelected
+            )
+
+            // Calculation assumptions
             CalculationAssumptionsCard(assumptions = uiState.assumptions)
-
-            // Individual Turbines List
-            TurbinesSection(turbines = uiState.turbines)
 
             // Data quality limitations notice
             DataSourceAttributionCard(attribution = uiState.attribution)
@@ -195,11 +201,34 @@ fun ParkDetailScreen(
 }
 
 @Composable
-private fun SummaryCard(
-    park: app.core.model.WindPark,
-    onNavigateToRegion: (type: String, id: String) -> Unit
+private fun RegionChip(
+    label: String,
+    onClick: () -> Unit
 ) {
-    val quality = qualityColors(park.dataQuality)
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White.copy(alpha = 0.2f),
+        contentColor = Color.White
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun RegionSummaryCard(
+    windParkCount: Int,
+    turbineCount: Int,
+    installedCapacityMw: Double,
+    shareOfStateCapacity: Float?,
+    shareOfNationalCapacity: Float,
+    parentStateName: String
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -208,106 +237,116 @@ private fun SummaryCard(
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text(
-                text = "Allgemeine Info",
+                text = "Übersicht",
                 color = DarkGreen,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp
             )
+
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Anlagenanzahl", color = MutedGreen, fontSize = 12.sp)
-                    Text(formatTurbineCount(park.turbineCount), color = DarkGreen, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Windparks", color = MutedGreen, fontSize = 12.sp)
+                    Text(
+                        text = "$windParkCount Park${if (windParkCount == 1) "" else "s"}",
+                        color = DarkGreen,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
                 Column(modifier = Modifier.weight(1f)) {
+                    Text("Windräder", color = MutedGreen, fontSize = 12.sp)
+                    Text(
+                        text = "$turbineCount Anlage${if (turbineCount == 1) "" else "n"}",
+                        color = DarkGreen,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Column(modifier = Modifier.weight(1.2f)) {
                     Text("Gesamtleistung", color = MutedGreen, fontSize = 12.sp)
-                    val capStr = park.installedCapacityKw?.let { "${(it / 1000.0).roundTo(1)} MW" } ?: "k.A."
-                    Text(capStr, color = DarkGreen, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = "${installedCapacityMw.roundTo(1).toString().replace(".", ",")} MW",
+                        color = DarkGreen,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
 
-            // Clickable region tags
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Regionen (tippen für Details)", color = MutedGreen, fontSize = 12.sp)
+            // Share of state capacity (only for city and district)
+            if (shareOfStateCapacity != null) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Anteil am Bundesland ($parentStateName)",
+                            color = MutedGreen,
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = formatPercent(shareOfStateCapacity),
+                            color = DarkGreen,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    LinearProgressIndicator(
+                        progress = { shareOfStateCapacity },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = PrimaryGreen,
+                        trackColor = TrackGreen
+                    )
+                }
+            }
+
+            // Share of national capacity
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    RegionDetailChip(
-                        label = park.municipalityName,
-                        onClick = { onNavigateToRegion("city", park.municipalityId) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    RegionDetailChip(
-                        label = park.districtName,
-                        onClick = { onNavigateToRegion("district", park.districtId) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    RegionDetailChip(
-                        label = park.stateName,
-                        onClick = { onNavigateToRegion("state", park.stateId) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = quality.container
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Stammdaten: ${formatDataQuality(park.dataQuality)}",
-                        color = quality.content,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        text = "Anteil am Bund (Deutschland)",
+                        color = MutedGreen,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text = formatPercent(shareOfNationalCapacity),
+                        color = DarkGreen,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
+                LinearProgressIndicator(
+                    progress = { shareOfNationalCapacity },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                    color = PrimaryGreen,
+                    trackColor = TrackGreen
+                )
             }
         }
     }
 }
 
 @Composable
-private fun RegionDetailChip(
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+private fun RegionCitizenImpactDashboard(
+    productionGwh: Double,
+    co2SavingsTons: Double,
+    householdsSupplied: Int,
+    municipalBenefitEur: Double,
+    regionTypeLabel: String
 ) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
-        color = PaleGreen,
-        contentColor = PrimaryGreen,
-        modifier = modifier
-    ) {
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-        )
-    }
-}
-
-@Composable
-private fun CitizenImpactDashboard(metrics: List<Metric>) {
-    val prodMetric = metrics.firstOrNull { it.metricType == "annual_production" }
-    val co2Metric = metrics.firstOrNull { it.metricType == "co2_savings" }
-    val houseMetric = metrics.firstOrNull { it.metricType == "households_supplied" } ?: metrics.firstOrNull { it.metricType == "household_equivalent" }
-    val muniMetric = metrics.firstOrNull { it.metricType == "municipal_participation" }
-
-    val prodVal = prodMetric?.value?.let { "${(it / 1_000_000.0).roundTo(1)} GWh/Jahr" } ?: "Keine Daten"
-    val co2Val = co2Metric?.value?.let { "${formatNumber((it / 1000.0).toInt())} t/Jahr" } ?: "Keine Daten"
-    val houseVal = houseMetric?.value?.let { "${formatNumber(it.toInt())} Haushalte" } ?: "Keine Daten"
-    val muniVal = muniMetric?.value?.let { "ca. ${formatNumber(it.toInt())} EUR/Jahr" } ?: "Keine Daten"
-
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -319,54 +358,64 @@ private fun CitizenImpactDashboard(metrics: List<Metric>) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "Lokaler Nutzen & Klimawirkung",
+                text = "Regionale Klimawirkung",
                 color = DarkGreen,
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp
             )
 
-            ImpactRow(
+            RegionImpactRow(
                 icon = Icons.Outlined.Bolt,
                 label = "Jahresproduktion",
-                value = prodVal,
-                note = prodMetric?.calculationNote,
-                quality = prodMetric?.dataQuality ?: "missing"
+                value = "${productionGwh.roundTo(1).toString().replace(".", ",")} GWh/Jahr",
+                note = "Geschätzte Stromerzeugung pro Jahr aller Windparks in dieser Region.",
+                quality = "estimated"
             )
 
-            ImpactRow(
+            RegionImpactRow(
                 icon = Icons.Outlined.Eco,
-                label = "Vermiedene CO2-Emissionen",
-                value = co2Val,
-                note = co2Metric?.calculationNote,
-                quality = co2Metric?.dataQuality ?: "missing"
+                label = "Vermiedenes CO2",
+                value = "${formatNumber(co2SavingsTons.toInt())} t/Jahr",
+                note = "Eingesparter CO2-Ausstoß im deutschen Strommix pro Jahr.",
+                quality = "estimated"
             )
 
-            ImpactRow(
+            RegionImpactRow(
                 icon = Icons.Outlined.Home,
                 label = "Versorgte Haushalte",
-                value = houseVal,
-                note = houseMetric?.calculationNote,
-                quality = houseMetric?.dataQuality ?: "missing"
+                value = "${formatNumber(householdsSupplied)} Haushalte",
+                note = "Rechnerische Abdeckung privater 3-Personen-Haushalte (3.500 kWh/Jahr).",
+                quality = "estimated"
             )
 
-            ImpactRow(
+            val muniLabel = if (regionTypeLabel.lowercase() == "gemeinde") {
+                "Kommunale Beteiligung (§6 EEG)"
+            } else {
+                "Mögliche kommunale Beteiligung (§6 EEG)"
+            }
+            val muniNote = if (regionTypeLabel.lowercase() == "gemeinde") {
+                "Geschätzte mögliche kommunale Beteiligung nach §6 EEG (0,2 ct/kWh) für das Budget dieser Gemeinde. Keine Gewähr für tatsächliche Verträge."
+            } else {
+                "Aggregierte mögliche kommunale Beteiligung nach §6 EEG (0,2 ct/kWh) für die in dieser Region liegenden Gemeinden."
+            }
+
+            RegionImpactRow(
                 icon = Icons.Outlined.MonetizationOn,
-                label = "Kommunale Beteiligung (§6 EEG)",
-                value = muniVal,
-                note = muniMetric?.calculationNote
-                    ?: "Geschätzte mögliche kommunale Beteiligung nach §6 EEG. Grundlage: 0,2 ct/kWh und geschätzte Jahresproduktion. Keine bestätigte Auszahlung.",
-                quality = muniMetric?.dataQuality ?: "missing"
+                label = muniLabel,
+                value = "ca. ${formatNumber(municipalBenefitEur.toInt())} EUR/Jahr",
+                note = muniNote,
+                quality = "estimated"
             )
         }
     }
 }
 
 @Composable
-private fun ImpactRow(
+private fun RegionImpactRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     value: String,
-    note: String?,
+    note: String,
     quality: String
 ) {
     val qualityColor = qualityColors(quality)
@@ -417,14 +466,96 @@ private fun ImpactRow(
                 }
             }
             Text(value, color = PrimaryGreen, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 2.dp))
-            if (!note.isNullOrBlank()) {
-                Text(
-                    text = note,
-                    color = MutedGreen,
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+            Text(
+                text = note,
+                color = MutedGreen,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun WindParksSection(
+    windParks: List<WindPark>,
+    onParkSelected: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = "Windparks in dieser Region (${windParks.size})",
+            color = DarkGreen,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            modifier = Modifier.padding(vertical = 4.dp)
+        )
+
+        windParks.forEach { park ->
+            val qualityColor = qualityColors(park.dataQuality)
+            val capMw = (park.installedCapacityKw ?: 0L) / 1000.0
+            
+            Surface(
+                onClick = { onParkSelected(park.id) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                color = Color.White,
+                shadowElevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = park.name,
+                            color = DarkGreen,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${park.turbineCount} Anlage${if (park.turbineCount == 1) "" else "n"}",
+                                color = MutedGreen,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = "${capMw.roundTo(1).toString().replace(".", ",")} MW",
+                                color = MutedGreen,
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = qualityColor.container,
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            Text(
+                                text = "Stammdaten: ${formatDataQuality(park.dataQuality)}",
+                                color = qualityColor.content,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = "Öffnen",
+                        tint = MutedGreen,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }
@@ -504,110 +635,6 @@ private fun AssumptionRow(assumption: SnapshotAssumption) {
 }
 
 @Composable
-private fun TurbinesSection(turbines: List<WindTurbine>) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            text = "Windenergieanlagen (${turbines.size})",
-            color = DarkGreen,
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            modifier = Modifier.padding(vertical = 4.dp)
-        )
-
-        if (turbines.isEmpty()) {
-            Text("Keine detaillierten Anlagendaten vorhanden.", color = MutedGreen, fontSize = 14.sp)
-        } else {
-            turbines.forEach { turbine ->
-                TurbineCard(turbine = turbine)
-            }
-        }
-    }
-}
-
-@Composable
-private fun TurbineCard(turbine: WindTurbine) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = Color.White,
-        shadowElevation = 4.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = turbine.name.ifBlank { "Anlage #${turbine.id.takeLast(4)}" },
-                    color = DarkGreen,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp
-                )
-                
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = if (turbine.status?.lowercase() == "in betrieb") Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
-                ) {
-                    Text(
-                        text = turbine.status ?: "Unbekannt",
-                        color = if (turbine.status?.lowercase() == "in betrieb") Color(0xFF2D5A2D) else Color(0xFFE65100),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                    )
-                }
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Hersteller / Modell", color = MutedGreen, fontSize = 11.sp)
-                    val modelStr = if (!turbine.manufacturer.isNullOrBlank()) "${turbine.manufacturer} ${turbine.model ?: ""}" else "k.A."
-                    Text(modelStr, color = DarkGreen, fontSize = 13.sp)
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Nennleistung", color = MutedGreen, fontSize = 11.sp)
-                    val powStr = turbine.installedCapacityKw?.let { "${(it / 1000.0).roundTo(1)} MW" } ?: "k.A."
-                    Text(powStr, color = DarkGreen, fontSize = 13.sp)
-                }
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Nabenhöhe", color = MutedGreen, fontSize = 11.sp)
-                    val heightStr = turbine.hubHeightM?.let { "${it.roundTo(1)} m" } ?: "k.A."
-                    Text(heightStr, color = DarkGreen, fontSize = 13.sp)
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Rotordurchmesser", color = MutedGreen, fontSize = 11.sp)
-                    val diamStr = turbine.rotorDiameterM?.let { "${it.roundTo(1)} m" } ?: "k.A."
-                    Text(diamStr, color = DarkGreen, fontSize = 13.sp)
-                }
-            }
-
-            val qualityColor = qualityColors(turbine.dataQuality)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = qualityColor.container
-                ) {
-                    Text(
-                        text = "Stammdaten: ${formatDataQuality(turbine.dataQuality)}",
-                        color = qualityColor.content,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun DataSourceAttributionCard(attribution: String) {
     val normalizedAttribution = attribution.removePrefix("Quelle:").trim().ifBlank {
         "Marktstammdatenregister der Bundesnetzagentur"
@@ -655,6 +682,8 @@ private fun Double.roundTo(decimals: Int): Double {
     return kotlin.math.round(this * multiplier) / multiplier
 }
 
+private fun Float.roundTo(decimals: Int): Float = this.toDouble().roundTo(decimals).toFloat()
+
 private fun formatNumber(number: Int): String {
     return number.toString().reversed().chunked(3).joinToString(".").reversed()
 }
@@ -668,7 +697,8 @@ private fun formatAssumptionValue(value: Double): String {
     }
 }
 
-private fun formatTurbineCount(count: Int): String {
-    val unit = if (count == 1) "Windrad" else "Windräder"
-    return "$count $unit"
+private fun formatPercent(value: Float): String {
+    val pct = value * 100
+    val rounded = pct.roundTo(1)
+    return "${rounded.toString().replace(".", ",")}%"
 }

@@ -30,6 +30,15 @@ sealed interface Route {
     data class Detail(val parkId: String) : Route {
         override val title: String = "Windpark"
     }
+
+    data class RegionDetail(val type: String, val id: String) : Route {
+        override val title: String = when (type) {
+            "city" -> "Gemeinde"
+            "district" -> "Landkreis"
+            "state" -> "Bundesland"
+            else -> "Region"
+        }
+    }
 }
 
 val topLevelRoutes: List<Route> = listOf(
