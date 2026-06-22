@@ -46,6 +46,8 @@ import androidx.compose.ui.unit.sp
 import app.core.model.Metric
 import app.core.model.SnapshotAssumption
 import app.core.model.WindTurbine
+import app.core.ui.components.LabelWithBadge
+import app.core.ui.components.StatusBadge
 import app.core.ui.components.formatDataQuality
 import app.core.ui.components.qualityColors
 import androidx.compose.ui.text.style.TextOverflow
@@ -369,7 +371,6 @@ private fun ImpactRow(
     note: String?,
     quality: String
 ) {
-    val qualityColor = qualityColors(quality)
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -390,32 +391,7 @@ private fun ImpactRow(
         }
 
         Column(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = label,
-                    color = DarkGreen,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = qualityColor.container
-                ) {
-                    Text(
-                        text = formatDataQuality(quality).uppercase(),
-                        color = qualityColor.content,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-            }
+            LabelWithBadge(label = label, quality = quality, labelColor = DarkGreen)
             Text(value, color = PrimaryGreen, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 2.dp))
             if (!note.isNullOrBlank()) {
                 Text(
@@ -549,18 +525,11 @@ private fun TurbineCard(turbine: WindTurbine) {
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = if (turbine.status?.lowercase() == "in betrieb") Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
-                ) {
-                    Text(
-                        text = turbine.status ?: "Unbekannt",
-                        color = if (turbine.status?.lowercase() == "in betrieb") Color(0xFF2D5A2D) else Color(0xFFE65100),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                    )
-                }
+                StatusBadge(
+                    text = turbine.status ?: "Unbekannt",
+                    containerColor = if (turbine.status?.lowercase() == "in betrieb") Color(0xFFE8F5E9) else Color(0xFFFFF3E0),
+                    contentColor = if (turbine.status?.lowercase() == "in betrieb") Color(0xFF2D5A2D) else Color(0xFFE65100),
+                )
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {

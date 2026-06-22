@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.core.model.SnapshotAssumption
 import app.core.model.WindPark
+import app.core.ui.components.LabelWithBadge
 import app.core.ui.components.formatDataQuality
 import app.core.ui.components.qualityColors
 import app.core.ui.components.RankingList
@@ -430,7 +431,6 @@ private fun RegionImpactRow(
     note: String,
     quality: String
 ) {
-    val qualityColor = qualityColors(quality)
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -451,32 +451,7 @@ private fun RegionImpactRow(
         }
 
         Column(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = label,
-                    color = DarkGreen,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = qualityColor.container
-                ) {
-                    Text(
-                        text = formatDataQuality(quality).uppercase(),
-                        color = qualityColor.content,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-            }
+            LabelWithBadge(label = label, quality = quality, labelColor = DarkGreen)
             Text(value, color = PrimaryGreen, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 2.dp))
             Text(
                 text = note,
