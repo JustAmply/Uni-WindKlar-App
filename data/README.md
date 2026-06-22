@@ -6,7 +6,7 @@ into SQLDelight.
 
 ## Directory layout
 
-- `pipeline/`: Python tooling for fetching, normalizing, cleaning,
+- `pipeline/`: Python tooling for fetching, normalizing, cleaning, repairing,
   aggregating, calculating, validating, and exporting snapshots.
 - `raw/`: ignored MaStR downloads such as ZIP or XML exports.
 - `intermediate/`: ignored normalized JSONL files.
@@ -48,8 +48,9 @@ python -m data.pipeline fetch --source-url <official-export-url>
 python -m data.pipeline fetch --source-url https://zenodo.org/api/records/14843222/files/bnetza_mastr_wind_raw.csv.zip/content
 python -m data.pipeline normalize --input data/raw/<export-file> --output data/intermediate/wind_turbines.jsonl
 python -m data.pipeline clean --input data/intermediate/wind_turbines.jsonl --municipalities data/raw/vg250_gemeinden.geojson --output data/intermediate/wind_turbines_clean.jsonl --report data/snapshots/windklar_cleaning_report_YYYY-MM-DD.json --metrics-output data/snapshots/windklar_cleaning_metrics_YYYY-MM-DD.json
-python -m data.pipeline aggregate --input data/intermediate/wind_turbines_clean.jsonl --output data/intermediate/wind_parks.json
-python -m data.pipeline calculate --turbines data/intermediate/wind_turbines_clean.jsonl --parks data/intermediate/wind_parks.json --output data/snapshots/windklar_snapshot_YYYY-MM-DD.json --cleaning-report data/snapshots/windklar_cleaning_report_YYYY-MM-DD.json
+python -m data.pipeline repair --input data/intermediate/wind_turbines.jsonl --municipalities data/raw/vg250_gemeinden.geojson --output data/intermediate/wind_turbines_repaired.jsonl --report data/snapshots/windklar_repair_report_YYYY-MM-DD.json --metrics-output data/snapshots/windklar_repair_metrics_YYYY-MM-DD.json
+python -m data.pipeline aggregate --input data/intermediate/wind_turbines_repaired.jsonl --output data/intermediate/wind_parks.json
+python -m data.pipeline calculate --turbines data/intermediate/wind_turbines_repaired.jsonl --parks data/intermediate/wind_parks.json --output data/snapshots/windklar_snapshot_YYYY-MM-DD.json --quality-report data/snapshots/windklar_repair_report_YYYY-MM-DD.json
 ```
 
 Copy the selected demo snapshot to
@@ -64,7 +65,10 @@ before building the app.
   documented in the cleaning report; near-boundary cases within 1 km are kept
   with warnings because VG250 geometry is generalized. The cleaning command
   also writes compact metrics automatically next to the report, or to
-  `--metrics-output` when that path is provided.
+  `--metrics-output` when that path is provided. The repair command is the
+  preferred snapshot path because it keeps auditable coordinate-based
+  municipality repairs and offshore pseudo-municipalities instead of filtering
+  them out.
 - Impact metrics are MVP estimates based on documented assumptions.
 - Raw MaStR files are intentionally ignored because they are large and updated
   frequently.

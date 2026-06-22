@@ -1,0 +1,41 @@
+{
+  "boundaryAmbiguousCount": 2,
+  "boundaryToleranceKm": 1.0,
+  "duplicateBitEqualCount": 0,
+  "duplicateConflictCount": 0,
+  "excludedAfterRepairCount": 298,
+  "excludedRateAfterRepair": 0.008017,
+  "exclusionReasonCounts": {
+    "coordinate_municipality_distance_exceeded": 250,
+    "coordinate_outside_municipality_reference": 43,
+    "placeholder_coordinates": 5
+  },
+  "inputCount": 37170,
+  "keptCount": 36872,
+  "keptRateAfterRepair": 0.991983,
+  "mixedMunicipalityWindParkCount": 985,
+  "offshoreAssignedCount": 1780,
+  "repairActionCounts": {
+    "municipality_repaired_from_coordinate": 7299,
+    "offshore_pseudo_municipality_assigned": 1780
+  },
+  "repairedCount": 9079,
+  "sources": {
+    "mastr": {
+      "sourceName": "Marktstammdatenregister der Bundesnetzagentur",
+      "sourceUrl": "https://www.marktstammdatenregister.de/MaStR/Datendownload"
+    },
+    "municipalities": {
+      "path": "data\\raw\\vg250_gemeinden.geojson",
+      "sourceName": "BKG VG250 Verwaltungsgebiete",
+      "sourceUrl": "https://gdz.bkg.bund.de/index.php/default/digitale-geodaten/verwaltungsgebiete.html"
+    },
+    "pipelineVersion": "0.3.0",
+    "processedAt": "2026-06-21T17:28:06Z"
+  },
+  "unchangedCount": 27793,
+  "warningReasonCounts": {
+    "mixed_municipality_wind_park": 985,
+    "municipality_boundary_ambiguous": 2
+  }
+}

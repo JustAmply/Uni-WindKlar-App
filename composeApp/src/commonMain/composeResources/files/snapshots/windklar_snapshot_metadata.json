@@ -2,15 +2,16 @@
   "schemaVersion": 1,
   "snapshotMetadata": {
     "attribution": "Quelle: Marktstammdatenregister der Bundesnetzagentur",
-    "checksumSha256": "b0d5ca671b3243c15ca775d392a81e99d88b400373320609628be6e5022c72a1",
+    "checksumSha256": "d2a23c378a4fb43f36d5d4c46694f031d5a0973744eb8266dfdab07fdd2592a0",
     "limitations": [
       "Die Gruppierung von Windparks beruht auf einer algorithmischen Zuordnung bei der Vorverarbeitung.",
       "Die berechneten Kennzahlen zur Klimawirkung sind Schätzwerte des MVP und keine offiziellen Messdaten.",
-      "9377 Windanlagen wurden wegen nicht plausibler Gemeinde-Koordinaten-Zuordnung aus dem MVP-Snapshot ausgeschlossen."
+      "9329 Windanlagen wurden bei der Vorverarbeitung aus Koordinaten- oder Offshore-Kontext abgeleitet repariert; davon 1780 mit Offshore-Pseudo-Gemeinde.",
+      "48 Windanlagen wurden nach dem Reparaturversuch weiterhin aus dem MVP-Snapshot ausgeschlossen."
     ],
     "mastrExportDate": "2025-02-10",
-    "pipelineVersion": "0.2.0",
-    "processedAt": "2026-06-18T22:32:20Z",
+    "pipelineVersion": "0.3.0",
+    "processedAt": "2026-06-20T12:13:53Z",
     "snapshotId": "windklar-2025-02-10",
     "sourceName": "Marktstammdatenregister der Bundesnetzagentur",
     "sourceUrl": "https://www.marktstammdatenregister.de/MaStR/Datendownload"
