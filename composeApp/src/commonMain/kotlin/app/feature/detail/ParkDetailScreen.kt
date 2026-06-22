@@ -545,9 +545,10 @@ private fun TurbineCard(turbine: WindTurbine) {
                     text = turbine.name.ifBlank { "Anlage #${turbine.id.takeLast(4)}" },
                     color = DarkGreen,
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp
+                    fontSize = 15.sp,
+                    modifier = Modifier.weight(1f)
                 )
-                
+                Spacer(modifier = Modifier.width(8.dp))
                 Surface(
                     shape = RoundedCornerShape(4.dp),
                     color = if (turbine.status?.lowercase() == "in betrieb") Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
