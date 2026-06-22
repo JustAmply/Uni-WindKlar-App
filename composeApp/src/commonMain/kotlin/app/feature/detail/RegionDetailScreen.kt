@@ -48,6 +48,7 @@ import app.core.model.SnapshotAssumption
 import app.core.model.WindPark
 import app.core.ui.components.formatDataQuality
 import app.core.ui.components.qualityColors
+import app.core.ui.components.RankingList
 
 private val ScreenBackground = Color(0xFFF8FAF7)
 private val PrimaryGreen = Color(0xFF2D5A2D)
@@ -183,11 +184,22 @@ fun RegionDetailScreen(
                 regionTypeLabel = uiState.regionTypeLabel
             )
 
-            // List of wind parks inside the region
-            WindParksSection(
-                windParks = uiState.windParks,
-                onParkSelected = onParkSelected
-            )
+            // Display ranking of sub-regions for State and District, and flat list of parks for City
+            if (uiState.regionType.lowercase() == "city") {
+                WindParksSection(
+                    windParks = uiState.windParks,
+                    onParkSelected = onParkSelected
+                )
+            } else {
+                SubRegionsSection(
+                    regionType = uiState.regionType,
+                    rankings = uiState.subRegionRankings,
+                    onDetailsClick = { subRegionId ->
+                        val subType = if (uiState.regionType.lowercase() == "state") "district" else "city"
+                        onRegionSelected(subType, subRegionId)
+                    }
+                )
+            }
 
             // Calculation assumptions
             CalculationAssumptionsCard(assumptions = uiState.assumptions)
@@ -473,6 +485,44 @@ private fun RegionImpactRow(
                 lineHeight = 15.sp,
                 modifier = Modifier.padding(top = 4.dp)
             )
+        }
+    }
+}
+
+@Composable
+private fun SubRegionsSection(
+    regionType: String,
+    rankings: List<app.core.model.RankingItem>,
+    onDetailsClick: (String) -> Unit
+) {
+    val sectionTitle = when (regionType.lowercase()) {
+        "state" -> "Landkreise in diesem Bundesland (${rankings.size})"
+        "district" -> "Gemeinden in diesem Landkreis (${rankings.size})"
+        else -> "Regionen in dieser Ansicht (${rankings.size})"
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = sectionTitle,
+            color = DarkGreen,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            modifier = Modifier.padding(vertical = 4.dp)
+        )
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = Color.White,
+            shadowElevation = 8.dp
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                RankingList(
+                    values = rankings,
+                    onDetailsClick = onDetailsClick,
+                    onActionClick = null
+                )
+            }
         }
     }
 }

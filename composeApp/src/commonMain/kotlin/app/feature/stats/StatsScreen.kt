@@ -71,6 +71,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import app.core.ui.components.formatDataQuality
 import app.core.ui.components.qualityColors
+import app.core.model.RankingItem
+import app.core.model.RankingDetailLine
+import app.core.ui.components.RankingList
+import app.core.ui.components.RankingItemRow
 import kotlinx.coroutines.launch
 
 private val ScreenBackground = Color(0xFFF7FAF4)
@@ -717,165 +721,6 @@ private fun RankingTypeSegment(
     }
 }
 
-@Composable
-private fun RankingList(
-    values: List<RankingItem>,
-    onActionClick: (String) -> Unit,
-    onDetailsClick: (String) -> Unit,
-) {
-    if (values.isEmpty()) {
-        EmptyText(text = "Keine Ranglisteneinträge verfügbar.")
-        return
-    }
-
-    var expandedItemId by remember(values) { mutableStateOf<String?>(null) }
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        values.forEach { item ->
-            RankingItemRow(
-                item = item,
-                isExpanded = expandedItemId == item.id,
-                onToggleExpand = {
-                    expandedItemId = if (expandedItemId == item.id) null else item.id
-                },
-                onActionClick = onActionClick,
-                onDetailsClick = onDetailsClick,
-            )
-        }
-    }
-}
-
-@Composable
-private fun RankingItemRow(
-    item: RankingItem,
-    isExpanded: Boolean,
-    onToggleExpand: () -> Unit,
-    onActionClick: (String) -> Unit,
-    onDetailsClick: (String) -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onToggleExpand)
-            .animateContentSize()
-            .padding(vertical = 2.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(
-                text = "${item.rank}",
-                color = PrimaryGreen,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.width(22.dp),
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = item.name.ifBlank { "Unbekannter Name" },
-                            color = DarkText,
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = item.subtitle,
-                            color = MutedText,
-                            fontSize = 11.sp,
-                            lineHeight = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    Text(
-                        text = item.valueLabel,
-                        color = MutedText,
-                        fontSize = 12.sp,
-                        lineHeight = 18.sp,
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.height(5.dp))
-                ProgressTrack(progress = item.progress)
-            }
-        }
-
-        AnimatedVisibility(visible = isExpanded) {
-            Column(
-                modifier = Modifier.padding(start = 32.dp, top = 10.dp, bottom = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                HorizontalDivider(color = TrackGreen)
-                item.details.forEach { line ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top,
-                    ) {
-                        Text(
-                            text = line.label,
-                            color = MutedText,
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp,
-                        )
-                        Text(
-                            text = line.value,
-                            color = DarkText,
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            textAlign = TextAlign.End,
-                            modifier = Modifier.padding(start = 12.dp),
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = { onDetailsClick(item.id) },
-                        colors = ButtonDefaults.buttonColors(containerColor = SoftGreen, contentColor = PrimaryGreen),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "Details",
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp,
-                            maxLines = 1,
-                        )
-                    }
-                    Button(
-                        onClick = { onActionClick(item.id) },
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = Color.White),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "Vergleichen",
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp,
-                            maxLines = 1,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun FullRankingDialog(

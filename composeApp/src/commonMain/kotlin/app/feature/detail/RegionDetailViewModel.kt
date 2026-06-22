@@ -7,8 +7,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.core.model.SnapshotAssumption
 import app.core.model.WindPark
+import app.core.model.RankingItem
+import app.core.model.RankingDetailLine
 import app.data.repository.WindParkRepository
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 class RegionDetailViewModel(
     val regionType: String,
@@ -120,6 +123,69 @@ class RegionDetailViewModel(
             val householdsSupplied = (annualProductionKwh / householdCons).toInt()
             val municipalBenefitEur = annualProductionKwh * municipalBenefitFactor
 
+            // Sub-region rankings logic
+            val subRegionRankings = when (regionType.lowercase()) {
+                "state" -> {
+                    val groupedDistricts = regionParks.groupBy { it.districtId }
+                    val districtStats = groupedDistricts.map { (distId, parks) ->
+                        val capKw = parks.sumOf { it.installedCapacityKw ?: 0L }
+                        val turbines = parks.sumOf { it.turbineCount }
+                        val name = parks.first().districtName
+                        Triple(distId, name, Triple(parks.size, turbines, capKw))
+                    }.sortedByDescending { it.third.third }
+
+                    val maxCap = districtStats.firstOrNull()?.third?.third?.toDouble()?.coerceAtLeast(1.0) ?: 1.0
+                    districtStats.mapIndexed { index, (distId, name, stats) ->
+                        val (parksCount, turbinesCount, capKw) = stats
+                        val capMw = capKw / 1000.0
+                        val share = if (installedCapacityKw > 0) (capKw.toDouble() / installedCapacityKw).toFloat() else 0f
+                        RankingItem(
+                            id = distId,
+                            rank = index + 1,
+                            name = name,
+                            subtitle = regionName,
+                            valueLabel = "${capMw.roundTo(1).toString().replace(".", ",")} MW",
+                            progress = (capKw.toDouble() / maxCap).toFloat().coerceIn(0f, 1f),
+                            details = listOf(
+                                RankingDetailLine("Windparks", parksCount.toString()),
+                                RankingDetailLine("Anlagen", turbinesCount.toString()),
+                                RankingDetailLine("Anteil am Bundesland", formatPercent(share)),
+                            )
+                        )
+                    }
+                }
+                "district" -> {
+                    val groupedCities = regionParks.groupBy { it.municipalityId }
+                    val cityStats = groupedCities.map { (cityId, parks) ->
+                        val capKw = parks.sumOf { it.installedCapacityKw ?: 0L }
+                        val turbines = parks.sumOf { it.turbineCount }
+                        val name = parks.first().municipalityName
+                        Triple(cityId, name, Triple(parks.size, turbines, capKw))
+                    }.sortedByDescending { it.third.third }
+
+                    val maxCap = cityStats.firstOrNull()?.third?.third?.toDouble()?.coerceAtLeast(1.0) ?: 1.0
+                    cityStats.mapIndexed { index, (cityId, name, stats) ->
+                        val (parksCount, turbinesCount, capKw) = stats
+                        val capMw = capKw / 1000.0
+                        val share = if (installedCapacityKw > 0) (capKw.toDouble() / installedCapacityKw).toFloat() else 0f
+                        RankingItem(
+                            id = cityId,
+                            rank = index + 1,
+                            name = name,
+                            subtitle = regionName,
+                            valueLabel = "${capMw.roundTo(1).toString().replace(".", ",")} MW",
+                            progress = (capKw.toDouble() / maxCap).toFloat().coerceIn(0f, 1f),
+                            details = listOf(
+                                RankingDetailLine("Windparks", parksCount.toString()),
+                                RankingDetailLine("Anlagen", turbinesCount.toString()),
+                                RankingDetailLine("Anteil am Landkreis", formatPercent(share)),
+                            )
+                        )
+                    }
+                }
+                else -> emptyList()
+            }
+
             uiState = RegionDetailUiState(
                 regionId = regionId,
                 regionType = regionType,
@@ -144,8 +210,21 @@ class RegionDetailViewModel(
                 municipalBenefitEur = municipalBenefitEur,
                 assumptions = assumptions,
                 windParks = regionParks.sortedBy { it.name },
+                subRegionRankings = subRegionRankings,
                 attribution = attribution,
             )
         }
     }
+}
+
+private fun Double.roundTo(decimals: Int): Double {
+    var multiplier = 1.0
+    repeat(decimals) { multiplier *= 10 }
+    return kotlin.math.round(this * multiplier) / multiplier
+}
+
+private fun formatPercent(value: Float): String {
+    val pct = value * 100
+    val rounded = (pct * 10).roundToInt() / 10.0
+    return rounded.toString().replace(".", ",") + "%"
 }

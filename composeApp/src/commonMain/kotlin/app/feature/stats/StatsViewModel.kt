@@ -8,6 +8,8 @@ import androidx.lifecycle.viewModelScope
 import app.core.model.Metric
 import app.core.model.SnapshotAssumption
 import app.core.model.WindPark
+import app.core.model.RankingItem
+import app.core.model.RankingDetailLine
 import app.data.repository.WindParkRepository
 import kotlinx.coroutines.launch
 import kotlin.math.round

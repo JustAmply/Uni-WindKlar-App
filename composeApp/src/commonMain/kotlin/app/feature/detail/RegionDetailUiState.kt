@@ -2,6 +2,7 @@ package app.feature.detail
 
 import app.core.model.WindPark
 import app.core.model.SnapshotAssumption
+import app.core.model.RankingItem
 
 data class RegionDetailUiState(
     val regionId: String,
@@ -34,5 +35,6 @@ data class RegionDetailUiState(
 
     val assumptions: List<SnapshotAssumption> = emptyList(),
     val windParks: List<WindPark> = emptyList(),
+    val subRegionRankings: List<RankingItem> = emptyList(),
     val attribution: String = "",
 )

@@ -1,5 +1,8 @@
 package app.feature.stats
 
+import app.core.model.RankingItem
+import app.core.model.RankingDetailLine
+
 data class StatsUiState(
     val subtitle: String = "Snapshot wird geladen",
     val overviewCards: List<StatsOverviewCard> = emptyList(),
@@ -43,20 +46,6 @@ enum class RankingType {
     STATES,
 }
 
-data class RankingItem(
-    val id: String,
-    val rank: Int,
-    val name: String,
-    val subtitle: String,
-    val valueLabel: String,
-    val progress: Float,
-    val details: List<RankingDetailLine>,
-)
-
-data class RankingDetailLine(
-    val label: String,
-    val value: String,
-)
 
 data class ComparisonOption(
     val id: String,
