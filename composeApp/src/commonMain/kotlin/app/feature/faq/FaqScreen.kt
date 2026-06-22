@@ -20,11 +20,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Air
+import androidx.compose.material.icons.outlined.Agriculture
 import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Hearing
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material.icons.outlined.Pets
+import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -71,22 +78,28 @@ fun FaqScreen(
         Column(
             modifier = Modifier
                 .offset(y = (-16).dp)
-                .padding(horizontal = 20.dp),
+                .padding(start = 20.dp, top = 16.dp, end = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            uiState.questions.forEach { question ->
-                FaqAccordionItem(
-                    question = question,
-                    expanded = expandedQuestionId == question.id,
-                    onClick = {
-                        expandedQuestionId = if (expandedQuestionId == question.id) {
-                            null
-                        } else {
-                            question.id
-                        }
-                    },
-                )
-            }
+            uiState.questions
+                .groupBy { it.category }
+                .forEach { (category, questions) ->
+                    FaqCategoryHeader(category = category)
+
+                    questions.forEach { question ->
+                        FaqAccordionItem(
+                            question = question,
+                            expanded = expandedQuestionId == question.id,
+                            onClick = {
+                                expandedQuestionId = if (expandedQuestionId == question.id) {
+                                    null
+                                } else {
+                                    question.id
+                                }
+                            },
+                        )
+                    }
+                }
 
             FaqLimitsCard(
                 modifier = Modifier.padding(top = 12.dp),
@@ -121,6 +134,22 @@ private fun FaqHeader() {
             fontWeight = FontWeight.Medium,
         )
     }
+}
+
+@Composable
+private fun FaqCategoryHeader(
+    category: FaqCategory,
+) {
+    Text(
+        text = category.title(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, start = 4.dp),
+        color = MutedGreen,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+        fontWeight = FontWeight.SemiBold,
+    )
 }
 
 @Composable
@@ -244,7 +273,7 @@ private fun FaqLimitsCard(
             )
 
             Text(
-                text = "WindKlar erklärt öffentliche Stammdaten und geschätzte Wirkungswerte. Aktuelle Betriebsursachen, bestätigte Auszahlungen oder offizielle Korrekturen kann der MVP nicht nachweisen.",
+                text = "WindKlar erklärt öffentliche Stammdaten und geschätzte Wirkungswerte. Der MVP zeigt keine Live-Betriebsursachen, keine bestätigten kommunalen Auszahlungen und keine rechtsverbindlichen Aussagen zu Schall, Schattenwurf oder Artenschutz.",
                 modifier = Modifier.padding(top = 8.dp),
                 color = MutedGreen,
                 fontSize = 14.sp,
@@ -255,9 +284,23 @@ private fun FaqLimitsCard(
     }
 }
 
+private fun FaqCategory.title(): String = when (this) {
+    FaqCategory.Basics -> "Grundlagen"
+    FaqCategory.LocalBenefit -> "Nutzen vor Ort"
+    FaqCategory.Concerns -> "Sorgen & Auswirkungen"
+    FaqCategory.DataTrust -> "Daten & Grenzen"
+}
+
 private fun FaqQuestionIcon.imageVector(): ImageVector = when (this) {
     FaqQuestionIcon.Wind -> Icons.Outlined.Air
     FaqQuestionIcon.Co2 -> Icons.Outlined.Eco
     FaqQuestionIcon.Operator -> Icons.Outlined.Business
     FaqQuestionIcon.Participation -> Icons.Outlined.Groups
+    FaqQuestionIcon.Money -> Icons.Outlined.Payments
+    FaqQuestionIcon.Noise -> Icons.Outlined.Hearing
+    FaqQuestionIcon.Wildlife -> Icons.Outlined.Pets
+    FaqQuestionIcon.Agriculture -> Icons.Outlined.Agriculture
+    FaqQuestionIcon.Data -> Icons.Outlined.Storage
+    FaqQuestionIcon.Limits -> Icons.Outlined.Info
+    FaqQuestionIcon.Warning -> Icons.Outlined.Warning
 }
