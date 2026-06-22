@@ -25,4 +25,5 @@ data/intermediate/*
 /data/snapshots/*
 !data/snapshots/.gitkeep
 !data/snapshots/windklar_cleaning_metrics*.json
+!data/snapshots/windklar_repair_metrics*.json
 screenshots/

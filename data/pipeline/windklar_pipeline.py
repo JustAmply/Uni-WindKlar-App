@@ -16,7 +16,7 @@ from math import cos, radians, sqrt
 from pathlib import Path
 from typing import Any, Iterable
 
-PIPELINE_VERSION = "0.2.0"
+PIPELINE_VERSION = "0.3.0"
 SOURCE_NAME = "Marktstammdatenregister der Bundesnetzagentur"
 SOURCE_URL = "https://www.marktstammdatenregister.de/MaStR/Datendownload"
 ATTRIBUTION = "Quelle: Marktstammdatenregister der Bundesnetzagentur"
@@ -26,7 +26,14 @@ VALID_QUALITIES = {"official", "measured", "derived", "estimated", "simulated", 
 GERMANY_LAT_RANGE = (47.0, 55.2)
 GERMANY_LON_RANGE = (5.5, 15.5)
 BOUNDARY_TOLERANCE_KM = 1.0
+MAX_REPAIR_DISTANCE_KM = 30.0
 SPATIAL_INDEX_DEGREES = 0.25
+OFFSHORE_NORTH_SEA_ID = "offshore_north_sea"
+OFFSHORE_NORTH_SEA_NAME = "Offshore Nordsee"
+OFFSHORE_BALTIC_SEA_ID = "offshore_baltic_sea"
+OFFSHORE_BALTIC_SEA_NAME = "Offshore Ostsee"
+OFFSHORE_MIN_LAT = 53.5
+OFFSHORE_NORTH_SEA_MAX_LON = 10.0
 
 DEFAULT_ASSUMPTIONS = {
     "full_load_hours": {
@@ -111,6 +118,14 @@ def main(argv: list[str] | None = None) -> int:
     clean_parser.add_argument("--metrics-output")
     clean_parser.add_argument("--boundary-tolerance-km", type=float, default=BOUNDARY_TOLERANCE_KM)
 
+    repair_parser = subparsers.add_parser("repair", help="Repair turbines using BKG VG250 municipality geometry")
+    repair_parser.add_argument("--input", required=True)
+    repair_parser.add_argument("--municipalities", required=True)
+    repair_parser.add_argument("--output", default="data/intermediate/wind_turbines_repaired.jsonl")
+    repair_parser.add_argument("--report", default=f"data/snapshots/windklar_repair_report_{today()}.json")
+    repair_parser.add_argument("--metrics-output")
+    repair_parser.add_argument("--boundary-tolerance-km", type=float, default=BOUNDARY_TOLERANCE_KM)
+
     aggregate_parser = subparsers.add_parser("aggregate", help="Build derived wind park aggregates")
     aggregate_parser.add_argument("--input", required=True)
     aggregate_parser.add_argument("--output", default="data/intermediate/wind_parks.json")
@@ -121,6 +136,8 @@ def main(argv: list[str] | None = None) -> int:
     calculate_parser.add_argument("--output", required=True)
     calculate_parser.add_argument("--mastr-export-date", default=today())
     calculate_parser.add_argument("--cleaning-report")
+    calculate_parser.add_argument("--repair-report")
+    calculate_parser.add_argument("--quality-report")
 
     validate_parser = subparsers.add_parser("validate", help="Validate an app snapshot")
     validate_parser.add_argument("snapshot")
@@ -142,11 +159,21 @@ def main(argv: list[str] | None = None) -> int:
             Path(args.metrics_output) if args.metrics_output else None,
             args.boundary_tolerance_km,
         )
+    if args.command == "repair":
+        return repair(
+            Path(args.input),
+            Path(args.municipalities),
+            Path(args.output),
+            Path(args.report),
+            Path(args.metrics_output) if args.metrics_output else None,
+            args.boundary_tolerance_km,
+        )
     if args.command == "aggregate":
         return aggregate(Path(args.input), Path(args.output))
     if args.command == "calculate":
-        cleaning_report = Path(args.cleaning_report) if args.cleaning_report else None
-        return calculate(Path(args.turbines), Path(args.parks), Path(args.output), args.mastr_export_date, cleaning_report)
+        quality_report = args.quality_report or args.repair_report or args.cleaning_report
+        quality_report_path = Path(quality_report) if quality_report else None
+        return calculate(Path(args.turbines), Path(args.parks), Path(args.output), args.mastr_export_date, quality_report_path)
     if args.command == "validate":
         return validate(Path(args.snapshot))
     if args.command == "smoke":
@@ -300,6 +327,174 @@ def clean(
     return 0 if kept else 2
 
 
+def repair(
+    input_path: Path,
+    municipalities_path: Path,
+    output_path: Path,
+    report_path: Path,
+    metrics_output_path: Path | None,
+    boundary_tolerance_km: float,
+) -> int:
+    municipalities = load_municipalities(municipalities_path)
+    if not municipalities:
+        print(f"ERROR: No municipality polygons found in {municipalities_path}", file=sys.stderr)
+        return 2
+    spatial_index = build_spatial_index(municipalities)
+
+    seen_by_id: dict[str, dict[str, Any]] = {}
+    kept: list[dict[str, Any]] = []
+    repaired: list[dict[str, Any]] = []
+    excluded: list[dict[str, Any]] = []
+    warnings: list[dict[str, Any]] = []
+    duplicate_bit_equal_count = 0
+    unchanged_count = 0
+
+    input_count = 0
+    for turbine in read_jsonl(input_path):
+        input_count += 1
+        reason = coordinate_turbine_error(turbine)
+        if reason:
+            excluded.append(repair_exclusion(turbine, reason))
+            continue
+
+        turbine_id = turbine["id"]
+        previous = seen_by_id.get(turbine_id)
+        if previous is not None:
+            if canonical_json(previous) == canonical_json(turbine):
+                duplicate_bit_equal_count += 1
+            else:
+                excluded.append(repair_exclusion(turbine, "duplicate_turbine_id_conflict"))
+            continue
+        seen_by_id[turbine_id] = deepcopy(turbine)
+
+        lat = turbine["latitude"]
+        lon = turbine["longitude"]
+        original_municipality_id = normalize_municipality_id(turbine.get("municipalityId"))
+        original_municipality_name = as_text(turbine.get("municipalityName"))
+        candidates = municipalities_containing_point(municipalities, spatial_index, lon, lat)
+        matched = first_matching_municipality(candidates, original_municipality_id) if original_municipality_id else None
+
+        if matched is not None:
+            turbine["municipalityId"] = original_municipality_id
+            turbine["municipalityName"] = original_municipality_name or matched["name"]
+            kept.append(turbine)
+            unchanged_count += 1
+            continue
+
+        detected = candidates[0] if len(candidates) == 1 else None
+        if detected is not None:
+            expected = municipalities.get(original_municipality_id) if original_municipality_id else None
+            if expected is not None:
+                distance_km = distance_to_geometry_km(lon, lat, expected["geometry"])
+                if distance_km > MAX_REPAIR_DISTANCE_KM:
+                    excluded.append(repair_exclusion(turbine, "coordinate_municipality_distance_exceeded"))
+                    continue
+
+            old_turbine = dict(turbine)
+            apply_municipality_repair(turbine, detected)
+            kept.append(turbine)
+            repaired.append(
+                repair_action(
+                    "municipality_repaired_from_coordinate",
+                    old_turbine,
+                    turbine,
+                    detected,
+                )
+            )
+            continue
+
+        expected = municipalities.get(original_municipality_id) if original_municipality_id else None
+        if expected is not None:
+            distance_km = distance_to_geometry_km(lon, lat, expected["geometry"])
+            if distance_km <= boundary_tolerance_km:
+                turbine["municipalityId"] = original_municipality_id
+                turbine["municipalityName"] = original_municipality_name or expected["name"]
+                kept.append(turbine)
+                unchanged_count += 1
+                warnings.append(
+                    warning(
+                        "municipality_boundary_ambiguous",
+                        turbine,
+                        expected,
+                        distanceKm=round(distance_km, 3),
+                    )
+                )
+                continue
+
+        if not original_municipality_id and is_offshore_coordinate(lat, lon):
+            old_turbine = dict(turbine)
+            offshore = offshore_municipality(lon)
+            apply_municipality_repair(turbine, offshore)
+            kept.append(turbine)
+            repaired.append(
+                repair_action(
+                    "offshore_pseudo_municipality_assigned",
+                    old_turbine,
+                    turbine,
+                    offshore,
+                )
+            )
+            continue
+
+        if is_placeholder_coordinate(lat, lon):
+            excluded.append(repair_exclusion(turbine, "placeholder_coordinates"))
+            continue
+
+        if len(candidates) > 1:
+            excluded.append(repair_exclusion(turbine, "ambiguous_municipality_from_coordinate"))
+        else:
+            excluded.append(repair_exclusion(turbine, "coordinate_outside_municipality_reference"))
+
+    warnings.extend(mixed_municipality_wind_park_warnings(kept))
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8", newline="\n") as handle:
+        for turbine in sorted(kept, key=lambda item: item["id"]):
+            handle.write(json.dumps(turbine, sort_keys=True, ensure_ascii=True) + "\n")
+
+    report = {
+        "summary": {
+            "inputCount": input_count,
+            "keptCount": len(kept),
+            "unchangedCount": unchanged_count,
+            "repairedCount": len(repaired),
+            "offshoreAssignedCount": count_by_code(repaired, "offshore_pseudo_municipality_assigned"),
+            "excludedAfterRepairCount": len(excluded),
+            "boundaryAmbiguousCount": count_by_code(warnings, "municipality_boundary_ambiguous"),
+            "duplicateBitEqualCount": duplicate_bit_equal_count,
+            "duplicateConflictCount": count_by_code(excluded, "duplicate_turbine_id_conflict"),
+            "mixedMunicipalityWindParkCount": count_by_code(warnings, "mixed_municipality_wind_park"),
+            "boundaryToleranceKm": boundary_tolerance_km,
+        },
+        "repaired": sorted(repaired, key=lambda item: (item["reasonCode"], item.get("turbineId") or "")),
+        "excluded": sorted(excluded, key=lambda item: (item["reasonCode"], item.get("turbineId") or "")),
+        "warnings": sorted(warnings, key=lambda item: (item["reasonCode"], item.get("turbineId") or item.get("windParkKey") or "")),
+        "sources": {
+            "mastr": {
+                "sourceName": SOURCE_NAME,
+                "sourceUrl": SOURCE_URL,
+            },
+            "municipalities": {
+                "sourceName": BKG_VG250_SOURCE_NAME,
+                "sourceUrl": BKG_VG250_SOURCE_URL,
+                "path": str(municipalities_path),
+            },
+            "pipelineVersion": PIPELINE_VERSION,
+            "processedAt": now_iso(),
+        },
+    }
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    write_json(report_path, report)
+    metrics_path = metrics_output_path or report_path.with_name(f"{report_path.stem}_metrics.json")
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    write_json(metrics_path, repair_metrics(report))
+
+    print(f"Wrote {len(kept)} repaired wind turbines to {output_path}")
+    print(f"Wrote repair report with {len(repaired)} repairs and {len(excluded)} exclusions to {report_path}")
+    print(f"Wrote repair metrics to {metrics_path}")
+    return 0 if kept else 2
+
+
 def aggregate(input_path: Path, output_path: Path) -> int:
     turbines = list(read_jsonl(input_path))
     parks_by_key: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -346,7 +541,7 @@ def calculate(
     parks_path: Path,
     output_path: Path,
     mastr_export_date: str,
-    cleaning_report_path: Path | None = None,
+    quality_report_path: Path | None = None,
 ) -> int:
     turbines = list(read_jsonl(turbines_path))
     parks = json.loads(parks_path.read_text(encoding="utf-8"))
@@ -355,7 +550,7 @@ def calculate(
         if not turbine.get("windParkId") or turbine["windParkId"] not in park_by_id:
             turbine["windParkId"] = find_park_for_turbine(turbine, parks)
 
-    snapshot = build_snapshot(turbines, parks, mastr_export_date, cleaning_report=read_optional_cleaning_report(cleaning_report_path))
+    snapshot = build_snapshot(turbines, parks, mastr_export_date, quality_report=read_optional_quality_report(quality_report_path))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     write_json(output_path, snapshot)
     print(f"Wrote app snapshot to {output_path}")
@@ -445,7 +640,7 @@ def build_snapshot(
     parks: list[dict[str, Any]],
     mastr_export_date: str,
     snapshot_id: str | None = None,
-    cleaning_report: dict[str, Any] | None = None,
+    quality_report: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     assumptions = [
         {"id": key, **value}
@@ -456,11 +651,7 @@ def build_snapshot(
         "Die Gruppierung von Windparks beruht auf einer algorithmischen Zuordnung bei der Vorverarbeitung.",
         "Die berechneten Kennzahlen zur Klimawirkung sind Schätzwerte des MVP und keine offiziellen Messdaten.",
     ]
-    excluded_count = cleaning_excluded_count(cleaning_report)
-    if excluded_count:
-        limitations.append(
-            f"{excluded_count} Windanlagen wurden wegen nicht plausibler Gemeinde-Koordinaten-Zuordnung aus dem MVP-Snapshot ausgeschlossen."
-        )
+    limitations.extend(quality_report_limitations(quality_report))
 
     snapshot = {
         "schemaVersion": "1",
@@ -645,6 +836,21 @@ def basic_turbine_error(turbine: dict[str, Any]) -> str | None:
     return None
 
 
+def coordinate_turbine_error(turbine: dict[str, Any]) -> str | None:
+    for key in ["id", "latitude", "longitude"]:
+        if turbine.get(key) in (None, ""):
+            return f"missing_{key}"
+    lat = parse_float(turbine.get("latitude"))
+    lon = parse_float(turbine.get("longitude"))
+    if lat is None or lon is None:
+        return "invalid_coordinates"
+    turbine["latitude"] = lat
+    turbine["longitude"] = lon
+    if not in_germany(lat, lon):
+        return "coordinates_outside_germany_bounds"
+    return None
+
+
 def normalize_municipality_id(value: Any) -> str | None:
     text = as_text(value)
     if text is None:
@@ -657,6 +863,33 @@ def normalize_municipality_id(value: Any) -> str | None:
     if len(digits) > 8:
         return digits[:8]
     return None
+
+
+def apply_municipality_repair(turbine: dict[str, Any], municipality: dict[str, Any]) -> None:
+    turbine["municipalityId"] = municipality["id"]
+    turbine["municipalityName"] = municipality["name"]
+    turbine["dataQuality"] = "derived"
+
+
+def is_offshore_coordinate(lat: float, lon: float) -> bool:
+    return lat >= OFFSHORE_MIN_LAT and in_germany(lat, lon)
+
+
+def offshore_municipality(lon: float) -> dict[str, Any]:
+    if lon < OFFSHORE_NORTH_SEA_MAX_LON:
+        return {"id": OFFSHORE_NORTH_SEA_ID, "name": OFFSHORE_NORTH_SEA_NAME}
+    return {"id": OFFSHORE_BALTIC_SEA_ID, "name": OFFSHORE_BALTIC_SEA_NAME}
+
+
+def is_placeholder_coordinate(lat: float, lon: float) -> bool:
+    return coordinate_precision(lat) <= 1 and coordinate_precision(lon) <= 1
+
+
+def coordinate_precision(value: float) -> int:
+    text = f"{value:.10f}".rstrip("0").rstrip(".")
+    if "." not in text:
+        return 0
+    return len(text.rsplit(".", 1)[1])
 
 
 def pick_municipality_field(row: dict[str, Any], canonical: str) -> Any:
@@ -715,6 +948,40 @@ def exclusion(
         "originalMunicipalityName": turbine.get("municipalityName"),
         "detectedMunicipalityId": detected_municipality.get("id") if detected_municipality else None,
         "detectedMunicipalityName": detected_municipality.get("name") if detected_municipality else None,
+        "latitude": turbine.get("latitude"),
+        "longitude": turbine.get("longitude"),
+    }
+
+
+def repair_action(
+    reason_code: str,
+    original_turbine: dict[str, Any],
+    repaired_turbine: dict[str, Any],
+    detected_municipality: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "action": "repaired",
+        "reasonCode": reason_code,
+        "turbineId": repaired_turbine.get("id"),
+        "originalMunicipalityId": original_turbine.get("municipalityId"),
+        "originalMunicipalityName": original_turbine.get("municipalityName"),
+        "newMunicipalityId": repaired_turbine.get("municipalityId"),
+        "newMunicipalityName": repaired_turbine.get("municipalityName"),
+        "detectedMunicipalityId": detected_municipality.get("id"),
+        "detectedMunicipalityName": detected_municipality.get("name"),
+        "latitude": repaired_turbine.get("latitude"),
+        "longitude": repaired_turbine.get("longitude"),
+        "dataQuality": repaired_turbine.get("dataQuality"),
+    }
+
+
+def repair_exclusion(turbine: dict[str, Any], reason_code: str) -> dict[str, Any]:
+    return {
+        "action": "excluded",
+        "reasonCode": reason_code,
+        "turbineId": turbine.get("id"),
+        "originalMunicipalityId": turbine.get("municipalityId"),
+        "originalMunicipalityName": turbine.get("municipalityName"),
         "latitude": turbine.get("latitude"),
         "longitude": turbine.get("longitude"),
     }
@@ -947,6 +1214,35 @@ def cleaning_metrics(report: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def repair_metrics(report: dict[str, Any]) -> dict[str, Any]:
+    summary = report.get("summary") or {}
+    input_count = summary.get("inputCount") or 0
+    kept_count = summary.get("keptCount") or 0
+    excluded_count = summary.get("excludedAfterRepairCount") or 0
+    repaired = report.get("repaired") or []
+    excluded = report.get("excluded") or []
+    warnings = report.get("warnings") or []
+    return {
+        "inputCount": input_count,
+        "unchangedCount": summary.get("unchangedCount") or 0,
+        "repairedCount": summary.get("repairedCount") or 0,
+        "offshoreAssignedCount": summary.get("offshoreAssignedCount") or 0,
+        "keptCount": kept_count,
+        "excludedAfterRepairCount": excluded_count,
+        "keptRateAfterRepair": ratio(kept_count, input_count),
+        "excludedRateAfterRepair": ratio(excluded_count, input_count),
+        "boundaryAmbiguousCount": summary.get("boundaryAmbiguousCount") or 0,
+        "duplicateBitEqualCount": summary.get("duplicateBitEqualCount") or 0,
+        "duplicateConflictCount": summary.get("duplicateConflictCount") or 0,
+        "mixedMunicipalityWindParkCount": summary.get("mixedMunicipalityWindParkCount") or 0,
+        "boundaryToleranceKm": summary.get("boundaryToleranceKm"),
+        "repairActionCounts": reason_counts(repaired),
+        "exclusionReasonCounts": reason_counts(excluded),
+        "warningReasonCounts": reason_counts(warnings),
+        "sources": report.get("sources") or {},
+    }
+
+
 def ratio(value: int | float, total: int | float) -> float:
     if not total:
         return 0.0
@@ -965,18 +1261,36 @@ def canonical_json(value: dict[str, Any]) -> str:
     return json.dumps(value, sort_keys=True, ensure_ascii=True, separators=(",", ":"))
 
 
-def read_optional_cleaning_report(path: Path | None) -> dict[str, Any] | None:
+def read_optional_quality_report(path: Path | None) -> dict[str, Any] | None:
     if path is None:
         return None
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def cleaning_excluded_count(report: dict[str, Any] | None) -> int:
+def quality_report_limitations(report: dict[str, Any] | None) -> list[str]:
     if not report:
-        return 0
+        return []
     summary = report.get("summary") or {}
-    count = summary.get("excludedCount")
-    return count if isinstance(count, int) else 0
+    if "excludedAfterRepairCount" in summary:
+        repaired_count = summary.get("repairedCount") or 0
+        offshore_count = summary.get("offshoreAssignedCount") or 0
+        excluded_count = summary.get("excludedAfterRepairCount") or 0
+        limitations = []
+        if repaired_count:
+            limitations.append(
+                f"{repaired_count} Windanlagen wurden bei der Vorverarbeitung aus Koordinaten- oder Offshore-Kontext abgeleitet repariert; davon {offshore_count} mit Offshore-Pseudo-Gemeinde."
+            )
+        if excluded_count:
+            limitations.append(
+                f"{excluded_count} Windanlagen wurden nach dem Reparaturversuch weiterhin aus dem MVP-Snapshot ausgeschlossen."
+            )
+        return limitations
+    excluded_count = summary.get("excludedCount") or 0
+    if excluded_count:
+        return [
+            f"{excluded_count} Windanlagen wurden wegen nicht plausibler Gemeinde-Koordinaten-Zuordnung aus dem MVP-Snapshot ausgeschlossen."
+        ]
+    return []
 
 
 def validate_snapshot(snapshot: dict[str, Any]) -> list[str]:
@@ -1005,8 +1319,8 @@ def validate_snapshot(snapshot: dict[str, Any]) -> list[str]:
     park_ids = {item.get("id") for item in parks}
     for turbine in turbines:
         check_quality(errors, "windTurbines", turbine)
-        if turbine.get("dataQuality") != "official":
-            errors.append(f"Wind turbine {turbine.get('id')} must be official")
+        if turbine.get("dataQuality") not in {"official", "derived"}:
+            errors.append(f"Wind turbine {turbine.get('id')} must be official or derived")
         if turbine.get("windParkId") not in park_ids:
             errors.append(f"Wind turbine {turbine.get('id')} references missing wind park {turbine.get('windParkId')}")
         if not in_germany(turbine.get("latitude"), turbine.get("longitude")):
