@@ -45,13 +45,14 @@ import windklar.composeapp.generated.resources.favorite_windpark_ostsee
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.runtime.LaunchedEffect
+import app.core.ui.theme.WindklarTheme
 
-private val ScreenBackground = Color(0xFFF8FAF7)
-private val PrimaryGreen = Color(0xFF2D5A2D)
-private val HeaderEndGreen = Color(0xFF43A047)
-private val DarkGreen = Color(0xFF1A3A1A)
-private val MutedGreen = Color(0xFF5A7A5A)
-private val PaleGreen = Color(0xFFE8F5E9)
+private val ScreenBackground @Composable get() = WindklarTheme.colors.screenBackground
+private val PrimaryGreen @Composable get() = WindklarTheme.colors.primaryGreen
+private val HeaderEndGreen @Composable get() = WindklarTheme.colors.headerEndGreen
+private val DarkGreen @Composable get() = WindklarTheme.colors.darkGreen
+private val MutedGreen @Composable get() = WindklarTheme.colors.mutedGreen
+private val PaleGreen @Composable get() = WindklarTheme.colors.paleGreen
 private val HeartRed = Color(0xFFE53935)
 
 @Composable
@@ -94,7 +95,7 @@ fun FavoritesScreen(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    color = Color.White,
+                    color = WindklarTheme.colors.cardBackground,
                     shadowElevation = 4.dp
                 ) {
                     Text(
@@ -174,7 +175,7 @@ private fun FavoriteParkCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White,
+        color = WindklarTheme.colors.cardBackground,
         shadowElevation = 6.dp,
     ) {
         Row(

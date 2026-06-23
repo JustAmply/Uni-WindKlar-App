@@ -48,6 +48,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import app.core.ui.theme.WindklarTheme
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -88,6 +89,14 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
+private val ScreenBackground @Composable get() = WindklarTheme.colors.screenBackground
+private val PrimaryGreen @Composable get() = WindklarTheme.colors.primaryGreen
+private val HeaderEndGreen @Composable get() = WindklarTheme.colors.headerEndGreen
+private val DarkGreen @Composable get() = WindklarTheme.colors.darkGreen
+private val MutedGreen @Composable get() = WindklarTheme.colors.mutedGreen
+private val PaleGreen @Composable get() = WindklarTheme.colors.paleGreen
+private val LightOverlayGreen @Composable get() = Color(0xFFD8E7D8)
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MapScreen(
@@ -120,14 +129,14 @@ fun MapScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8FAF7)),
+            .background(ScreenBackground),
     ) {
         if (uiState.isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = Color(0xFF2D5A2D))
+                CircularProgressIndicator(color = PrimaryGreen)
             }
         } else {
             PlatformMapView(
@@ -164,7 +173,7 @@ fun MapScreen(
                             .fillMaxWidth()
                             .heightIn(max = 240.dp),
                         shape = RoundedCornerShape(16.dp),
-                        color = Color.White,
+                        color = WindklarTheme.colors.cardBackground,
                         shadowElevation = 8.dp
                     ) {
                         LazyColumn(modifier = Modifier.padding(8.dp)) {
@@ -230,7 +239,7 @@ fun MapScreen(
                 MapActionButton(
                     icon = Icons.Outlined.Edit,
                     contentDescription = "Windanlage melden",
-                    containerColor = Color(0xFF2D5A2D),
+                    containerColor = PrimaryGreen,
                     contentColor = Color.White,
                     onClick = { viewModel.startPinPlacement() }
                 )
@@ -239,8 +248,8 @@ fun MapScreen(
                 MapActionButton(
                     icon = Icons.Outlined.NearMe,
                     contentDescription = "Standort zentrieren",
-                    containerColor = Color.White,
-                    contentColor = Color(0xFF2D5A2D),
+                    containerColor = WindklarTheme.colors.cardBackground,
+                    contentColor = PrimaryGreen,
                     onClick = {
                         viewModel.centerOnUserLocation(
                             onPermissionRequired = {
@@ -260,8 +269,8 @@ fun MapScreen(
             MapActionButton(
                 icon = Icons.Outlined.Add,
                 contentDescription = "Vergrößern",
-                containerColor = Color.White,
-                contentColor = Color(0xFF2D5A2D),
+                containerColor = WindklarTheme.colors.cardBackground,
+                contentColor = PrimaryGreen,
                 onClick = { viewModel.onZoomChanged(uiState.zoomLevel + 1.0f) }
             )
 
@@ -269,8 +278,8 @@ fun MapScreen(
             MapActionButton(
                 icon = Icons.Outlined.Remove,
                 contentDescription = "Verkleinern",
-                containerColor = Color.White,
-                contentColor = Color(0xFF2D5A2D),
+                containerColor = WindklarTheme.colors.cardBackground,
+                contentColor = PrimaryGreen,
                 onClick = { viewModel.onZoomChanged(uiState.zoomLevel - 1.0f) }
             )
         }
@@ -306,7 +315,7 @@ fun MapScreen(
                     .fillMaxWidth()
                     .padding(16.dp),
                 shape = RoundedCornerShape(24.dp),
-                color = Color.White,
+                color = WindklarTheme.colors.cardBackground,
                 shadowElevation = 16.dp
             ) {
                 Column(
@@ -316,13 +325,13 @@ fun MapScreen(
                 ) {
                     Text(
                         text = "Standort festlegen",
-                        color = Color(0xFF1A3A1A),
+                        color = DarkGreen,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "Verschieben Sie den roten Pin auf der Karte zum genauen Standort der Windanlage.",
-                        color = Color(0xFF5A7A5A),
+                        color = MutedGreen,
                         fontSize = 14.sp,
                         lineHeight = 20.sp,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -336,8 +345,8 @@ fun MapScreen(
                             modifier = Modifier.weight(1f).height(48.dp),
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFE8F5E9),
-                                contentColor = Color(0xFF2D5A2D)
+                                containerColor = PaleGreen,
+                                contentColor = PrimaryGreen
                              )
                         ) {
                             Text("Abbrechen", fontWeight = FontWeight.Medium)
@@ -353,7 +362,7 @@ fun MapScreen(
                             modifier = Modifier.weight(1f).height(48.dp),
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF2D5A2D),
+                                containerColor = PrimaryGreen,
                                 contentColor = Color.White
                             )
                         ) {
@@ -409,36 +418,37 @@ fun MapScreen(
 private fun SearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = Color.White,
-        shadowElevation = 10.dp,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = WindklarTheme.colors.cardBackground,
+        shadowElevation = 6.dp,
     ) {
         TextField(
             value = query,
             onValueChange = onQueryChange,
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
             placeholder = {
                 Text(
-                    text = "Windpark oder Ort suchen...",
-                    color = Color(0xFF5A7A5A),
-                    fontSize = 16.sp,
+                    text = "Windpark oder Gemeinde suchen...",
+                    color = MutedGreen,
+                    fontSize = 15.sp,
                 )
             },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Outlined.Search,
-                    contentDescription = "Suche",
-                    tint = Color(0xFF5A7A5A),
+                    contentDescription = null,
+                    tint = PrimaryGreen,
                 )
             },
+            singleLine = true,
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                disabledContainerColor = Color.White,
+                focusedContainerColor = WindklarTheme.colors.cardBackground,
+                unfocusedContainerColor = WindklarTheme.colors.cardBackground,
+                disabledContainerColor = WindklarTheme.colors.cardBackground,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 disabledIndicatorColor = Color.Transparent,
@@ -592,8 +602,8 @@ private fun ParkPreviewSheet(
                 )
             },
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        color = Color.White,
-        shadowElevation = 24.dp,
+        color = WindklarTheme.colors.cardBackground,
+        shadowElevation = 16.dp,
     ) {
         Column(
             modifier = Modifier
@@ -615,7 +625,7 @@ private fun ParkPreviewSheet(
                     .width(44.dp)
                     .height(5.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFD8E7D8)),
+                    .background(LightOverlayGreen),
             )
 
             if (sheetState == ParkPreviewSheetState.Minimized) {

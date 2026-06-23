@@ -46,18 +46,19 @@ import androidx.compose.ui.unit.sp
 import app.core.model.Metric
 import app.core.model.SnapshotAssumption
 import app.core.model.WindTurbine
+import app.core.ui.theme.WindklarTheme
 import app.core.ui.components.LabelWithBadge
 import app.core.ui.components.StatusBadge
 import app.core.ui.components.formatDataQuality
 import app.core.ui.components.qualityColors
 import androidx.compose.ui.text.style.TextOverflow
 
-private val ScreenBackground = Color(0xFFF8FAF7)
-private val PrimaryGreen = Color(0xFF2D5A2D)
-private val HeaderEndGreen = Color(0xFF43A047)
-private val DarkGreen = Color(0xFF1A3A1A)
-private val MutedGreen = Color(0xFF5A7A5A)
-private val PaleGreen = Color(0xFFE8F5E9)
+private val ScreenBackground @Composable get() = WindklarTheme.colors.screenBackground
+private val PrimaryGreen @Composable get() = WindklarTheme.colors.primaryGreen
+private val HeaderEndGreen @Composable get() = WindklarTheme.colors.headerEndGreen
+private val DarkGreen @Composable get() = WindklarTheme.colors.darkGreen
+private val MutedGreen @Composable get() = WindklarTheme.colors.mutedGreen
+private val PaleGreen @Composable get() = WindklarTheme.colors.paleGreen
 private val HeartRed = Color(0xFFE53935)
 
 @Composable
@@ -205,7 +206,7 @@ private fun SummaryCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = WindklarTheme.colors.cardBackground,
         shadowElevation = 8.dp
     ) {
         Column(
@@ -311,7 +312,7 @@ private fun CitizenImpactDashboard(metrics: List<Metric>) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                color = Color.White,
+                color = WindklarTheme.colors.cardBackground,
                 shadowElevation = 8.dp
     ) {
         Column(
@@ -423,7 +424,7 @@ private fun CalculationAssumptionsCard(assumptions: List<SnapshotAssumption>) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = WindklarTheme.colors.cardBackground,
         shadowElevation = 8.dp
     ) {
         Column(
@@ -505,7 +506,7 @@ private fun TurbineCard(turbine: WindTurbine) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = Color.White,
+        color = WindklarTheme.colors.cardBackground,
         shadowElevation = 4.dp
     ) {
         Column(

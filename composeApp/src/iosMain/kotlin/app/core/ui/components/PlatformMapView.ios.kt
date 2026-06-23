@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -322,7 +323,10 @@ actual fun PlatformMapView(
                         } else if (type == "dragend") {
                             val lat = obj["lat"]?.toString()?.toDoubleOrNull() ?: return
                             val lon = obj["lon"]?.toString()?.toDoubleOrNull() ?: return
-                            currentOnPlacementPinDragged.value?.invoke(lat, lon)
+                            val callback = currentOnPlacementPinDragged.value
+                            if (callback != null) {
+                                callback(lat, lon)
+                            }
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()

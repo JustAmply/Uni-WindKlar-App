@@ -47,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import app.core.ui.theme.WindklarTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,17 +78,17 @@ import app.core.ui.components.RankingList
 import app.core.ui.components.RankingItemRow
 import kotlinx.coroutines.launch
 
-private val ScreenBackground = Color(0xFFF7FAF4)
-private val PrimaryGreen = Color(0xFF24512D)
-private val HeaderGreen = Color(0xFF2E7D32)
-private val AccentGreen = Color(0xFF4CAF50)
-private val DarkText = Color(0xFF17261A)
-private val MutedText = Color(0xFF647568)
-private val SoftGreen = Color(0xFFE8F5E9)
-private val TrackGreen = Color(0xFFDDEBDD)
-private val ImpactTones = listOf(
-    ImpactTone(container = Color(0xFF24512D), content = Color.White, secondary = Color(0xFFEAF4E8)),
-    ImpactTone(container = Color(0xFF3B7A3F), content = Color.White, secondary = Color(0xFFEAF4E8)),
+private val ScreenBackground @Composable get() = WindklarTheme.colors.screenBackground
+private val PrimaryGreen @Composable get() = WindklarTheme.colors.primaryGreen
+private val HeaderGreen @Composable get() = WindklarTheme.colors.headerEndGreen
+private val AccentGreen @Composable get() = WindklarTheme.colors.primaryGreen
+private val DarkText @Composable get() = WindklarTheme.colors.darkGreen
+private val MutedText @Composable get() = WindklarTheme.colors.mutedGreen
+private val SoftGreen @Composable get() = WindklarTheme.colors.paleGreen
+private val TrackGreen @Composable get() = Color(0xFFDDEBDD)
+private val ImpactTones @Composable get() = listOf(
+    ImpactTone(container = PrimaryGreen, content = Color.White, secondary = SoftGreen),
+    ImpactTone(container = HeaderGreen, content = Color.White, secondary = SoftGreen),
     ImpactTone(container = Color(0xFFB8DDB8), content = DarkText, secondary = Color(0xFF36543B)),
     ImpactTone(container = Color(0xFFD6ECD2), content = DarkText, secondary = Color(0xFF4D6752)),
 )
@@ -619,7 +620,7 @@ private fun StatsSectionCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = Color.White,
+        color = WindklarTheme.colors.cardBackground,
         shadowElevation = 3.dp,
         tonalElevation = 0.dp,
     ) {
@@ -750,7 +751,7 @@ private fun FullRankingDialog(
                 .fillMaxWidth()
                 .heightIn(max = 620.dp),
             shape = RoundedCornerShape(12.dp),
-            color = Color.White,
+            color = WindklarTheme.colors.cardBackground,
             shadowElevation = 8.dp,
         ) {
             Column(
@@ -913,6 +914,10 @@ private fun CapacityClassChart(values: List<CapacityClassStat>) {
         return
     }
 
+    val primaryGreen = PrimaryGreen
+    val accentGreen = AccentGreen
+    val trackGreen = TrackGreen
+
     var selectedIndex by remember(values) { mutableStateOf<Int?>(null) }
     Column {
         Box(
@@ -945,16 +950,16 @@ private fun CapacityClassChart(values: List<CapacityClassStat>) {
                     val isSelected = selectedIndex == null || selectedIndex == index
                     drawRoundRect(
                         color = if (index == values.lastIndex) {
-                            AccentGreen.copy(alpha = if (isSelected) 1f else 0.34f)
+                            accentGreen.copy(alpha = if (isSelected) 1f else 0.34f)
                         } else {
-                            PrimaryGreen.copy(alpha = if (isSelected) 0.86f else 0.30f)
+                            primaryGreen.copy(alpha = if (isSelected) 0.86f else 0.30f)
                         },
                         topLeft = Offset(left, size.height - height),
                         size = Size(barWidth, height),
                         cornerRadius = CornerRadius(7.dp.toPx(), 7.dp.toPx()),
                     )
                     drawRoundRect(
-                        color = TrackGreen,
+                        color = trackGreen,
                         topLeft = Offset(left, 0f),
                         size = Size(barWidth, size.height),
                         cornerRadius = CornerRadius(7.dp.toPx(), 7.dp.toPx()),
@@ -1388,7 +1393,7 @@ private fun SearchSelectDialog(
                 .fillMaxWidth()
                 .heightIn(max = 560.dp),
             shape = RoundedCornerShape(12.dp),
-            color = Color.White,
+            color = WindklarTheme.colors.cardBackground,
             shadowElevation = 8.dp,
         ) {
             Column(
