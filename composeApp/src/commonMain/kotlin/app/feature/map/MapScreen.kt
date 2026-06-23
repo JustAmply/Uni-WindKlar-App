@@ -48,7 +48,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
-import app.core.ui.theme.WindklarTheme
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -79,11 +78,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import app.core.model.WindPark
 import app.core.ui.components.PlatformMapView
 import app.core.ui.components.rememberLocationPermissionLauncher
+import app.core.ui.theme.WindklarTheme
 import app.feature.report.ReportWindTurbineDialog
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import windklar.composeapp.generated.resources.Res
 import windklar.composeapp.generated.resources.start_background
-import org.jetbrains.compose.resources.painterResource
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.roundToInt

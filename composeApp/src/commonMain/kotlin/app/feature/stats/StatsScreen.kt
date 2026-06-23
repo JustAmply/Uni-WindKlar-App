@@ -47,7 +47,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import app.core.ui.theme.WindklarTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,12 +69,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import app.core.ui.components.formatDataQuality
-import app.core.ui.components.qualityColors
 import app.core.model.RankingItem
 import app.core.model.RankingDetailLine
+import app.core.ui.components.formatDataQuality
+import app.core.ui.components.qualityColors
 import app.core.ui.components.RankingList
 import app.core.ui.components.RankingItemRow
+import app.core.ui.theme.WindklarTheme
 import kotlinx.coroutines.launch
 
 private val ScreenBackground @Composable get() = WindklarTheme.colors.screenBackground
