@@ -18,6 +18,11 @@ class SnapshotSeedDataImporter(
         explicitNulls = false
     },
 ) : SeedDataImporter {
+    private companion object {
+        const val SNAPSHOT_METRIC_IMPORT_VERSION_KEY = "snapshot_metric_import_version"
+        const val SNAPSHOT_METRIC_IMPORT_VERSION = "snapshot_metrics_v1"
+    }
+
     override suspend fun importIfNeeded(): Unit = withContext(Dispatchers.Default) {
         println("SnapshotSeedDataImporter: Starting importIfNeeded...")
         try {
@@ -45,9 +50,15 @@ class SnapshotSeedDataImporter(
                 val existingSnapshot = database.snapshotMetadataQueries
                     .selectSnapshotByChecksum(fastPathChecksum)
                     .executeAsOneOrNull()
-                if (existingSnapshot != null) {
+                val hasCurrentMetricImport = database.settingQueries
+                    .getSetting(SNAPSHOT_METRIC_IMPORT_VERSION_KEY)
+                    .executeAsOneOrNull() == SNAPSHOT_METRIC_IMPORT_VERSION
+                if (existingSnapshot != null && hasCurrentMetricImport) {
                     println("SnapshotSeedDataImporter: Fast-path checksum matches database. Skipping full JSON parsing and import.")
                     return@withContext
+                }
+                if (existingSnapshot != null) {
+                    println("SnapshotSeedDataImporter: Checksum exists, but metric import version is outdated. Re-importing snapshot metrics.")
                 }
             }
 
@@ -58,16 +69,25 @@ class SnapshotSeedDataImporter(
             println("SnapshotSeedDataImporter: Decoding full JSON snapshot...")
             val snapshot = json.decodeFromString<WindklarSnapshot>(jsonString)
             println("SnapshotSeedDataImporter: Decoded JSON. Parks = ${snapshot.windParks.size}, Turbines = ${snapshot.windTurbines.size}, Metrics = ${snapshot.metrics.size}")
+            require(snapshot.metrics.isNotEmpty()) {
+                "Snapshot contains no metrics. WindKlar requires app-ready Metric values in the bundled snapshot; runtime metric generation is not supported."
+            }
             
             val metadata = snapshot.snapshotMetadata
             println("SnapshotSeedDataImporter: Checking if snapshot already exists in DB (checksum: ${metadata.checksumSha256})...")
             val existingSnapshot = database.snapshotMetadataQueries
                 .selectSnapshotByChecksum(metadata.checksumSha256)
                 .executeAsOneOrNull()
+            val hasCurrentMetricImport = database.settingQueries
+                .getSetting(SNAPSHOT_METRIC_IMPORT_VERSION_KEY)
+                .executeAsOneOrNull() == SNAPSHOT_METRIC_IMPORT_VERSION
 
-            if (existingSnapshot != null) {
+            if (existingSnapshot != null && hasCurrentMetricImport) {
                 println("SnapshotSeedDataImporter: Snapshot checksum already exists in DB. Skipping import.")
                 return@withContext
+            }
+            if (existingSnapshot != null) {
+                println("SnapshotSeedDataImporter: Snapshot checksum exists, but metric import version is outdated. Re-importing snapshot data.")
             }
 
             println("SnapshotSeedDataImporter: Seeding database within transaction...")
@@ -156,6 +176,10 @@ class SnapshotSeedDataImporter(
                     assumptions_json = json.encodeToString(snapshot.assumptions),
                     limitations = metadata.limitations.joinToString(separator = "\n"),
                     imported_at = metadata.processedAt,
+                )
+                database.settingQueries.upsertSetting(
+                    key = SNAPSHOT_METRIC_IMPORT_VERSION_KEY,
+                    value_ = SNAPSHOT_METRIC_IMPORT_VERSION,
                 )
             }
             println("SnapshotSeedDataImporter: Seeding database completed successfully.")

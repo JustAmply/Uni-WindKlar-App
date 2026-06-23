@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.core.model.SnapshotAssumption
+import app.core.model.ProductionContext
 import app.data.repository.WindParkRepository
 import kotlinx.coroutines.launch
 
@@ -35,11 +35,12 @@ class ParkDetailViewModel(
             
             val capacityKw = park?.installedCapacityKw?.toDouble() ?: 0.0
             val productionKwh = metrics.firstOrNull { it.metricType == "annual_production" }?.value ?: 0.0
-            val parkFullLoadHours = calculateFullLoadHours(
+            val parkFullLoadHours = ProductionContext.fullLoadHours(
                 annualProductionKwh = productionKwh,
                 installedCapacityKw = capacityKw,
             )
-            val assumptions = baseAssumptions.withCalculatedFullLoadHours(
+            val assumptions = ProductionContext.assumptionsWithCalculatedFullLoadHours(
+                assumptions = baseAssumptions,
                 fullLoadHours = parkFullLoadHours,
                 calculationNote = "Aus der Jahresproduktion dieses Parks und seiner installierten Leistung berechnet. Der Wert macht die im Datensatz implizit verwendeten standort- und anlagenspezifischen Ertragsannahmen sichtbar; bundesweiter Richtwert: 2.000 h/a.",
             )
@@ -62,29 +63,5 @@ class ParkDetailViewModel(
             repository.setFavorite(parkId, nextFav)
             uiState = uiState.copy(isFavorite = nextFav)
         }
-    }
-}
-
-private fun calculateFullLoadHours(
-    annualProductionKwh: Double,
-    installedCapacityKw: Double,
-): Double = if (annualProductionKwh > 0.0 && installedCapacityKw > 0.0) {
-    kotlin.math.round(annualProductionKwh / installedCapacityKw)
-} else {
-    0.0
-}
-
-private fun List<SnapshotAssumption>.withCalculatedFullLoadHours(
-    fullLoadHours: Double,
-    calculationNote: String,
-): List<SnapshotAssumption> = map { assumption ->
-    if (assumption.id == "full_load_hours" && fullLoadHours > 0.0) {
-        assumption.copy(
-            value = fullLoadHours,
-            label = "Berechnete mittlere Volllaststunden",
-            calculationNote = calculationNote,
-        )
-    } else {
-        assumption
     }
 }
