@@ -31,8 +31,22 @@ WHERE id = ?;
 searchWindParks:
 SELECT *
 FROM wind_park
-WHERE name LIKE '%' || :query || '%'
-   OR municipality_name LIKE '%' || :query || '%'
+WHERE LOWER(id) LIKE '%' || LOWER(:query) || '%'
+   OR LOWER(name) LIKE '%' || LOWER(:query) || '%'
+   OR LOWER(municipality_name) LIKE '%' || LOWER(:query) || '%'
+   OR EXISTS (
+       SELECT 1
+       FROM wind_turbine
+       WHERE wind_turbine.wind_park_id = wind_park.id
+         AND (
+             LOWER(wind_turbine.id) LIKE '%' || LOWER(:query) || '%'
+             OR LOWER(wind_turbine.name) LIKE '%' || LOWER(:query) || '%'
+             OR LOWER(wind_turbine.wind_park_id) LIKE '%' || LOWER(:query) || '%'
+             OR LOWER(wind_turbine.manufacturer) LIKE '%' || LOWER(:query) || '%'
+             OR LOWER(wind_turbine.model) LIKE '%' || LOWER(:query) || '%'
+             OR LOWER(wind_turbine.turbine_type) LIKE '%' || LOWER(:query) || '%'
+         )
+   )
 ORDER BY name;
 
 upsertWindPark:
