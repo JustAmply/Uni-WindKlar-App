@@ -35,6 +35,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import app.core.ui.theme.WindklarTheme
+import app.core.util.rememberPlatformSharer
+import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -45,12 +49,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val ScreenBackground = Color(0xFFF8FAF7)
-private val PrimaryGreen = Color(0xFF2D5A2D)
-private val HeaderEndGreen = Color(0xFF43A047)
-private val DarkGreen = Color(0xFF1A3A1A)
-private val MutedGreen = Color(0xFF5A7A5A)
-private val PaleGreen = Color(0xFFE8F5E9)
+private val ScreenBackground @Composable get() = WindklarTheme.colors.screenBackground
+private val PrimaryGreen @Composable get() = WindklarTheme.colors.primaryGreen
+private val HeaderEndGreen @Composable get() = WindklarTheme.colors.headerEndGreen
+private val DarkGreen @Composable get() = WindklarTheme.colors.darkGreen
+private val MutedGreen @Composable get() = WindklarTheme.colors.mutedGreen
+private val PaleGreen @Composable get() = WindklarTheme.colors.paleGreen
 
 @Composable
 fun ProfileScreen(
@@ -59,6 +63,8 @@ fun ProfileScreen(
 ) {
     val uiState = viewModel.uiState
     var showPrivacyDialog by remember { mutableStateOf(false) }
+    var showClearHistoryDialog by remember { mutableStateOf(false) }
+    val platformSharer = rememberPlatformSharer()
 
     Column(
         modifier = modifier
@@ -81,7 +87,13 @@ fun ProfileScreen(
             InfoSettingsCard(
                 isOffshoreEnabled = uiState.isOffshoreEnabled,
                 onOffshoreEnabledChange = viewModel::setOffshoreEnabled,
-                onPrivacyClick = { showPrivacyDialog = true }
+                onPrivacyClick = { showPrivacyDialog = true },
+                onClearHistoryClick = { showClearHistoryDialog = true },
+                onExportDataHintsClick = {
+                    viewModel.exportDataHints { csvContent ->
+                        platformSharer.shareText(csvContent, "WindKlar Datenhinweise")
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -105,6 +117,39 @@ fun ProfileScreen(
                     onClick = { showPrivacyDialog = false }
                 ) {
                     Text("Schließen")
+                }
+            }
+        )
+    }
+
+    if (showClearHistoryDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearHistoryDialog = false },
+            title = { Text("Verlauf löschen", color = DarkGreen, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "Möchten Sie den Verlauf der zuletzt angesehenen Windparks wirklich löschen? Dies kann nicht rückgängig gemacht werden.",
+                    color = DarkGreen,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.clearRecentWindParks {
+                            showClearHistoryDialog = false
+                        }
+                    }
+                ) {
+                    Text("Löschen")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showClearHistoryDialog = false }
+                ) {
+                    Text("Abbrechen")
                 }
             }
         )
@@ -166,11 +211,13 @@ private fun InfoSettingsCard(
     isOffshoreEnabled: Boolean,
     onOffshoreEnabledChange: (Boolean) -> Unit,
     onPrivacyClick: () -> Unit,
+    onClearHistoryClick: () -> Unit,
+    onExportDataHintsClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = WindklarTheme.colors.cardBackground,
         shadowElevation = 10.dp,
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -208,6 +255,22 @@ private fun InfoSettingsCard(
                 label = "Lokale Speicherung & Datenschutz",
                 onClick = onPrivacyClick
             )
+
+            SettingsRowDivider()
+
+            SettingsActionRow(
+                icon = Icons.Outlined.Share,
+                label = "Datenhinweise exportieren",
+                onClick = onExportDataHintsClick
+            )
+
+            SettingsRowDivider()
+
+            SettingsActionRow(
+                icon = Icons.Outlined.DeleteSweep,
+                label = "Verlauf löschen",
+                onClick = onClearHistoryClick
+            )
         }
     }
 }
@@ -219,7 +282,7 @@ private fun DataSourceCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = WindklarTheme.colors.cardBackground,
         shadowElevation = 10.dp,
     ) {
         Column(
