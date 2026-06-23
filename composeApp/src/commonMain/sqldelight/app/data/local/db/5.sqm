@@ -1,0 +1,5 @@
+-- Migrate wind_turbine table to include commissioning_year column
+ALTER TABLE wind_turbine ADD COLUMN commissioning_year INTEGER;
+
+-- Force re-seeding by clearing metadata
+DELETE FROM snapshot_metadata;

@@ -112,23 +112,21 @@ class RegionDetailViewModel(
                 Pair(null, null)
             }
 
-            // Calculations based on assumptions (matching StatsViewModel defaults if missing)
-            val fullLoadHours = assumptions.firstOrNull { it.id == "full_load_hours" }?.value ?: 2000.0
-            val emissionFactor = assumptions.firstOrNull { it.id == "emission_factor_kg_per_kwh" }?.value ?: 0.38
-            val householdCons = assumptions.firstOrNull { it.id == "household_consumption_kwh" }?.value ?: 3500.0
-            val municipalBenefitFactor = assumptions.firstOrNull { it.id == "municipal_benefit_eur_per_kwh" }?.value ?: 0.002
+            // Sum up precalculated park-level metrics for the region instead of using flat assumptions
+            val allMetrics = repository.getAllMetrics()
+            val regionParkIds = regionParks.map { it.id }.toSet()
+            val regionMetrics = allMetrics.filter { it.subjectId in regionParkIds }
 
-            val annualProductionKwh = installedCapacityKw.toDouble() * fullLoadHours
+            val annualProductionKwh = regionMetrics.filter { it.metricType == "annual_production" }.sumOf { it.value ?: 0.0 }
             val annualProductionGwh = annualProductionKwh / 1_000_000.0
-            val co2SavingsTons = (annualProductionKwh * emissionFactor) / 1000.0
-            val householdsSupplied = (annualProductionKwh / householdCons).toInt()
+            val co2SavingsTons = (regionMetrics.filter { it.metricType == "co2_savings" }.sumOf { it.value ?: 0.0 }) / 1000.0
+            val householdsSupplied = regionMetrics.filter { it.metricType == "household_equivalent" || it.metricType == "households_supplied" }.sumOf { it.value ?: 0.0 }.toInt()
             val onshoreParks = regionParks.filterNot { it.isOffshore() }
-            val onshoreCapacityKw = onshoreParks.sumOf { it.installedCapacityKw ?: 0L }
-            val municipalBenefitEur = onshoreCapacityKw
-                .takeIf { it > 0L }
-                ?.toDouble()
-                ?.times(fullLoadHours)
-                ?.times(municipalBenefitFactor)
+            val municipalBenefitEur = if (onshoreParks.isNotEmpty()) {
+                regionMetrics.filter { it.metricType == "municipal_participation" }.sumOf { it.value ?: 0.0 }
+            } else {
+                null
+            }
 
             // Sub-region rankings logic
             val subRegionRankings = when (regionType.lowercase()) {

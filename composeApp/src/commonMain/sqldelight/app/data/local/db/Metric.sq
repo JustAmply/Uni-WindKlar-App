@@ -73,3 +73,93 @@ INSERT OR REPLACE INTO metric(
     calculation_note
 )
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+generateProductionMetrics:
+INSERT OR REPLACE INTO metric (id, subject_type, subject_id, metric_type, metric_value, unit, period, source_name, source_url, source_updated_at, data_quality, calculation_note)
+SELECT
+    'metric_' || wind_park_id || '_annual_production' AS id,
+    'wind_park' AS subject_type,
+    wind_park_id AS subject_id,
+    'annual_production' AS metric_type,
+    SUM(
+        COALESCE(installed_capacity_kw, 0) *
+        CASE
+            WHEN municipality_id IN ('offshore_north_sea', 'offshore_baltic_sea') THEN 4000.0
+            WHEN SUBSTR(municipality_id, 1, 2) IN ('01', '02', '03', '04', '13') THEN 2200.0
+            ELSE 1700.0
+        END *
+        CASE
+            WHEN commissioning_year IS NULL THEN 1.0
+            WHEN commissioning_year < 2000 THEN 0.75
+            WHEN commissioning_year < 2005 THEN 0.85
+            WHEN commissioning_year < 2010 THEN 0.95
+            WHEN commissioning_year < 2015 THEN 1.05
+            WHEN commissioning_year < 2020 THEN 1.15
+            ELSE 1.30
+        END
+    ) AS metric_value,
+    'kWh/a' AS unit,
+    'year' AS period,
+    'WindKlar MVP-Berechnung' AS source_name,
+    'https://www.marktstammdatenregister.de/MaStR/Datendownload' AS source_url,
+    DATE('now') AS source_updated_at,
+    'estimated' AS data_quality,
+    'Geschätzte Jahresproduktion basierend auf lage- und altersabhängigen Volllaststunden (Basis: Inland 1700h, Küste 2200h, Offshore 4000h, skaliert nach Inbetriebnahmejahr).' AS calculation_note
+FROM wind_turbine
+GROUP BY wind_park_id;
+
+generateCo2Metrics:
+INSERT OR REPLACE INTO metric (id, subject_type, subject_id, metric_type, metric_value, unit, period, source_name, source_url, source_updated_at, data_quality, calculation_note)
+SELECT
+    'metric_' || subject_id || '_co2_savings',
+    'wind_park',
+    subject_id,
+    'co2_savings',
+    metric_value * 0.38,
+    'kg CO2/a',
+    'year',
+    'WindKlar MVP-Berechnung',
+    source_url,
+    source_updated_at,
+    'estimated',
+    'Geschätzte Produktion multipliziert mit dem angenommenen CO₂-Vermeidungsfaktor.'
+FROM metric
+WHERE metric_type = 'annual_production';
+
+generateHouseholdMetrics:
+INSERT OR REPLACE INTO metric (id, subject_type, subject_id, metric_type, metric_value, unit, period, source_name, source_url, source_updated_at, data_quality, calculation_note)
+SELECT
+    'metric_' || subject_id || '_household_equivalent',
+    'wind_park',
+    subject_id,
+    'household_equivalent',
+    metric_value / 3500.0,
+    'households',
+    'year',
+    'WindKlar MVP-Berechnung',
+    source_url,
+    source_updated_at,
+    'estimated',
+    'Geschätzte Produktion geteilt durch den angenommenen jährlichen Haushaltsstrombedarf.'
+FROM metric
+WHERE metric_type = 'annual_production';
+
+generateMunicipalMetrics:
+INSERT OR REPLACE INTO metric (id, subject_type, subject_id, metric_type, metric_value, unit, period, source_name, source_url, source_updated_at, data_quality, calculation_note)
+SELECT
+    'metric_' || m.subject_id || '_municipal_participation',
+    'wind_park',
+    m.subject_id,
+    'municipal_participation',
+    m.metric_value * 0.002,
+    'EUR/a',
+    'year',
+    'WindKlar MVP-Berechnung',
+    m.source_url,
+    m.source_updated_at,
+    'estimated',
+    'Schätzung nach § 6 EEG für Windenergie an Land mit 0,2 ct/kWh; keine bestätigte Auszahlung.'
+FROM metric m
+JOIN wind_park p ON p.id = m.subject_id
+WHERE m.metric_type = 'annual_production'
+  AND p.municipality_id NOT IN ('offshore_north_sea', 'offshore_baltic_sea');

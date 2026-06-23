@@ -19,6 +19,7 @@ data class WindTurbine(
     val model: String?,
     val hubHeightM: Double?,
     val rotorDiameterM: Double?,
+    val commissioningYear: Long?,
     val sourceName: String,
     val sourceUrl: String,
     val sourceUpdatedAt: String,

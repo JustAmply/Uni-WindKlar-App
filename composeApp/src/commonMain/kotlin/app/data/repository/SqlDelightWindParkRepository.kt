@@ -200,6 +200,10 @@ class SqlDelightWindParkRepository(
         }.getOrDefault(emptyList())
     }
 
+    override suspend fun getAllMetrics(): List<Metric> = withContext(Dispatchers.Default) {
+        metricDao.getAll()
+    }
+
     private fun WindParkEntity.toDomain(isFavorite: Boolean) = WindPark(
         id = id,
         name = name,

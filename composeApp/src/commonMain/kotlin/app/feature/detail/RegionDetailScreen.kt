@@ -658,6 +658,15 @@ private fun AssumptionRow(assumption: SnapshotAssumption) {
                 modifier = Modifier.padding(start = 12.dp)
             )
         }
+        if (!assumption.calculationNote.isNullOrBlank()) {
+            Text(
+                text = assumption.calculationNote,
+                color = MutedGreen,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
     }
 }
 

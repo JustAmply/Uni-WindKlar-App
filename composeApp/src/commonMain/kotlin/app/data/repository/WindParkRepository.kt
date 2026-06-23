@@ -47,6 +47,7 @@ interface WindParkRepository {
     suspend fun getSnapshotAttribution(): String
     suspend fun getSnapshotLimitations(): List<String>
     suspend fun getSnapshotAssumptions(): List<SnapshotAssumption>
+    suspend fun getAllMetrics(): List<Metric>
     
     suspend fun getDataHints(): List<DataHint>
 }

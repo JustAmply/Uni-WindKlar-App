@@ -51,7 +51,7 @@ DEFAULT_ASSUMPTIONS = {
         "sourceName": "WindKlar MVP-Annahme",
         "sourceUrl": SOURCE_URL,
         "sourceDate": "2026-06-18",
-        "calculationNote": "MVP-Schätzung, bis eine regional belegte Annahme gewählt wird.",
+        "calculationNote": "Berechnung basiert auf lage- und altersabhängigen Volllaststunden der einzelnen Anlagen (Basis: Inland 1.700h, Küste 2.200h, Offshore 4.000h), skaliert nach Inbetriebnahmejahr (Faktor 0,75 bis 1,30).",
     },
     "emission_factor_kg_per_kwh": {
         "label": "Vermiedenes CO₂ pro kWh",
@@ -764,7 +764,7 @@ def build_snapshot(
         "assumptions": assumptions,
         "windTurbines": sorted(enriched_turbines, key=lambda item: item["id"]),
         "windParks": sorted(enriched_parks, key=lambda item: item["id"]),
-        "metrics": sorted(metrics, key=lambda item: item["id"]),
+        "metrics": [],
     }
     snapshot["snapshotMetadata"]["checksumSha256"] = snapshot_checksum(snapshot)
     return snapshot
@@ -1736,7 +1736,8 @@ def grouping_method(group: list[dict[str, Any]], key: str) -> str:
 def snapshot_turbine(turbine: dict[str, Any]) -> dict[str, Any]:
     result = dict(turbine)
     result.pop("windParkName", None)
-    result.pop("commissioningDate", None)
+    comm_date = result.pop("commissioningDate", None)
+    result["commissioningYear"] = extract_year(comm_date)
     return result
 
 

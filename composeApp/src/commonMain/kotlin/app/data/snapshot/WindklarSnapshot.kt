@@ -57,6 +57,7 @@ data class WindTurbineDto(
     val model: String? = null,
     val hubHeightM: Double? = null,
     val rotorDiameterM: Double? = null,
+    val commissioningYear: Int? = null,
     val sourceName: String,
     val sourceUrl: String,
     val sourceUpdatedAt: String,
