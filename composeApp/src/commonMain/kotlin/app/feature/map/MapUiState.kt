@@ -2,21 +2,19 @@ package app.feature.map
 
 import app.core.model.MapMarkerUiModel
 import app.core.model.WindPark
-import app.core.model.Metric
-
-enum class ParkPreviewSheetState {
-    Expanded,
-    Minimized,
-}
+import app.core.ui.components.EntityPreviewData
+import app.core.ui.components.PreviewSheetState
 
 sealed interface MapSearchResult {
     data class State(
+        val id: String,
         val name: String,
         val latitude: Double,
         val longitude: Double
     ) : MapSearchResult
 
     data class District(
+        val id: String,
         val name: String,
         val stateName: String,
         val latitude: Double,
@@ -24,6 +22,7 @@ sealed interface MapSearchResult {
     ) : MapSearchResult
 
     data class Municipality(
+        val id: String,
         val name: String,
         val districtName: String,
         val stateName: String,
@@ -42,8 +41,8 @@ data class MapUiState(
     val filteredParks: List<WindPark> = emptyList(),
     val mapMarkers: List<MapMarkerUiModel> = emptyList(),
     val selectedPark: WindPark? = null,
-    val previewSheetState: ParkPreviewSheetState = ParkPreviewSheetState.Expanded,
-    val selectedParkMetrics: List<Metric> = emptyList(),
+    val selectedPreviewData: EntityPreviewData? = null,
+    val previewSheetState: PreviewSheetState = PreviewSheetState.Expanded,
     val searchQuery: String = "",
     val searchResults: List<MapSearchResult> = emptyList(),
     val showSearchOverlay: Boolean = false,
@@ -55,3 +54,4 @@ data class MapUiState(
     val placementMarkerLat: Double = 0.0,
     val placementMarkerLon: Double = 0.0,
 )
+
