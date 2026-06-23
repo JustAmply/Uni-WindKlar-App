@@ -124,11 +124,23 @@ class SnapshotSeedDataImporter(
                     )
                 }
 
-                println("SnapshotSeedDataImporter: Seeding metrics via SQL generators...")
-                database.metricQueries.generateProductionMetrics()
-                database.metricQueries.generateCo2Metrics()
-                database.metricQueries.generateHouseholdMetrics()
-                database.metricQueries.generateMunicipalMetrics()
+                println("SnapshotSeedDataImporter: Seeding metrics from snapshot...")
+                snapshot.metrics.forEach { metric ->
+                    database.metricQueries.upsertMetric(
+                        id = metric.id,
+                        subject_type = metric.subjectType,
+                        subject_id = metric.subjectId,
+                        metric_type = metric.metricType,
+                        metric_value = metric.value,
+                        unit = metric.unit,
+                        period = metric.period,
+                        source_name = metric.sourceName,
+                        source_url = metric.sourceUrl,
+                        source_updated_at = metric.sourceUpdatedAt,
+                        data_quality = metric.dataQuality,
+                        calculation_note = metric.calculationNote,
+                    )
+                }
 
                 println("SnapshotSeedDataImporter: Seeding metadata...")
                 database.snapshotMetadataQueries.upsertSnapshotMetadata(
