@@ -33,6 +33,10 @@ class MapViewModel(
     private var filterJob: Job? = null
     private var searchJob: Job? = null
 
+    private var statesList: List<MapSearchResult.State> = emptyList()
+    private var districtsList: List<MapSearchResult.District> = emptyList()
+    private var municipalitiesList: List<MapSearchResult.Municipality> = emptyList()
+
     init {
         loadMapData()
     }
@@ -50,6 +54,53 @@ class MapViewModel(
                 println("MapViewModel: Loaded ${statusMap.size} park statuses from repository.")
                 
                 parkStatuses = statusMap
+
+                // Pre-aggregate locations for search hierarchy
+                val stateCenters = mutableMapOf<String, LocationCenter>()
+                val districtCenters = mutableMapOf<String, Pair<String, LocationCenter>>()
+                val municipalityCenters = mutableMapOf<String, Triple<String, String, LocationCenter>>()
+
+                allParks.forEach { park ->
+                    val sName = park.stateName.trim()
+                    if (sName.isNotEmpty()) {
+                        val c = stateCenters.getOrPut(sName) { LocationCenter(0.0, 0.0, 0) }
+                        c.sumLat += park.latitude
+                        c.sumLon += park.longitude
+                        c.count += 1
+                    }
+
+                    val dName = park.districtName.trim()
+                    if (dName.isNotEmpty() && sName.isNotEmpty()) {
+                        val key = "$sName|$dName"
+                        val pair = districtCenters.getOrPut(key) { sName to LocationCenter(0.0, 0.0, 0) }
+                        pair.second.sumLat += park.latitude
+                        pair.second.sumLon += park.longitude
+                        pair.second.count += 1
+                    }
+
+                    val mName = park.municipalityName.trim()
+                    if (mName.isNotEmpty() && dName.isNotEmpty() && sName.isNotEmpty()) {
+                        val key = "$sName|$dName|$mName"
+                        val triple = municipalityCenters.getOrPut(key) { Triple(sName, dName, LocationCenter(0.0, 0.0, 0)) }
+                        triple.third.sumLat += park.latitude
+                        triple.third.sumLon += park.longitude
+                        triple.third.count += 1
+                    }
+                }
+
+                statesList = stateCenters.map { (name, center) ->
+                    MapSearchResult.State(name, center.sumLat / center.count, center.sumLon / center.count)
+                }.sortedBy { it.name }
+
+                districtsList = districtCenters.map { (key, pair) ->
+                    val name = key.substringAfter("|")
+                    MapSearchResult.District(name, pair.first, pair.second.sumLat / pair.second.count, pair.second.sumLon / pair.second.count)
+                }.sortedBy { it.name }
+
+                municipalitiesList = municipalityCenters.map { (key, triple) ->
+                    val name = key.substringAfterLast("|")
+                    MapSearchResult.Municipality(name, triple.second, triple.first, triple.third.sumLat / triple.third.count, triple.third.sumLon / triple.third.count)
+                }.sortedBy { it.name }
 
                 uiState = uiState.copy(
                     isLoading = false,
@@ -82,9 +133,17 @@ class MapViewModel(
         if (newQuery.length >= 2) {
             searchJob = viewModelScope.launch {
                 delay(200)
-                val results = repository.searchWindParks(newQuery)
+                val dbParks = repository.searchWindParks(newQuery)
+                
+                val matchingStates = statesList.filter { it.name.contains(newQuery, ignoreCase = true) }
+                val matchingDistricts = districtsList.filter { it.name.contains(newQuery, ignoreCase = true) }
+                val matchingMunicipalities = municipalitiesList.filter { it.name.contains(newQuery, ignoreCase = true) }
+                val matchingParks = dbParks.map { MapSearchResult.Park(it) }
+
+                val combinedResults = matchingStates + matchingDistricts + matchingMunicipalities + matchingParks
+
                 uiState = uiState.copy(
-                    searchResults = results,
+                    searchResults = combinedResults,
                     showSearchOverlay = true
                 )
             }
@@ -96,25 +155,63 @@ class MapViewModel(
         }
     }
 
-    fun onSearchResultSelected(park: WindPark) {
+    fun onSearchResultSelected(result: MapSearchResult) {
         searchJob?.cancel()
         viewportBounds = null
-        uiState = uiState.copy(
-            mapCenterLat = park.latitude,
-            mapCenterLon = park.longitude,
-            zoomLevel = 12.0f,
-            selectedPark = park,
-            previewSheetState = ParkPreviewSheetState.Expanded,
-            selectedStatus = "Alle",
-            filteredParks = parksForStatus("Alle"),
-            showSearchOverlay = false,
-            searchQuery = ""
-        )
-        applyFilters()
-        viewModelScope.launch {
-            repository.recordRecentWindPark(park.id)
-            val metrics = repository.getMetricsForPark(park.id)
-            uiState = uiState.copy(selectedParkMetrics = metrics)
+        when (result) {
+            is MapSearchResult.State -> {
+                uiState = uiState.copy(
+                    mapCenterLat = result.latitude,
+                    mapCenterLon = result.longitude,
+                    zoomLevel = 8.0f,
+                    selectedPark = null,
+                    previewSheetState = ParkPreviewSheetState.Minimized,
+                    showSearchOverlay = false,
+                    searchQuery = ""
+                )
+            }
+            is MapSearchResult.District -> {
+                uiState = uiState.copy(
+                    mapCenterLat = result.latitude,
+                    mapCenterLon = result.longitude,
+                    zoomLevel = 10.0f,
+                    selectedPark = null,
+                    previewSheetState = ParkPreviewSheetState.Minimized,
+                    showSearchOverlay = false,
+                    searchQuery = ""
+                )
+            }
+            is MapSearchResult.Municipality -> {
+                uiState = uiState.copy(
+                    mapCenterLat = result.latitude,
+                    mapCenterLon = result.longitude,
+                    zoomLevel = 12.0f,
+                    selectedPark = null,
+                    previewSheetState = ParkPreviewSheetState.Minimized,
+                    showSearchOverlay = false,
+                    searchQuery = ""
+                )
+            }
+            is MapSearchResult.Park -> {
+                val park = result.park
+                uiState = uiState.copy(
+                    mapCenterLat = park.latitude,
+                    mapCenterLon = park.longitude,
+                    zoomLevel = 12.0f,
+                    selectedPark = park,
+                    previewSheetState = ParkPreviewSheetState.Expanded,
+                    selectedStatus = "Alle",
+                    filteredParks = parksForStatus("Alle"),
+                    showSearchOverlay = false,
+                    searchQuery = ""
+                )
+                applyFilters()
+                viewModelScope.launch {
+                    repository.recordRecentWindPark(park.id)
+                    val metrics = repository.getMetricsForPark(park.id)
+                    uiState = uiState.copy(selectedParkMetrics = metrics)
+                }
+            }
         }
     }
 
@@ -544,3 +641,9 @@ class MapViewModel(
                 abs(neLon - other.neLon) <= 0.0001
     }
 }
+
+private data class LocationCenter(
+    var sumLat: Double,
+    var sumLon: Double,
+    var count: Int
+)

@@ -9,6 +9,33 @@ enum class ParkPreviewSheetState {
     Minimized,
 }
 
+sealed interface MapSearchResult {
+    data class State(
+        val name: String,
+        val latitude: Double,
+        val longitude: Double
+    ) : MapSearchResult
+
+    data class District(
+        val name: String,
+        val stateName: String,
+        val latitude: Double,
+        val longitude: Double
+    ) : MapSearchResult
+
+    data class Municipality(
+        val name: String,
+        val districtName: String,
+        val stateName: String,
+        val latitude: Double,
+        val longitude: Double
+    ) : MapSearchResult
+
+    data class Park(
+        val park: WindPark
+    ) : MapSearchResult
+}
+
 data class MapUiState(
     val isLoading: Boolean = false,
     val parks: List<WindPark> = emptyList(),
@@ -18,7 +45,7 @@ data class MapUiState(
     val previewSheetState: ParkPreviewSheetState = ParkPreviewSheetState.Expanded,
     val selectedParkMetrics: List<Metric> = emptyList(),
     val searchQuery: String = "",
-    val searchResults: List<WindPark> = emptyList(),
+    val searchResults: List<MapSearchResult> = emptyList(),
     val showSearchOverlay: Boolean = false,
     val mapCenterLat: Double = 51.1657, // Default center of Germany
     val mapCenterLon: Double = 10.4515,

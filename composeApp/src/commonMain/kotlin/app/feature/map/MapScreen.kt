@@ -193,12 +193,12 @@ fun MapScreen(
                             }
                         } else {
                             LazyColumn(modifier = Modifier.padding(8.dp)) {
-                                items(uiState.searchResults) { park ->
+                                items(uiState.searchResults) { result ->
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickable { viewModel.onSearchResultSelected(park) }
-                                            .padding(vertical = 12.dp, horizontal = 16.dp),
+                                            .clickable { viewModel.onSearchResultSelected(result) }
+                                            .padding(vertical = 8.dp, horizontal = 12.dp),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -208,19 +208,42 @@ fun MapScreen(
                                             tint = Color(0xFF2D5A2D),
                                             modifier = Modifier.size(18.dp)
                                         )
-                                        Column {
-                                            Text(
-                                                text = park.name,
-                                                color = Color(0xFF1A3A1A),
-                                                fontWeight = FontWeight.Medium,
-                                                fontSize = 14.sp
-                                            )
-                                            Text(
-                                                text = park.municipalityName,
-                                                color = Color(0xFF5A7A5A),
-                                                fontSize = 12.sp
-                                            )
-                                        }
+                                        
+                                         val title: String
+                                         val subtitle: String
+                                         
+                                         when (result) {
+                                             is MapSearchResult.State -> {
+                                                 title = result.name
+                                                 subtitle = "Bundesland"
+                                             }
+                                             is MapSearchResult.District -> {
+                                                 title = result.name
+                                                 subtitle = "Landkreis in ${result.stateName}"
+                                             }
+                                             is MapSearchResult.Municipality -> {
+                                                 title = result.name
+                                                 subtitle = "Gemeinde in ${result.stateName}"
+                                             }
+                                             is MapSearchResult.Park -> {
+                                                 title = result.park.name
+                                                 subtitle = "${result.park.municipalityName} • ${result.park.turbineCount} Anlagen"
+                                             }
+                                         }
+                                         
+                                         Column(modifier = Modifier.weight(1f)) {
+                                             Text(
+                                                 text = title,
+                                                 color = Color(0xFF1A3A1A),
+                                                 fontWeight = FontWeight.Medium,
+                                                 fontSize = 14.sp
+                                             )
+                                             Text(
+                                                 text = subtitle,
+                                                 color = Color(0xFF5A7A5A),
+                                                 fontSize = 12.sp
+                                             )
+                                         }
                                     }
                                 }
                             }
