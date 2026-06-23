@@ -93,7 +93,8 @@ Data-quality labels: `official`, `measured`, `derived`, `estimated`, `simulated`
 ## Current Baseline
 - App root: `app.App`, wrapping `AppNavHost` in `WindklarTheme`.
 - Implemented visual slices: `StartScreen`, `MapScreen`, `FavoritesScreen`, `FaqScreen`, `StatsScreen`, `ProfileScreen`.
-- Scaffold slices: `SearchScreen`, `ParkDetailScreen`, map/search/detail viewmodels, database driver factory and snapshot seed importer.
+- Search is implemented inside the `Map` flow; the separate `SearchScreen`/`SearchViewModel`/`SearchUiState` placeholder has been removed.
+- Remaining scaffold slices: `ParkDetailScreen`, map/detail viewmodels, database driver factory and snapshot seed importer.
 - Missing slice: `ReportWindTurbine` route/package/form.
 - UI is mostly mock `UiState`; repositories/DAO contracts are not yet wired through generated SQLDelight APIs.
 - AGP 9.x/KMP compatibility warning is accepted for the seminar MVP unless the build breaks.

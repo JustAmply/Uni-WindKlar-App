@@ -496,7 +496,8 @@ Figma ist die Quelle der Wahrheit für Screenset, Informationsarchitektur, Kompo
 - Aktuelles Routenmodell: `Start`, `Map`, `Stats`, `Favorites`, `Faq`, `Profile`, `Detail(parkId)`.
 - Aktuelle Routen der obersten Ebene in der unteren Navigation: `Map`, `Stats`, `Favorites`, `Faq`, `Profile` / `Info & Einstellungen`.
 - Implementierte visuelle Umsetzungsschritte: `StartScreen`, `MapScreen`, `FavoritesScreen`, `FaqScreen`, `StatsScreen` und `ProfileScreen`.
-- Platzhalter- oder Gerüst-Umsetzungsschritte: `SearchScreen`, `ParkDetailScreen`, `MapViewModel`, `SearchViewModel`, `ParkDetailViewModel`, Datenbank-Driver-Factory und Seed-Importer.
+- Suche ist im `Map`-Flow umgesetzt; der separate `SearchScreen`-/`SearchViewModel`-/`SearchUiState`-Platzhalter wurde entfernt.
+- Verbleibende Platzhalter- oder Gerüst-Umsetzungsschritte: `ParkDetailScreen`, `MapViewModel`, `ParkDetailViewModel`, Datenbank-Driver-Factory und Seed-Importer.
 - Fehlender Umsetzungsschritt: `ReportWindTurbine`-Route/-Paket/-Formular ist noch nicht implementiert.
 - Aktueller Datenstand: Die UI ist überwiegend durch Mock-`UiState`-Defaults gestützt; Repository- und DAO-Verträge existieren, sind aber noch nicht über generierte SQLDelight-Datenbank-APIs verdrahtet.
 - Aktuelle Assets: Start-Hintergrund/Icon und Favoriten-Windpark-Thumbnails sind unter `composeResources/drawable` gebündelt.
