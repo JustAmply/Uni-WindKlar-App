@@ -5,6 +5,7 @@ import app.core.model.Metric
 import app.core.model.SnapshotAssumption
 import app.core.model.WindTurbine
 import app.core.model.DataHint
+import app.core.model.FavoriteRegion
 import app.data.local.dao.*
 import app.data.local.entity.WindParkEntity
 import app.data.local.db.AppDatabase
@@ -69,6 +70,48 @@ class SqlDelightWindParkRepository(
             favoriteDao.addFavorite(parkId, epochMillis())
         } else {
             favoriteDao.removeFavorite(parkId)
+        }
+    }
+
+    override suspend fun getFavoriteRegions(): List<FavoriteRegion> = withContext(Dispatchers.Default) {
+        val favoriteEntities = favoriteDao.getFavoriteRegions()
+        if (favoriteEntities.isEmpty()) return@withContext emptyList()
+        
+        val allParks = windParkDao.getAll()
+        
+        favoriteEntities.mapNotNull { entity ->
+            val regionParks = allParks.filter { park ->
+                when (entity.regionType.lowercase()) {
+                    "city" -> park.municipalityId == entity.regionId
+                    "district" -> park.districtId == entity.regionId
+                    "state" -> park.stateId == entity.regionId
+                    else -> false
+                }
+            }
+            val firstPark = regionParks.firstOrNull() ?: return@mapNotNull null
+            val regionName = when (entity.regionType.lowercase()) {
+                "city" -> firstPark.municipalityName
+                "district" -> firstPark.districtName
+                "state" -> firstPark.stateName
+                else -> ""
+            }
+            FavoriteRegion(
+                type = entity.regionType,
+                id = entity.regionId,
+                name = regionName
+            )
+        }
+    }
+
+    override suspend fun isRegionFavorite(type: String, id: String): Boolean = withContext(Dispatchers.Default) {
+        favoriteDao.isRegionFavorite(type, id)
+    }
+
+    override suspend fun setRegionFavorite(type: String, id: String, isFavorite: Boolean): Unit = withContext(Dispatchers.Default) {
+        if (isFavorite) {
+            favoriteDao.addRegionFavorite(type, id, epochMillis())
+        } else {
+            favoriteDao.removeRegionFavorite(type, id)
         }
     }
 

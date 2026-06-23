@@ -22,6 +22,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.Home
@@ -58,6 +60,7 @@ private val DarkGreen = Color(0xFF1A3A1A)
 private val MutedGreen = Color(0xFF5A7A5A)
 private val PaleGreen = Color(0xFFE8F5E9)
 private val TrackGreen = Color(0xFFDDEBDD)
+private val HeartRed = Color(0xFFE53935)
 
 @Composable
 fun RegionDetailScreen(
@@ -101,6 +104,7 @@ fun RegionDetailScreen(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
@@ -115,6 +119,22 @@ fun RegionDetailScreen(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Zurück",
                         tint = Color.White,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.2f), CircleShape)
+                        .clickable(onClick = viewModel::toggleFavorite),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = if (uiState.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = "Favorit",
+                        tint = if (uiState.isFavorite) HeartRed else Color.White,
                         modifier = Modifier.size(20.dp),
                     )
                 }

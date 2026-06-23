@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.data.repository.WindParkRepository
 import kotlinx.coroutines.launch
+import app.core.model.FavoriteRegion
 
 class FavoritesViewModel(private val repository: WindParkRepository) : ViewModel() {
     var uiState: FavoritesUiState by mutableStateOf(FavoritesUiState())
@@ -20,6 +21,10 @@ class FavoritesViewModel(private val repository: WindParkRepository) : ViewModel
         viewModelScope.launch {
             val favs = repository.getFavoriteWindParks()
             val recents = repository.getRecentWindParks(5)
+            val favRegions = repository.getFavoriteRegions()
+            
+            val allParks = repository.getWindParks()
+            val allMetrics = repository.getAllMetrics()
             
             val favUiList = favs.map { park ->
                 val metrics = repository.getMetricsForPark(park.id)
@@ -37,6 +42,42 @@ class FavoritesViewModel(private val repository: WindParkRepository) : ViewModel
                     co2Reduction = co2Str,
                     thumbnail = getThumbnailForId(park.id),
                     isFavorite = park.isFavorite,
+                )
+            }
+
+            val favRegionUiList = favRegions.map { region ->
+                val regionParks = allParks.filter { park ->
+                    when (region.type.lowercase()) {
+                        "city" -> park.municipalityId == region.id
+                        "district" -> park.districtId == region.id
+                        "state" -> park.stateId == region.id
+                        else -> false
+                    }
+                }
+                
+                val regionParkIds = regionParks.map { it.id }.toSet()
+                val regionMetrics = allMetrics.filter { it.subjectId in regionParkIds }
+                
+                val prodMetricSum = regionMetrics.filter { it.metricType == "annual_production" }.sumOf { it.value ?: 0.0 }
+                val co2MetricSum = regionMetrics.filter { it.metricType == "co2_savings" }.sumOf { it.value ?: 0.0 }
+                
+                val prodStr = formatProduction(prodMetricSum)
+                val co2Str = formatCo2(co2MetricSum)
+                
+                FavoriteRegionUiModel(
+                    id = region.id,
+                    name = region.name,
+                    type = region.type,
+                    typeLabel = when (region.type.lowercase()) {
+                        "city" -> "Gemeinde"
+                        "district" -> "Landkreis"
+                        "state" -> "Bundesland"
+                        else -> "Region"
+                    },
+                    production = prodStr,
+                    co2Reduction = co2Str,
+                    thumbnail = getThumbnailForId(region.id),
+                    isFavorite = true
                 )
             }
 
@@ -59,7 +100,11 @@ class FavoritesViewModel(private val repository: WindParkRepository) : ViewModel
                 )
             }
 
-            uiState = FavoritesUiState(parks = favUiList, recents = recentUiList)
+            uiState = FavoritesUiState(
+                parks = favUiList,
+                regions = favRegionUiList,
+                recents = recentUiList
+            )
         }
     }
 

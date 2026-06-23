@@ -33,6 +33,7 @@ class RegionDetailViewModel(
             val allParks = repository.getWindParks()
             val assumptions = repository.getSnapshotAssumptions()
             val attribution = repository.getSnapshotAttribution()
+            val isFav = repository.isRegionFavorite(regionType, regionId)
 
             // Filter parks belonging to this region
             val regionParks = allParks.filter { park ->
@@ -217,7 +218,16 @@ class RegionDetailViewModel(
                 windParks = regionParks.sortedBy { it.name },
                 subRegionRankings = subRegionRankings,
                 attribution = attribution,
+                isFavorite = isFav,
             )
+        }
+    }
+
+    fun toggleFavorite() {
+        viewModelScope.launch {
+            val nextFav = !uiState.isFavorite
+            repository.setRegionFavorite(regionType, regionId, nextFav)
+            uiState = uiState.copy(isFavorite = nextFav)
         }
     }
 }

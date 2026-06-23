@@ -37,4 +37,5 @@ data class RegionDetailUiState(
     val windParks: List<WindPark> = emptyList(),
     val subRegionRankings: List<RankingItem> = emptyList(),
     val attribution: String = "",
+    val isFavorite: Boolean = false,
 )

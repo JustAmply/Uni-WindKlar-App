@@ -57,9 +57,9 @@ private val HeartRed = Color(0xFFE53935)
 
 @Composable
 fun FavoritesScreen(
-
     viewModel: FavoritesViewModel,
     onParkSelected: (parkId: String) -> Unit,
+    onRegionSelected: (type: String, id: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState = viewModel.uiState
@@ -91,7 +91,7 @@ fun FavoritesScreen(
                 fontWeight = FontWeight.Bold,
             )
 
-            if (uiState.parks.isEmpty()) {
+            if (uiState.parks.isEmpty() && uiState.regions.isEmpty()) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -99,7 +99,7 @@ fun FavoritesScreen(
                     shadowElevation = 4.dp
                 ) {
                     Text(
-                        text = "Keine Favoriten gespeichert. Tippe auf der Karte auf einen Windpark und füge ihn zu deinen Favoriten hinzu!",
+                        text = "Keine Favoriten gespeichert. Tippe auf der Karte auf einen Windpark oder eine Region und füge sie zu deinen Favoriten hinzu!",
                         color = MutedGreen,
                         fontSize = 14.sp,
                         lineHeight = 20.sp,
@@ -107,11 +107,35 @@ fun FavoritesScreen(
                     )
                 }
             } else {
-                uiState.parks.forEach { park ->
-                    FavoriteParkCard(
-                        park = park,
-                        onClick = { onParkSelected(park.id) },
+                if (uiState.parks.isNotEmpty()) {
+                    Text(
+                        text = "Windparks",
+                        color = DarkGreen,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
                     )
+                    uiState.parks.forEach { park ->
+                        FavoriteParkCard(
+                            park = park,
+                            onClick = { onParkSelected(park.id) },
+                        )
+                    }
+                }
+
+                if (uiState.regions.isNotEmpty()) {
+                    Text(
+                        text = "Regionen",
+                        color = DarkGreen,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                    uiState.regions.forEach { region ->
+                        FavoriteRegionCard(
+                            region = region,
+                            onClick = { onRegionSelected(region.type, region.id) },
+                        )
+                    }
                 }
             }
 
@@ -301,6 +325,75 @@ private fun FavoriteMetricChip(
                 lineHeight = 16.sp,
                 maxLines = 1,
             )
+        }
+    }
+}
+
+@Composable
+private fun FavoriteRegionCard(
+    region: FavoriteRegionUiModel,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = WindklarTheme.colors.cardBackground,
+        shadowElevation = 6.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FavoriteThumbnail(thumbnail = region.thumbnail, isFavorite = region.isFavorite)
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = region.name,
+                    color = Color(0xFF1A3A1A),
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.LocationOn,
+                        contentDescription = null,
+                        tint = MutedGreen,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = region.typeLabel,
+                        color = MutedGreen,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    FavoriteMetricChip(
+                        text = region.production,
+                        icon = Icons.Outlined.Bolt,
+                    )
+                    FavoriteMetricChip(
+                        text = region.co2Reduction,
+                        icon = Icons.Outlined.Eco,
+                    )
+                }
+            }
         }
     }
 }

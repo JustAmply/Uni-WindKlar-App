@@ -242,6 +242,9 @@ fun AppNavHost(database: AppDatabase, locationProvider: LocationProvider) {
                     onParkSelected = { parkId ->
                         navigateTo(Route.Detail(parkId))
                     },
+                    onRegionSelected = { type, id ->
+                        navigateTo(Route.RegionDetail(type, id))
+                    },
                 )
 
                 Route.Faq -> FaqScreen()

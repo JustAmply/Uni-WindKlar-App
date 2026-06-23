@@ -5,6 +5,7 @@ import app.core.model.Metric
 import app.core.model.SnapshotAssumption
 import app.core.model.WindTurbine
 import app.core.model.DataHint
+import app.core.model.FavoriteRegion
 
 interface WindParkRepository {
     suspend fun getWindParks(): List<WindPark>
@@ -14,6 +15,10 @@ interface WindParkRepository {
     suspend fun getFavoriteWindParks(): List<WindPark>
     suspend fun isFavorite(parkId: String): Boolean
     suspend fun setFavorite(parkId: String, isFavorite: Boolean)
+    
+    suspend fun getFavoriteRegions(): List<FavoriteRegion>
+    suspend fun isRegionFavorite(type: String, id: String): Boolean
+    suspend fun setRegionFavorite(type: String, id: String, isFavorite: Boolean)
     
     suspend fun getRecentWindParks(limit: Long = 10): List<WindPark>
     suspend fun recordRecentWindPark(parkId: String)
