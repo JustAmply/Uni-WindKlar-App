@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import app.core.model.FavoriteRegion
 import app.core.model.isOffshore
 import app.core.model.isOffshoreMunicipalityId
+import app.core.util.formatGermanNumber
 
 class FavoritesViewModel(private val repository: WindParkRepository) : ViewModel() {
     var uiState: FavoritesUiState by mutableStateOf(FavoritesUiState())
@@ -114,13 +115,13 @@ class FavoritesViewModel(private val repository: WindParkRepository) : ViewModel
     private fun formatProduction(value: Double?): String {
         if (value == null) return "k.A."
         val gwh = value / 1_000_000.0
-        return "${gwh.roundTo(1)} GWh"
+        return "${formatGermanNumber(gwh, 1)} GWh"
     }
 
     private fun formatCo2(value: Double?): String {
         if (value == null) return "k.A."
         val tons = value / 1000.0
-        return "${formatNumber(tons.toInt())} t"
+        return "${formatGermanNumber(tons.toInt())} t"
     }
 
     private fun getThumbnailForId(id: String): FavoriteParkThumbnail {
@@ -130,15 +131,5 @@ class FavoritesViewModel(private val repository: WindParkRepository) : ViewModel
             1 -> FavoriteParkThumbnail.Ostsee
             else -> FavoriteParkThumbnail.Alpen
         }
-    }
-
-    private fun Double.roundTo(decimals: Int): Double {
-        var multiplier = 1.0
-        repeat(decimals) { multiplier *= 10 }
-        return kotlin.math.round(this * multiplier) / multiplier
-    }
-
-    private fun formatNumber(number: Int): String {
-        return number.toString().reversed().chunked(3).joinToString(".").reversed()
     }
 }

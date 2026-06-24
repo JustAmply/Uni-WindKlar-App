@@ -52,6 +52,7 @@ import app.core.ui.components.StatusBadge
 import app.core.ui.components.formatDataQuality
 import app.core.ui.components.qualityColors
 import androidx.compose.ui.text.style.TextOverflow
+import app.core.util.formatGermanNumber
 
 private val ScreenBackground @Composable get() = WindklarTheme.colors.screenBackground
 private val PrimaryGreen @Composable get() = WindklarTheme.colors.primaryGreen
@@ -226,7 +227,7 @@ private fun SummaryCard(
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Gesamtleistung", color = MutedGreen, fontSize = 12.sp)
-                    val capStr = park.installedCapacityKw?.let { "${(it / 1000.0).roundTo(1)} MW" } ?: "k.A."
+                    val capStr = park.installedCapacityKw?.let { "${formatGermanNumber(it / 1000.0, 1)} MW" } ?: "k.A."
                     Text(capStr, color = DarkGreen, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
@@ -306,9 +307,9 @@ private fun CitizenImpactDashboard(metrics: List<Metric>) {
     val houseMetric = metrics.firstOrNull { it.metricType == "households_supplied" } ?: metrics.firstOrNull { it.metricType == "household_equivalent" }
     val muniMetric = metrics.firstOrNull { it.metricType == "municipal_participation" }
 
-    val prodVal = prodMetric?.value?.let { "${(it / 1_000_000.0).roundTo(1)} GWh/Jahr" } ?: "Keine Daten"
-    val co2Val = co2Metric?.value?.let { "${formatNumber((it / 1000.0).toInt())} t/Jahr" } ?: "Keine Daten"
-    val houseVal = houseMetric?.value?.let { "${formatNumber(it.toInt())} Haushalte" } ?: "Keine Daten"
+    val prodVal = prodMetric?.value?.let { "${formatGermanNumber(it / 1_000_000.0, 1)} GWh/Jahr" } ?: "Keine Daten"
+    val co2Val = co2Metric?.value?.let { "${formatGermanNumber((it / 1000.0).toInt())} t/Jahr" } ?: "Keine Daten"
+    val houseVal = houseMetric?.value?.let { "${formatGermanNumber(it.toInt())} Haushalte" } ?: "Keine Daten"
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -550,7 +551,7 @@ private fun TurbineCard(turbine: WindTurbine) {
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Nennleistung", color = MutedGreen, fontSize = 11.sp)
-                    val powStr = turbine.installedCapacityKw?.let { "${(it / 1000.0).roundTo(1)} MW" } ?: "k.A."
+                    val powStr = turbine.installedCapacityKw?.let { "${formatGermanNumber(it / 1000.0, 1)} MW" } ?: "k.A."
                     Text(powStr, color = DarkGreen, fontSize = 13.sp)
                 }
             }
@@ -558,12 +559,12 @@ private fun TurbineCard(turbine: WindTurbine) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Nabenhöhe", color = MutedGreen, fontSize = 11.sp)
-                    val heightStr = turbine.hubHeightM?.let { "${it.roundTo(1)} m" } ?: "k.A."
+                    val heightStr = turbine.hubHeightM?.let { "${formatGermanNumber(it, 1)} m" } ?: "k.A."
                     Text(heightStr, color = DarkGreen, fontSize = 13.sp)
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Rotordurchmesser", color = MutedGreen, fontSize = 11.sp)
-                    val diamStr = turbine.rotorDiameterM?.let { "${it.roundTo(1)} m" } ?: "k.A."
+                    val diamStr = turbine.rotorDiameterM?.let { "${formatGermanNumber(it, 1)} m" } ?: "k.A."
                     Text(diamStr, color = DarkGreen, fontSize = 13.sp)
                 }
             }
@@ -629,26 +630,11 @@ private fun DataSourceAttributionCard(attribution: String) {
     }
 }
 
-private fun Double.roundTo(decimals: Int): Double {
-    var multiplier = 1.0
-    repeat(decimals) { multiplier *= 10 }
-    return kotlin.math.round(this * multiplier) / multiplier
-}
+private fun formatNumber(number: Int): String = formatGermanNumber(number)
 
-private fun formatNumber(number: Int): String {
-    return number.toString().reversed().chunked(3).joinToString(".").reversed()
-}
-
-private fun formatAssumptionValue(value: Double): String {
-    val roundedInt = value.toInt()
-    return if (value == roundedInt.toDouble()) {
-        formatNumber(roundedInt)
-    } else {
-        value.toString().replace(".", ",")
-    }
-}
+private fun formatAssumptionValue(value: Double): String = formatGermanNumber(value, 2, true)
 
 private fun formatTurbineCount(count: Int): String {
     val unit = if (count == 1) "Windrad" else "Windräder"
-    return "$count $unit"
+    return "${formatGermanNumber(count)} $unit"
 }

@@ -55,6 +55,7 @@ import org.jetbrains.compose.resources.painterResource
 import windklar.composeapp.generated.resources.Res
 import windklar.composeapp.generated.resources.start_background
 import kotlin.math.roundToInt
+import app.core.util.formatGermanNumber
 
 enum class EntityType {
     PARK,
@@ -317,11 +318,11 @@ fun EntityPreviewSheet(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     val prodStr = previewData.annualProductionGwh?.let {
-                        "${it.roundTo(1).toString().replace(".", ",")} GWh"
+                        "${formatGermanNumber(it, 1)} GWh"
                     } ?: "k.A."
 
                     val co2Str = previewData.co2SavingsTons?.let {
-                        "${formatNumber(it.toInt())} t"
+                        "${formatGermanNumber(it.toInt())} t"
                     } ?: "k.A."
 
                     MetricCard(
@@ -406,12 +407,4 @@ private fun MetricCard(
     }
 }
 
-private fun Double.roundTo(decimals: Int): Double {
-    var multiplier = 1.0
-    repeat(decimals) { multiplier *= 10 }
-    return kotlin.math.round(this * multiplier) / multiplier
-}
 
-private fun formatNumber(number: Int): String {
-    return number.toString().reversed().chunked(3).joinToString(".").reversed()
-}

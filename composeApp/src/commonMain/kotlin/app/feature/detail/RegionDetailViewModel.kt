@@ -13,6 +13,8 @@ import app.core.model.isOffshore
 import app.data.repository.WindParkRepository
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import app.core.util.formatGermanNumber
+import app.core.util.roundTo
 
 class RegionDetailViewModel(
     val regionType: String,
@@ -152,11 +154,11 @@ class RegionDetailViewModel(
                             rank = index + 1,
                             name = name,
                             subtitle = regionName,
-                            valueLabel = "${capMw.roundTo(1).toString().replace(".", ",")} MW",
+                            valueLabel = "${formatGermanNumber(capMw, 1)} MW",
                             progress = (capKw.toDouble() / maxCap).toFloat().coerceIn(0f, 1f),
                             details = listOf(
-                                RankingDetailLine("Windparks", parksCount.toString()),
-                                RankingDetailLine("Anlagen", turbinesCount.toString()),
+                                RankingDetailLine("Windparks", formatGermanNumber(parksCount)),
+                                RankingDetailLine("Anlagen", formatGermanNumber(turbinesCount)),
                                 RankingDetailLine("Anteil am Bundesland", formatPercent(share)),
                             )
                         )
@@ -181,11 +183,11 @@ class RegionDetailViewModel(
                             rank = index + 1,
                             name = name,
                             subtitle = regionName,
-                            valueLabel = "${capMw.roundTo(1).toString().replace(".", ",")} MW",
+                            valueLabel = "${formatGermanNumber(capMw, 1)} MW",
                             progress = (capKw.toDouble() / maxCap).toFloat().coerceIn(0f, 1f),
                             details = listOf(
-                                RankingDetailLine("Windparks", parksCount.toString()),
-                                RankingDetailLine("Anlagen", turbinesCount.toString()),
+                                RankingDetailLine("Windparks", formatGermanNumber(parksCount)),
+                                RankingDetailLine("Anlagen", formatGermanNumber(turbinesCount)),
                                 RankingDetailLine("Anteil am Landkreis", formatPercent(share)),
                             )
                         )
@@ -244,14 +246,4 @@ class RegionDetailViewModel(
     }
 }
 
-private fun Double.roundTo(decimals: Int): Double {
-    var multiplier = 1.0
-    repeat(decimals) { multiplier *= 10 }
-    return kotlin.math.round(this * multiplier) / multiplier
-}
-
-private fun formatPercent(value: Float): String {
-    val pct = value * 100
-    val rounded = (pct * 10).roundToInt() / 10.0
-    return rounded.toString().replace(".", ",") + "%"
-}
+private fun formatPercent(value: Float): String = "${formatGermanNumber(value * 100.0f, 1)}%"

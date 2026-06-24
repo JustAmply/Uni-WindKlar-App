@@ -14,6 +14,8 @@ import app.core.model.isOffshore
 import app.data.repository.WindParkRepository
 import kotlinx.coroutines.launch
 import kotlin.math.round
+import app.core.util.formatGermanNumber
+import app.core.util.roundTo
 
 private const val DEFAULT_FULL_LOAD_HOURS = 2_000.0
 private const val DEFAULT_EMISSION_FACTOR_KG_PER_KWH = 0.38
@@ -573,13 +575,13 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
             formatInteger(it.roundToInt())
         }!!)
         add(comparisonRow("Leistung", metricsA.capacityMw, metricsB.capacityMw) {
-            "${it.roundTo(1).formatGerman()} MW"
+            "${formatGermanNumber(it, 1)} MW"
         }!!)
         add(comparisonRow("Jahresproduktion", metricsA.annualProductionKwh, metricsB.annualProductionKwh) {
-            "${(it / 1_000_000.0).roundTo(1).formatGerman()} GWh"
+            "${formatGermanNumber(it / 1_000_000.0, 1)} GWh"
         }!!)
         add(comparisonRow("CO2-Einsparung", metricsA.co2Kg, metricsB.co2Kg) {
-            "${(it / 1_000.0).roundTo(0).formatGerman()} t"
+            "${formatGermanNumber(it / 1_000.0, 0)} t"
         }!!)
         add(comparisonRow("Haushaltsäquivalente", metricsA.households, metricsB.households) {
             formatCompact(it)
@@ -705,7 +707,7 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
             Co2Comparison(
                 label = label,
                 value = when (label) {
-                    "Kohlekraftwerksjahre" -> "ca. ${value.roundTo(0).formatGerman()} Jahre"
+                    "Kohlekraftwerksjahre" -> "ca. ${formatGermanNumber(value, 0)} Jahre"
                     else -> "ca. ${formatCompact(value)}"
                 },
                 description = when (label) {
@@ -773,11 +775,7 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
         fallback: Double,
     ): Double = assumptions.firstOrNull { it.id == id }?.value ?: fallback
 
-    private fun formatInteger(value: Int): String = value.toString()
-        .reversed()
-        .chunked(3)
-        .joinToString(".")
-        .reversed()
+    private fun formatInteger(value: Int): String = formatGermanNumber(value)
 
     private fun formatGermanDate(isoDate: String): String {
         val parts = isoDate.split("-")
@@ -789,56 +787,44 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
     private fun formatEnergy(kwh: Double): String {
         val twh = kwh / 1_000_000_000.0
         return if (twh >= 1.0) {
-            "${twh.roundTo(1).formatGerman()} TWh"
+            "${formatGermanNumber(twh, 1)} TWh"
         } else {
-            "${(kwh / 1_000_000.0).roundTo(1).formatGerman()} GWh"
+            "${formatGermanNumber(kwh / 1_000_000.0, 1)} GWh"
         }
     }
 
     private fun formatCapacity(mw: Double): String =
         if (mw >= 1_000.0) {
-            "${(mw / 1_000.0).roundTo(1).formatGerman()} GW"
+            "${formatGermanNumber(mw / 1_000.0, 1)} GW"
         } else {
-            "${mw.roundTo(0).formatGerman()} MW"
+            "${formatGermanNumber(mw, 0)} MW"
         }
 
     private fun formatCo2(kg: Double): String {
         val mioTons = kg / 1_000_000_000.0
-        return "${mioTons.roundTo(1).formatGerman()} Mio. t"
+        return "${formatGermanNumber(mioTons, 1)} Mio. t"
     }
 
     private fun formatCurrency(value: Double): String =
         if (value >= 1_000_000_000.0) {
-            "${(value / 1_000_000_000.0).roundTo(1).formatGerman()} Mrd. EUR"
+            "${formatGermanNumber(value / 1_000_000_000.0, 1)} Mrd. EUR"
         } else if (value >= 1_000_000.0) {
-            "${(value / 1_000_000.0).roundTo(1).formatGerman()} Mio. EUR"
+            "${formatGermanNumber(value / 1_000_000.0, 1)} Mio. EUR"
         } else {
-            "${value.roundTo(0).formatGerman()} EUR"
+            "${formatGermanNumber(value, 0)} EUR"
         }
 
     private fun formatCompact(value: Double): String =
         if (value >= 1_000_000.0) {
-            "${(value / 1_000_000.0).roundTo(1).formatGerman()} Mio."
+            "${formatGermanNumber(value / 1_000_000.0, 1)} Mio."
         } else {
-            formatInteger(value.roundToInt())
+            formatGermanNumber(round(value).toInt())
         }
 
     private fun formatPercent(value: Float): String =
-        "${(value * 100.0).roundTo(1).formatGerman()} %"
-
-    private fun Double.roundTo(decimals: Int): Double {
-        var multiplier = 1.0
-        repeat(decimals) { multiplier *= 10 }
-        return round(this * multiplier) / multiplier
-    }
+        "${formatGermanNumber(value * 100.0, 1)} %"
 
     private fun Double.roundToInt(): Int = round(this).toInt()
-
-    private fun Double.formatGerman(): String {
-        val rounded = toString()
-        val normalized = if (rounded.endsWith(".0")) rounded.dropLast(2) else rounded
-        return normalized.replace(".", ",")
-    }
 
     private fun buildRankingItems(
         type: RankingType,
@@ -861,11 +847,11 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
                         rank = index + 1,
                         name = park.name,
                         subtitle = "${park.municipalityName}, ${park.stateName}",
-                        valueLabel = "${capacityMw.roundTo(1).formatGerman()} MW",
+                        valueLabel = "${formatGermanNumber(capacityMw, 1)} MW",
                         progress = ((park.installedCapacityKw ?: 0L) / maxCapacity).toFloat().coerceIn(0f, 1f),
                         details = listOf(
-                            RankingDetailLine("Anlagen", park.turbineCount.toString()),
-                            RankingDetailLine("Leistung", "${capacityMw.roundTo(1).formatGerman()} MW"),
+                            RankingDetailLine("Anlagen", formatGermanNumber(park.turbineCount)),
+                            RankingDetailLine("Leistung", "${formatGermanNumber(capacityMw, 1)} MW"),
                             RankingDetailLine("Gemeinde", park.municipalityName),
                             RankingDetailLine("Datenqualität", formatDataQualityLabel(park.dataQuality)),
                         )
@@ -880,11 +866,11 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
                         rank = index + 1,
                         name = city.label,
                         subtitle = "${city.districtName}, ${city.stateName}",
-                        valueLabel = "${city.installedCapacityMw.roundTo(1).formatGerman()} MW",
+                        valueLabel = "${formatGermanNumber(city.installedCapacityMw, 1)} MW",
                         progress = (city.installedCapacityMw / maxCapacity).toFloat().coerceIn(0f, 1f),
                         details = listOf(
-                            RankingDetailLine("Windparks", city.windParkCount.toString()),
-                            RankingDetailLine("Anlagen", city.turbineCount.toString()),
+                            RankingDetailLine("Windparks", formatGermanNumber(city.windParkCount)),
+                            RankingDetailLine("Anlagen", formatGermanNumber(city.turbineCount)),
                             RankingDetailLine("Anteil am Bundesland", formatPercent(city.shareOfStateCapacity)),
                         )
                     )
@@ -898,11 +884,11 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
                         rank = index + 1,
                         name = district.label,
                         subtitle = district.stateName,
-                        valueLabel = "${district.installedCapacityMw.roundTo(1).formatGerman()} MW",
+                        valueLabel = "${formatGermanNumber(district.installedCapacityMw, 1)} MW",
                         progress = (district.installedCapacityMw / maxCapacity).toFloat().coerceIn(0f, 1f),
                         details = listOf(
-                            RankingDetailLine("Windparks", district.windParkCount.toString()),
-                            RankingDetailLine("Anlagen", district.turbineCount.toString()),
+                            RankingDetailLine("Windparks", formatGermanNumber(district.windParkCount)),
+                            RankingDetailLine("Anlagen", formatGermanNumber(district.turbineCount)),
                             RankingDetailLine("Anteil am Bundesland", formatPercent(district.shareOfStateCapacity)),
                         )
                     )
@@ -916,11 +902,11 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
                         rank = index + 1,
                         name = state.label,
                         subtitle = "Deutschland",
-                        valueLabel = "${state.installedCapacityMw.roundTo(1).formatGerman()} MW",
+                        valueLabel = "${formatGermanNumber(state.installedCapacityMw, 1)} MW",
                         progress = (state.installedCapacityMw / maxCapacity).toFloat().coerceIn(0f, 1f),
                         details = listOf(
-                            RankingDetailLine("Windparks", state.windParkCount.toString()),
-                            RankingDetailLine("Anlagen", state.turbineCount.toString()),
+                            RankingDetailLine("Windparks", formatGermanNumber(state.windParkCount)),
+                            RankingDetailLine("Anlagen", formatGermanNumber(state.turbineCount)),
                             RankingDetailLine("Anteil am Bund", formatPercent(state.shareOfNationalCapacity)),
                         )
                     )

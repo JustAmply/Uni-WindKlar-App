@@ -53,6 +53,7 @@ import app.core.ui.components.formatDataQuality
 import app.core.ui.components.qualityColors
 import app.core.ui.components.RankingList
 import app.core.ui.theme.WindklarTheme
+import app.core.util.formatGermanNumber
 
 
 
@@ -286,7 +287,7 @@ private fun RegionSummaryCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Windräder", color = WindklarTheme.colors.mutedGreen, fontSize = 12.sp)
                     Text(
-                        text = "$turbineCount Anlage${if (turbineCount == 1) "" else "n"}",
+                        text = "${formatGermanNumber(turbineCount)} Anlage${if (turbineCount == 1) "" else "n"}",
                         color = WindklarTheme.colors.darkGreen,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
@@ -295,7 +296,7 @@ private fun RegionSummaryCard(
                 Column(modifier = Modifier.weight(1.2f)) {
                     Text("Gesamtleistung", color = WindklarTheme.colors.mutedGreen, fontSize = 12.sp)
                     Text(
-                        text = "${installedCapacityMw.roundTo(1).toString().replace(".", ",")} MW",
+                        text = "${formatGermanNumber(installedCapacityMw, 1)} MW",
                         color = WindklarTheme.colors.darkGreen,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
@@ -394,7 +395,7 @@ private fun RegionCitizenImpactDashboard(
             RegionImpactRow(
                 icon = Icons.Outlined.Bolt,
                 label = "Jahresproduktion",
-                value = "${productionGwh.roundTo(1).toString().replace(".", ",")} GWh/Jahr",
+                value = "${formatGermanNumber(productionGwh, 1)} GWh/Jahr",
                 note = "Geschätzte Stromerzeugung pro Jahr aller Windparks in dieser Region.",
                 quality = "estimated"
             )
@@ -402,7 +403,7 @@ private fun RegionCitizenImpactDashboard(
             RegionImpactRow(
                 icon = Icons.Outlined.Eco,
                 label = "Vermiedenes CO2",
-                value = "${formatNumber(co2SavingsTons.toInt())} t/Jahr",
+                value = "${formatGermanNumber(co2SavingsTons.toInt())} t/Jahr",
                 note = "Eingesparter CO2-Ausstoß im deutschen Strommix pro Jahr.",
                 quality = "estimated"
             )
@@ -410,7 +411,7 @@ private fun RegionCitizenImpactDashboard(
             RegionImpactRow(
                 icon = Icons.Outlined.Home,
                 label = "Versorgte Haushalte",
-                value = "${formatNumber(householdsSupplied)} Haushalte",
+                value = "${formatGermanNumber(householdsSupplied)} Haushalte",
                 note = "Rechnerische Abdeckung privater 3-Personen-Haushalte (3.500 kWh/Jahr).",
                 quality = "estimated"
             )
@@ -430,7 +431,7 @@ private fun RegionCitizenImpactDashboard(
                 RegionImpactRow(
                     icon = Icons.Outlined.MonetizationOn,
                     label = muniLabel,
-                    value = "ca. ${formatNumber(benefit.toInt())} EUR/Jahr",
+                    value = "ca. ${formatGermanNumber(benefit.toInt())} EUR/Jahr",
                     note = muniNote,
                     quality = "estimated"
                 )
@@ -563,16 +564,16 @@ private fun WindParksSection(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "${park.turbineCount} Anlage${if (park.turbineCount == 1) "" else "n"}",
-                                color = WindklarTheme.colors.mutedGreen,
-                                fontSize = 12.sp
-                            )
-                            Text(
-                                text = "${capMw.roundTo(1).toString().replace(".", ",")} MW",
-                                color = WindklarTheme.colors.mutedGreen,
-                                fontSize = 12.sp
-                            )
+                             Text(
+                                 text = "${formatGermanNumber(park.turbineCount)} Anlage${if (park.turbineCount == 1) "" else "n"}",
+                                 color = WindklarTheme.colors.mutedGreen,
+                                 fontSize = 12.sp
+                             )
+                             Text(
+                                 text = "${formatGermanNumber(capMw, 1)} MW",
+                                 color = WindklarTheme.colors.mutedGreen,
+                                 fontSize = 12.sp
+                             )
                         }
 
                         Surface(
@@ -726,29 +727,8 @@ private fun DataSourceAttributionCard(attribution: String) {
     }
 }
 
-private fun Double.roundTo(decimals: Int): Double {
-    var multiplier = 1.0
-    repeat(decimals) { multiplier *= 10 }
-    return kotlin.math.round(this * multiplier) / multiplier
-}
+private fun formatNumber(number: Int): String = formatGermanNumber(number)
 
-private fun Float.roundTo(decimals: Int): Float = this.toDouble().roundTo(decimals).toFloat()
+private fun formatAssumptionValue(value: Double): String = formatGermanNumber(value, 2, true)
 
-private fun formatNumber(number: Int): String {
-    return number.toString().reversed().chunked(3).joinToString(".").reversed()
-}
-
-private fun formatAssumptionValue(value: Double): String {
-    val roundedInt = value.toInt()
-    return if (value == roundedInt.toDouble()) {
-        formatNumber(roundedInt)
-    } else {
-        value.toString().replace(".", ",")
-    }
-}
-
-private fun formatPercent(value: Float): String {
-    val pct = value * 100
-    val rounded = pct.roundTo(1)
-    return "${rounded.toString().replace(".", ",")}%"
-}
+private fun formatPercent(value: Float): String = "${formatGermanNumber(value * 100.0f, 1)}%"

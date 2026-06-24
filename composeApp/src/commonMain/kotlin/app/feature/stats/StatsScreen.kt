@@ -76,6 +76,7 @@ import app.core.ui.components.qualityColors
 import app.core.ui.components.RankingList
 import app.core.ui.components.RankingItemRow
 import app.core.ui.theme.WindklarTheme
+import app.core.util.formatGermanNumber
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -1055,7 +1056,7 @@ private fun CapacityClassChart(values: List<CapacityClassStat>) {
                                 shadowElevation = 3.dp,
                             ) {
                                 Text(
-                                    text = "${value.count} Parks (${value.percentOfTotal.percentLabel()})",
+                                    text = "${formatGermanNumber(value.count)} Parks (${value.percentOfTotal.percentLabel()})",
                                     color = Color.White,
                                     fontSize = 11.sp,
                                     lineHeight = 14.sp,
@@ -1087,7 +1088,7 @@ private fun CapacityClassChart(values: List<CapacityClassStat>) {
                         textAlign = TextAlign.Center,
                     )
                     Text(
-                        text = value.count.toString(),
+                        text = formatGermanNumber(value.count),
                         color = DarkText,
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
@@ -1669,25 +1670,8 @@ private fun StatsIcon.imageVector(): ImageVector = when (this) {
     StatsIcon.DataQuality -> Icons.Outlined.Info
 }
 
-private fun Double.roundLabel(): String {
-    val rounded = kotlin.math.round(this)
-    return rounded.toInt().toString()
-        .reversed()
-        .chunked(3)
-        .joinToString(".")
-        .reversed()
-}
+private fun Double.roundLabel(): String = formatGermanNumber(kotlin.math.round(this).toInt())
 
-private fun Double.roundOneDecimal(): String {
-    val rounded = kotlin.math.round(this * 10.0) / 10.0
-    return rounded.toString()
-        .let { if (it.endsWith(".0")) it.dropLast(2) else it }
-        .replace(".", ",")
-}
+private fun Double.roundOneDecimal(): String = formatGermanNumber(this, 1)
 
-private fun Float.percentLabel(): String {
-    val rounded = kotlin.math.round(this * 1_000.0) / 10.0
-    return rounded.toString()
-        .let { if (it.endsWith(".0")) it.dropLast(2) else it }
-        .replace(".", ",") + " %"
-}
+private fun Float.percentLabel(): String = "${formatGermanNumber(this * 100.0f, 1)} %"
