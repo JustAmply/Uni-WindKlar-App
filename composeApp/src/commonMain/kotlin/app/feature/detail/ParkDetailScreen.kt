@@ -67,6 +67,7 @@ fun ParkDetailScreen(
     viewModel: ParkDetailViewModel,
     onBack: () -> Unit,
     onNavigateToRegion: (type: String, id: String) -> Unit,
+    onNavigateToCountry: () -> Unit,
 ) {
     val uiState = viewModel.uiState
 
@@ -153,6 +154,17 @@ fun ParkDetailScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+
+            val breadcrumbSegments = listOf(
+                app.core.ui.components.BreadcrumbSegment(name = "Deutschland", onClick = onNavigateToCountry),
+                app.core.ui.components.BreadcrumbSegment(name = park.stateName, onClick = { onNavigateToRegion("state", park.stateId) }),
+                app.core.ui.components.BreadcrumbSegment(name = park.districtName, onClick = { onNavigateToRegion("district", park.districtId) }),
+                app.core.ui.components.BreadcrumbSegment(name = "Gemeinde ${park.municipalityName}", onClick = { onNavigateToRegion("city", park.municipalityId) })
+            )
+            app.core.ui.components.Breadcrumbs(
+                segments = breadcrumbSegments,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            )
 
             Text(
                 text = park.name,

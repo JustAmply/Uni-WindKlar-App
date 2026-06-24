@@ -63,6 +63,7 @@ fun RegionDetailScreen(
     onBack: () -> Unit,
     onParkSelected: (String) -> Unit,
     onRegionSelected: (String, String) -> Unit,
+    onNavigateToCountry: () -> Unit,
 ) {
     val uiState = viewModel.uiState
 
@@ -137,6 +138,43 @@ fun RegionDetailScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            val breadcrumbSegments = when (uiState.regionType.lowercase()) {
+                "state" -> listOfNotNull(
+                    app.core.ui.components.BreadcrumbSegment(name = "Deutschland", onClick = onNavigateToCountry)
+                )
+                "district" -> listOfNotNull(
+                    app.core.ui.components.BreadcrumbSegment(name = "Deutschland", onClick = onNavigateToCountry),
+                    uiState.parentStateName?.takeIf { it.isNotEmpty() }?.let { name ->
+                        app.core.ui.components.BreadcrumbSegment(
+                            name = name,
+                            onClick = uiState.parentStateId?.let { id -> { onRegionSelected("state", id) } }
+                        )
+                    }
+                )
+                "city" -> listOfNotNull(
+                    app.core.ui.components.BreadcrumbSegment(name = "Deutschland", onClick = onNavigateToCountry),
+                    uiState.parentStateName?.takeIf { it.isNotEmpty() }?.let { name ->
+                        app.core.ui.components.BreadcrumbSegment(
+                            name = name,
+                            onClick = uiState.parentStateId?.let { id -> { onRegionSelected("state", id) } }
+                        )
+                    },
+                    uiState.parentDistrictName?.takeIf { it.isNotEmpty() }?.let { name ->
+                        app.core.ui.components.BreadcrumbSegment(
+                            name = name,
+                            onClick = uiState.parentDistrictId?.let { id -> { onRegionSelected("district", id) } }
+                        )
+                    }
+                )
+                else -> listOfNotNull(
+                    app.core.ui.components.BreadcrumbSegment(name = "Deutschland", onClick = onNavigateToCountry)
+                )
+            }
+            app.core.ui.components.Breadcrumbs(
+                segments = breadcrumbSegments,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            )
+
             Text(
                 text = uiState.regionName,
                 color = Color.White,
@@ -150,28 +188,6 @@ fun RegionDetailScreen(
                 fontSize = 16.sp,
                 modifier = Modifier.padding(top = 4.dp)
             )
-
-            // Parent hierarchy links if available
-            if (uiState.parentDistrictId != null || uiState.parentStateId != null) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    uiState.parentDistrictId?.let { distId ->
-                        RegionChip(
-                            label = "Kreis: ${uiState.parentDistrictName}",
-                            onClick = { onRegionSelected("district", distId) }
-                        )
-                    }
-                    uiState.parentStateId?.let { stateId ->
-                        RegionChip(
-                            label = "Land: ${uiState.parentStateName}",
-                            onClick = { onRegionSelected("state", stateId) }
-                        )
-                    }
-                }
-            }
         }
 
         // Content Area

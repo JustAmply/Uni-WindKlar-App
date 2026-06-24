@@ -240,6 +240,12 @@ fun AppNavHost(database: AppDatabase, locationProvider: LocationProvider) {
         }
     }
 
+    val navigateToCountry: () -> Unit = {
+        val topLevelRoute = routeHistory.firstOrNull { it.isTopLevelRoute() } ?: Route.Map
+        routeHistory = emptyList()
+        currentRoute = topLevelRoute
+    }
+
     val mapViewModel = remember(repository, locationProvider) { MapViewModel(repository, locationProvider) }
     val favoritesViewModel = remember(repository) { FavoritesViewModel(repository) }
     val statsViewModel = remember(repository) { StatsViewModel(repository) }
@@ -247,10 +253,14 @@ fun AppNavHost(database: AppDatabase, locationProvider: LocationProvider) {
 
     Scaffold(
         bottomBar = {
-            if (currentRoute.isTopLevelRoute()) {
+            if (currentRoute != Route.Start) {
+                val activeTopLevelRoute = currentRoute.let {
+                    if (it.isTopLevelRoute()) it
+                    else routeHistory.lastOrNull { r -> r.isTopLevelRoute() } ?: Route.Map
+                }
                 WindKlarBottomNav(
                     items = topLevelRoutes.map { route ->
-                        val isSelected = currentRoute.isSameTopLevelRoute(route)
+                        val isSelected = activeTopLevelRoute.isSameTopLevelRoute(route)
                         WindKlarBottomNavItem(
                             label = route.title,
                             icon = route.navIcon(selected = isSelected),
@@ -326,6 +336,7 @@ fun AppNavHost(database: AppDatabase, locationProvider: LocationProvider) {
                         onNavigateToRegion = { type, id ->
                             navigateTo(Route.RegionDetail(type, id))
                         },
+                        onNavigateToCountry = navigateToCountry,
                     )
                 }
 
@@ -342,6 +353,7 @@ fun AppNavHost(database: AppDatabase, locationProvider: LocationProvider) {
                         onRegionSelected = { type, id ->
                             navigateTo(Route.RegionDetail(type, id))
                         },
+                        onNavigateToCountry = navigateToCountry,
                     )
                 }
             }
