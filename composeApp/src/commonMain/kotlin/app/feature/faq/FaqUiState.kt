@@ -147,4 +147,11 @@ private val defaultFaqQuestions = listOf(
         icon = FaqQuestionIcon.Limits,
         category = FaqCategory.DataTrust,
     ),
+    FaqQuestionUiModel(
+        id = "calculation-assumptions",
+        question = "Welche Berechnungsannahmen nutzt WindKlar?",
+        answer = "WindKlar nutzt standardisierte, wissenschaftlich fundierte Richtwerte für seine Berechnungen:\n\n1) Volllaststunden: Standortspezifisch berechnet (bundesweiter Richtwert: ca. 2.000 h/a), um die Ertragsleistung zu schätzen.\n2) CO₂-Emissionsfaktor: Ein durchschnittlicher Wert des deutschen Strommixes von 380 g/kWh (0,38 kg/kWh), um die CO₂-Einsparung zu ermitteln.\n3) Haushaltsverbrauch: Ein typischer Jahresstromverbrauch von 3.500 kWh pro 3-Personen-Haushalt.\n4) Kommunale Beteiligung: Bis zu 0,2 ct/kWh der Jahresproduktion gemäß § 6 EEG für Anlagen an Land.",
+        icon = FaqQuestionIcon.Limits,
+        category = FaqCategory.DataTrust,
+    ),
 )

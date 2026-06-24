@@ -48,10 +48,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.core.model.SnapshotAssumption
 import app.core.model.WindPark
-import app.core.ui.components.LabelWithBadge
 import app.core.ui.components.formatDataQuality
 import app.core.ui.components.qualityColors
 import app.core.ui.components.RankingList
+import app.core.ui.components.CitizenImpactDashboard
+import app.core.ui.components.DataStatusFooter
+import app.core.ui.components.ImpactMetric
 import app.core.ui.theme.WindklarTheme
 import app.core.util.formatGermanNumber
 
@@ -207,13 +209,66 @@ fun RegionDetailScreen(
                 parentStateName = uiState.parentStateName ?: uiState.regionName
             )
 
+            val productionVal = "${formatGermanNumber(uiState.annualProductionGwh, 1)} GWh/Jahr"
+            val co2SavingsVal = "${formatGermanNumber(uiState.co2SavingsTons.toInt())} t/Jahr"
+            val householdsVal = "${formatGermanNumber(uiState.householdsSupplied)} Haushalte"
+            val municipalBenefitVal = uiState.municipalBenefitEur?.let { "ca. ${formatGermanNumber(it.toInt())} EUR/Jahr" } ?: "Keine Daten"
+
+            val flh = uiState.assumptions.firstOrNull { it.id == "full_load_hours" }?.value ?: 2000.0
+            val co2Factor = uiState.assumptions.firstOrNull { it.id == "emission_factor_kg_per_kwh" }?.value ?: 0.38
+            val consumption = uiState.assumptions.firstOrNull { it.id == "household_consumption_kwh" }?.value ?: 3500.0
+            val muniBenefit = uiState.assumptions.firstOrNull { it.id == "municipal_benefit_eur_per_kwh" }?.value ?: 0.002
+
+            val prodNote = "Geschätzte Stromerzeugung pro Jahr aller Windparks in dieser Region. Die zugrundeliegenden Volllaststunden der Parks betragen im Durchschnitt ${formatGermanNumber(flh.toInt())} h/a (bundesweiter Richtwert: 2.000 h/a)."
+            val co2Note = "Berechnet aus der Jahresproduktion und dem CO₂-Emissionsfaktor des deutschen Strommixes von ${formatGermanNumber(co2Factor * 1000.0, 0)} g/kWh (bzw. ${formatGermanNumber(co2Factor, 2)} kg/kWh)."
+            val houseNote = "Rechnerische Abdeckung von privaten Haushalten basierend auf einem durchschnittlichen Stromverbrauch von ${formatGermanNumber(consumption.toInt())} kWh/Jahr pro Haushalt."
+
+            val muniLabel = if (uiState.regionTypeLabel.lowercase() == "gemeinde") {
+                "Kommunale Beteiligung an Land (§6 EEG)"
+            } else {
+                "Mögliche kommunale Beteiligung an Land (§6 EEG)"
+            }
+            val muniNote = if (uiState.regionTypeLabel.lowercase() == "gemeinde") {
+                "Geschätzte mögliche kommunale Beteiligung für Windenergie an Land nach § 6 EEG (Grundlage: ${formatGermanNumber(muniBenefit * 100.0, 1)} ct/kWh der Jahresproduktion) für das Budget dieser Gemeinde. Keine Gewähr für tatsächliche Verträge."
+            } else {
+                "Aggregierte mögliche kommunale Beteiligung für Windenergie an Land nach § 6 EEG (Grundlage: ${formatGermanNumber(muniBenefit * 100.0, 1)} ct/kWh der Jahresproduktion) für die in dieser Region liegenden Gemeinden."
+            }
+
+            val regionImpactMetrics = listOf(
+                ImpactMetric(
+                    label = "Jahresproduktion",
+                    value = productionVal,
+                    isMissing = uiState.annualProductionGwh == 0.0,
+                    note = prodNote,
+                    icon = Icons.Outlined.Bolt
+                ),
+                ImpactMetric(
+                    label = "Vermiedenes CO2",
+                    value = co2SavingsVal,
+                    isMissing = uiState.co2SavingsTons == 0.0,
+                    note = co2Note,
+                    icon = Icons.Outlined.Eco
+                ),
+                ImpactMetric(
+                    label = "Versorgte Haushalte",
+                    value = householdsVal,
+                    isMissing = uiState.householdsSupplied == 0,
+                    note = houseNote,
+                    icon = Icons.Outlined.Home
+                ),
+                ImpactMetric(
+                    label = muniLabel,
+                    value = municipalBenefitVal,
+                    isMissing = uiState.municipalBenefitEur == null || uiState.municipalBenefitEur == 0.0,
+                    note = muniNote,
+                    icon = Icons.Outlined.MonetizationOn
+                )
+            )
+
             // Aggregated Citizen Impact Dashboard
-            RegionCitizenImpactDashboard(
-                productionGwh = uiState.annualProductionGwh,
-                co2SavingsTons = uiState.co2SavingsTons,
-                householdsSupplied = uiState.householdsSupplied,
-                municipalBenefitEur = uiState.municipalBenefitEur,
-                regionTypeLabel = uiState.regionTypeLabel
+            CitizenImpactDashboard(
+                title = "Regionale Klimawirkung",
+                metrics = regionImpactMetrics
             )
 
             // Display ranking of sub-regions for State and District, and flat list of parks for City
@@ -233,11 +288,8 @@ fun RegionDetailScreen(
                 )
             }
 
-            // Calculation assumptions
-            CalculationAssumptionsCard(assumptions = uiState.assumptions)
-
-            // Data quality limitations notice
-            DataSourceAttributionCard(attribution = uiState.attribution)
+            // Subtle Footer
+            DataStatusFooter(dataQuality = null)
 
             Spacer(modifier = Modifier.height(16.dp))
         }
@@ -383,119 +435,7 @@ private fun RegionSummaryCard(
     }
 }
 
-@Composable
-private fun RegionCitizenImpactDashboard(
-    productionGwh: Double,
-    co2SavingsTons: Double,
-    householdsSupplied: Int,
-    municipalBenefitEur: Double?,
-    regionTypeLabel: String
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = Color.White,
-        shadowElevation = 8.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "Regionale Klimawirkung",
-                color = WindklarTheme.colors.darkGreen,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
-
-            RegionImpactRow(
-                icon = Icons.Outlined.Bolt,
-                label = "Jahresproduktion",
-                value = "${formatGermanNumber(productionGwh, 1)} GWh/Jahr",
-                note = "Geschätzte Stromerzeugung pro Jahr aller Windparks in dieser Region.",
-                quality = "estimated"
-            )
-
-            RegionImpactRow(
-                icon = Icons.Outlined.Eco,
-                label = "Vermiedenes CO2",
-                value = "${formatGermanNumber(co2SavingsTons.toInt())} t/Jahr",
-                note = "Eingesparter CO2-Ausstoß im deutschen Strommix pro Jahr.",
-                quality = "estimated"
-            )
-
-            RegionImpactRow(
-                icon = Icons.Outlined.Home,
-                label = "Versorgte Haushalte",
-                value = "${formatGermanNumber(householdsSupplied)} Haushalte",
-                note = "Rechnerische Abdeckung privater 3-Personen-Haushalte (3.500 kWh/Jahr).",
-                quality = "estimated"
-            )
-
-            municipalBenefitEur?.let { benefit ->
-                val muniLabel = if (regionTypeLabel.lowercase() == "gemeinde") {
-                    "Kommunale Beteiligung an Land (§6 EEG)"
-                } else {
-                    "Mögliche kommunale Beteiligung an Land (§6 EEG)"
-                }
-                val muniNote = if (regionTypeLabel.lowercase() == "gemeinde") {
-                    "Geschätzte mögliche kommunale Beteiligung für Windenergie an Land nach §6 EEG (0,2 ct/kWh) für das Budget dieser Gemeinde. Keine Gewähr für tatsächliche Verträge."
-                } else {
-                    "Aggregierte mögliche kommunale Beteiligung für Windenergie an Land nach §6 EEG (0,2 ct/kWh) für die in dieser Region liegenden Gemeinden."
-                }
-
-                RegionImpactRow(
-                    icon = Icons.Outlined.MonetizationOn,
-                    label = muniLabel,
-                    value = "ca. ${formatGermanNumber(benefit.toInt())} EUR/Jahr",
-                    note = muniNote,
-                    quality = "estimated"
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RegionImpactRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    value: String,
-    note: String,
-    quality: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .background(WindklarTheme.colors.paleGreen, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = WindklarTheme.colors.primaryGreen,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-
-        Column(modifier = Modifier.weight(1f)) {
-            LabelWithBadge(label = label, quality = quality, labelColor = WindklarTheme.colors.darkGreen)
-            Text(value, color = WindklarTheme.colors.primaryGreen, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 2.dp))
-            Text(
-                text = note,
-                color = WindklarTheme.colors.mutedGreen,
-                fontSize = 11.sp,
-                lineHeight = 15.sp,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        }
-    }
-}
+// Reusable components are used instead of local duplicates
 
 @Composable
 private fun SubRegionsSection(
@@ -619,129 +559,7 @@ private fun WindParksSection(
     }
 }
 
-@Composable
-private fun CalculationAssumptionsCard(assumptions: List<SnapshotAssumption>) {
-    val orderedAssumptionIds = listOf(
-        "full_load_hours",
-        "emission_factor_kg_per_kwh",
-        "household_consumption_kwh",
-        "municipal_benefit_eur_per_kwh",
-    )
-    val visibleAssumptions = orderedAssumptionIds.mapNotNull { id ->
-        assumptions.firstOrNull { it.id == id }
-    }
-
-    if (visibleAssumptions.isEmpty()) return
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = Color.White,
-        shadowElevation = 8.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "Welche Annahmen stecken dahinter?",
-                color = WindklarTheme.colors.darkGreen,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
-            Text(
-                text = "Diese Werte erklären, wie WindKlar die geschätzten Wirkungswerte berechnet.",
-                color = WindklarTheme.colors.mutedGreen,
-                fontSize = 12.sp,
-                lineHeight = 17.sp
-            )
-
-            visibleAssumptions.forEach { assumption ->
-                AssumptionRow(assumption = assumption)
-            }
-        }
-    }
-}
-
-@Composable
-private fun AssumptionRow(assumption: SnapshotAssumption) {
-    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            Text(
-                text = assumption.label,
-                color = WindklarTheme.colors.darkGreen,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = "${formatAssumptionValue(assumption.value)} ${assumption.unit}",
-                color = WindklarTheme.colors.primaryGreen,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.End,
-                modifier = Modifier.padding(start = 12.dp)
-            )
-        }
-        if (!assumption.calculationNote.isNullOrBlank()) {
-            Text(
-                text = assumption.calculationNote,
-                color = WindklarTheme.colors.mutedGreen,
-                fontSize = 11.sp,
-                lineHeight = 15.sp,
-                modifier = Modifier.padding(top = 2.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun DataSourceAttributionCard(attribution: String) {
-    val normalizedAttribution = attribution.removePrefix("Quelle:").trim().ifBlank {
-        "Marktstammdatenregister der Bundesnetzagentur"
-    }
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = WindklarTheme.colors.warningYellowLight,
-        border = androidx.compose.foundation.BorderStroke(1.dp, WindklarTheme.colors.warningAmber)
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Warning,
-                contentDescription = null,
-                tint = WindklarTheme.colors.warningAmberDark,
-                modifier = Modifier.size(18.dp)
-            )
-            Column {
-                Text(
-                    text = "Datenhinweis",
-                    color = WindklarTheme.colors.warningAmberDark,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp
-                )
-                Text(
-                    text = "Berechnete Werte beruhen auf typischen Durchschnittsannahmen. Regionale Unterschiede können zu Abweichungen führen. Quelle: $normalizedAttribution.",
-                    color = WindklarTheme.colors.warningBrown,
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-            }
-        }
-    }
-}
+// Reusable components are used instead of local duplicates
 
 private fun cleanDistrictName(name: String): String {
     val prefixes = listOf("landkreis", "kreis", "stadtkreis", "regionalverband", "städteregion", "städte-region")
