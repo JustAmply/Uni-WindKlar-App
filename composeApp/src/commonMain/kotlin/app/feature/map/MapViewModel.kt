@@ -621,6 +621,7 @@ class MapViewModel(
 
         filterJob = viewModelScope.launch {
             try {
+                delay(150)
                 val filteredParks = withContext(Dispatchers.Default) {
                     val rawParks = parksForStatus(snapshot.parks, currentStatuses, currentStatus)
                     val afterOffshore = if (snapshot.isOffshoreEnabled) {

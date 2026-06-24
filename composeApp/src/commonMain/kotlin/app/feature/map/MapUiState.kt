@@ -6,6 +6,14 @@ import app.core.ui.components.EntityPreviewData
 import app.core.ui.components.PreviewSheetState
 
 sealed interface MapSearchResult {
+    val key: String
+        get() = when (this) {
+            is State -> "state_$id"
+            is District -> "district_$id"
+            is Municipality -> "municipality_$id"
+            is Park -> "park_${park.id}"
+        }
+
     data class State(
         val id: String,
         val name: String,

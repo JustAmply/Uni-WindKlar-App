@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import app.App
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import app.data.local.db.AppDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -17,7 +18,24 @@ class MainActivity : ComponentActivity() {
 
         val databaseName = "windklar.db"
         preseedDatabaseFromAssets(applicationContext, databaseName)
-        val driver = AndroidSqliteDriver(AppDatabase.Schema, applicationContext, databaseName)
+        val driver = AndroidSqliteDriver(
+            schema = AppDatabase.Schema,
+            context = applicationContext,
+            name = databaseName,
+            callback = object : AndroidSqliteDriver.Callback(AppDatabase.Schema) {
+                override fun onConfigure(db: SupportSQLiteDatabase) {
+                    super.onConfigure(db)
+                    db.enableWriteAheadLogging()
+                    runCatching {
+                        db.query("PRAGMA synchronous = NORMAL").close()
+                        db.query("PRAGMA temp_store = MEMORY").close()
+                        db.query("PRAGMA cache_size = -64000").close()
+                    }.onFailure { error ->
+                        println("MainActivity: Failed to apply performance PRAGMAs: ${error.message}")
+                    }
+                }
+            }
+        )
         val database = AppDatabase(driver)
 
         val locationProvider = app.core.location.AndroidLocationProvider(applicationContext)

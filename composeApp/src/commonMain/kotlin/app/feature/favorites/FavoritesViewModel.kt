@@ -40,8 +40,13 @@ class FavoritesViewModel(private val repository: WindParkRepository) : ViewModel
             }.map { it.id }.toSet()
             val regionMetricsList = repository.getMetricsForParks(favRegionParkIds.toList())
             
+            // Batch load all metrics for favorites and recents to avoid N+1 DB queries
+            val batchParkIds = (favs.map { it.id } + recents.map { it.id }).distinct()
+            val batchMetricsList = repository.getMetricsForParks(batchParkIds)
+            val batchMetricsByParkId = batchMetricsList.groupBy { it.subjectId }
+
             val favUiList = favs.map { park ->
-                val metrics = repository.getMetricsForPark(park.id)
+                val metrics = batchMetricsByParkId[park.id] ?: emptyList()
                 val prodMetric = metrics.firstOrNull { it.metricType == "annual_production" }
                 val co2Metric = metrics.firstOrNull { it.metricType == "co2_savings" }
                 
@@ -96,7 +101,7 @@ class FavoritesViewModel(private val repository: WindParkRepository) : ViewModel
             }
 
             val recentUiList = recents.map { park ->
-                val metrics = repository.getMetricsForPark(park.id)
+                val metrics = batchMetricsByParkId[park.id] ?: emptyList()
                 val prodMetric = metrics.firstOrNull { it.metricType == "annual_production" }
                 val co2Metric = metrics.firstOrNull { it.metricType == "co2_savings" }
                 

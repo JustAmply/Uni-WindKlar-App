@@ -212,7 +212,7 @@ fun MapScreen(
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                                 )
                                 LazyColumn {
-                                    items(uiState.recentParks) { park ->
+                                    items(uiState.recentParks, key = { it.id }) { park ->
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
@@ -264,7 +264,7 @@ fun MapScreen(
                                 }
                             } else {
                                 LazyColumn(modifier = Modifier.padding(8.dp)) {
-                                    items(uiState.searchResults) { result ->
+                                    items(uiState.searchResults, key = { it.key }) { result ->
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
