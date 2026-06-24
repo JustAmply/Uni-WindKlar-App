@@ -64,9 +64,9 @@ selectParkStatuses:
 SELECT 
     wind_park_id,
     CASE 
-        WHEN SUM(CASE WHEN status LIKE '%bau%' OR status LIKE '%errichtung%' THEN 1 ELSE 0 END) > 0 THEN 'Im Bau'
-        WHEN SUM(CASE WHEN status LIKE '%betrieb%' OR status LIKE '%aktiv%' THEN 1 ELSE 0 END) > 0 THEN 'Aktiv'
-        WHEN SUM(CASE WHEN status LIKE '%stillgelegt%' THEN 1 ELSE 0 END) > 0 THEN 'Stillgelegt'
+        WHEN SUM(CASE WHEN LOWER(COALESCE(status, '')) LIKE '%bau%' OR LOWER(COALESCE(status, '')) LIKE '%errichtung%' THEN 1 ELSE 0 END) > 0 THEN 'Im Bau'
+        WHEN SUM(CASE WHEN status IS NULL OR LOWER(status) LIKE '%betrieb%' OR LOWER(status) LIKE '%aktiv%' THEN 1 ELSE 0 END) > 0 THEN 'Aktiv'
+        WHEN SUM(CASE WHEN LOWER(COALESCE(status, '')) LIKE '%stillgelegt%' THEN 1 ELSE 0 END) > 0 THEN 'Stillgelegt'
         ELSE 'Geplant'
     END AS park_status
 FROM wind_turbine
@@ -86,7 +86,7 @@ GROUP BY wind_park_id;
 
 
 upsertWindTurbine:
-INSERT OR REPLACE INTO wind_turbine(
+INSERT OR IGNORE INTO wind_turbine(
     id,
     wind_park_id,
     name,
@@ -112,3 +112,33 @@ INSERT OR REPLACE INTO wind_turbine(
     data_quality
 )
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateWindTurbine:
+UPDATE wind_turbine
+SET
+    wind_park_id = :wind_park_id,
+    name = :name,
+    municipality_id = :municipality_id,
+    municipality_name = :municipality_name,
+    district_id = :district_id,
+    district_name = :district_name,
+    state_id = :state_id,
+    state_name = :state_name,
+    latitude = :latitude,
+    longitude = :longitude,
+    installed_capacity_kw = :installed_capacity_kw,
+    status = :status,
+    turbine_type = :turbine_type,
+    manufacturer = :manufacturer,
+    model = :model,
+    hub_height_m = :hub_height_m,
+    rotor_diameter_m = :rotor_diameter_m,
+    commissioning_year = :commissioning_year,
+    source_name = :source_name,
+    source_url = :source_url,
+    source_updated_at = :source_updated_at,
+    data_quality = :data_quality
+WHERE id = :id;
+
+deleteAllWindTurbines:
+DELETE FROM wind_turbine;

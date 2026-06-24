@@ -39,6 +39,25 @@ class SqlDelightWindParkDao(
             source_updated_at = entity.sourceUpdatedAt,
             data_quality = entity.dataQuality
         )
+        database.windParkQueries.updateWindPark(
+            id = entity.id,
+            name = entity.name,
+            municipality_id = entity.municipalityId,
+            municipality_name = entity.municipalityName,
+            district_id = entity.districtId,
+            district_name = entity.districtName,
+            state_id = entity.stateId,
+            state_name = entity.stateName,
+            latitude = entity.latitude,
+            longitude = entity.longitude,
+            turbine_count = entity.turbineCount?.toLong(),
+            installed_capacity_kw = entity.installedCapacityKw,
+            grouping_method = entity.groupingMethod,
+            source_name = entity.sourceName,
+            source_url = entity.sourceUrl,
+            source_updated_at = entity.sourceUpdatedAt,
+            data_quality = entity.dataQuality
+        )
     }
 
     private fun Wind_park.toEntity() = WindParkEntity(

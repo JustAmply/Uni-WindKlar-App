@@ -68,13 +68,13 @@ WHERE metric.subject_type = 'wind_park'
       SELECT wind_park_id
       FROM wind_turbine
       GROUP BY wind_park_id
-      HAVING COUNT(*) = SUM(CASE WHEN status LIKE '%stillgelegt%' THEN 1 ELSE 0 END)
+      HAVING COUNT(*) = SUM(CASE WHEN LOWER(COALESCE(status, '')) LIKE '%stillgelegt%' THEN 1 ELSE 0 END)
   )
 GROUP BY metric.metric_type
 ORDER BY metric.metric_type;
 
 upsertMetric:
-INSERT OR REPLACE INTO metric(
+INSERT OR IGNORE INTO metric(
     id,
     subject_type,
     subject_id,
@@ -89,3 +89,22 @@ INSERT OR REPLACE INTO metric(
     calculation_note
 )
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateMetric:
+UPDATE metric
+SET
+    subject_type = :subject_type,
+    subject_id = :subject_id,
+    metric_type = :metric_type,
+    metric_value = :metric_value,
+    unit = :unit,
+    period = :period,
+    source_name = :source_name,
+    source_url = :source_url,
+    source_updated_at = :source_updated_at,
+    data_quality = :data_quality,
+    calculation_note = :calculation_note
+WHERE id = :id;
+
+deleteAllMetrics:
+DELETE FROM metric;

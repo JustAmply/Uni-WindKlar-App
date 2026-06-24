@@ -8,6 +8,11 @@ SELECT wind_park_id
 FROM favorite_wind_park
 ORDER BY created_at_epoch_millis DESC;
 
+selectFavoriteRows:
+SELECT *
+FROM favorite_wind_park
+ORDER BY created_at_epoch_millis DESC;
+
 isFavorite:
 SELECT EXISTS(
     SELECT 1
@@ -16,8 +21,13 @@ SELECT EXISTS(
 );
 
 addFavorite:
-INSERT OR REPLACE INTO favorite_wind_park(wind_park_id, created_at_epoch_millis)
+INSERT OR IGNORE INTO favorite_wind_park(wind_park_id, created_at_epoch_millis)
 VALUES (?, ?);
+
+updateFavoriteTimestamp:
+UPDATE favorite_wind_park
+SET created_at_epoch_millis = ?
+WHERE wind_park_id = ?;
 
 removeFavorite:
 DELETE FROM favorite_wind_park
@@ -43,8 +53,13 @@ SELECT EXISTS(
 );
 
 addRegionFavorite:
-INSERT OR REPLACE INTO favorite_region(region_type, region_id, created_at_epoch_millis)
+INSERT OR IGNORE INTO favorite_region(region_type, region_id, created_at_epoch_millis)
 VALUES (?, ?, ?);
+
+updateRegionFavoriteTimestamp:
+UPDATE favorite_region
+SET created_at_epoch_millis = ?
+WHERE region_type = ? AND region_id = ?;
 
 removeRegionFavorite:
 DELETE FROM favorite_region

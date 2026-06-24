@@ -49,10 +49,19 @@ WHERE LOWER(id) LIKE '%' || LOWER(:query) || '%'
              OR LOWER(COALESCE(wind_turbine.turbine_type, '')) LIKE '%' || LOWER(:query) || '%'
          )
    )
-ORDER BY name;
+ORDER BY
+    CASE
+        WHEN LOWER(id) = LOWER(:query) THEN 0
+        WHEN LOWER(name) = LOWER(:query) THEN 1
+        WHEN LOWER(name) LIKE LOWER(:query) || '%' THEN 2
+        WHEN LOWER(municipality_name) LIKE LOWER(:query) || '%' THEN 3
+        ELSE 4
+    END,
+    name
+LIMIT 50;
 
 upsertWindPark:
-INSERT OR REPLACE INTO wind_park(
+INSERT OR IGNORE INTO wind_park(
     id,
     name,
     municipality_id,
@@ -72,3 +81,27 @@ INSERT OR REPLACE INTO wind_park(
     data_quality
 )
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateWindPark:
+UPDATE wind_park
+SET
+    name = :name,
+    municipality_id = :municipality_id,
+    municipality_name = :municipality_name,
+    district_id = :district_id,
+    district_name = :district_name,
+    state_id = :state_id,
+    state_name = :state_name,
+    latitude = :latitude,
+    longitude = :longitude,
+    turbine_count = :turbine_count,
+    installed_capacity_kw = :installed_capacity_kw,
+    grouping_method = :grouping_method,
+    source_name = :source_name,
+    source_url = :source_url,
+    source_updated_at = :source_updated_at,
+    data_quality = :data_quality
+WHERE id = :id;
+
+deleteAllWindParks:
+DELETE FROM wind_park;

@@ -28,8 +28,8 @@ ANDROID_ASSETS_OUTPUT = (
 )
 # Mirrors SnapshotSeedDataImporter companion constants so the importer's
 # fast-path detects the preseeded DB and skips the full JSON import.
-SETTING_METRIC_IMPORT_VERSION_KEY = "snapshot_metric_import_version"
-SETTING_METRIC_IMPORT_VERSION = "snapshot_metrics_v1"
+SETTING_SNAPSHOT_IMPORT_VERSION_KEY = "snapshot_source_import_version"
+SETTING_SNAPSHOT_IMPORT_VERSION = "snapshot_source_v2_commissioning_year"
 SCHEMA_DIR = (
     REPO_ROOT
     / "composeApp"
@@ -249,6 +249,7 @@ def insert_wind_turbines(connection: sqlite3.Connection, rows: Iterable[dict[str
             row.get("model"),
             row.get("hubHeightM"),
             row.get("rotorDiameterM"),
+            row.get("commissioningYear"),
             row["sourceName"],
             row["sourceUrl"],
             row["sourceUpdatedAt"],
@@ -277,12 +278,13 @@ def insert_wind_turbines(connection: sqlite3.Connection, rows: Iterable[dict[str
             model,
             hub_height_m,
             rotor_diameter_m,
+            commissioning_year,
             source_name,
             source_url,
             source_updated_at,
             data_quality
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         values,
     )
@@ -384,8 +386,12 @@ def populate_database(connection: sqlite3.Connection, snapshot: dict[str, Any]) 
         metric_count = insert_metrics(connection, metrics)
         insert_snapshot_metadata(connection, snapshot)
         connection.execute(
-            "INSERT OR REPLACE INTO app_setting(key, value) VALUES (?, ?)",
-            (SETTING_METRIC_IMPORT_VERSION_KEY, SETTING_METRIC_IMPORT_VERSION),
+            """
+            INSERT INTO app_setting(key, value)
+            VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            (SETTING_SNAPSHOT_IMPORT_VERSION_KEY, SETTING_SNAPSHOT_IMPORT_VERSION),
         )
 
     return {
@@ -394,6 +400,55 @@ def populate_database(connection: sqlite3.Connection, snapshot: dict[str, Any]) 
         "metric": metric_count,
         "snapshot_metadata": 1,
     }
+
+
+def validate_generated_database(
+    connection: sqlite3.Connection,
+    snapshot: dict[str, Any],
+    counts: dict[str, int],
+) -> None:
+    expected_counts = {
+        "wind_park": len(require_list(snapshot, "windParks")),
+        "wind_turbine": len(require_list(snapshot, "windTurbines")),
+        "metric": len(require_list(snapshot, "metrics")),
+        "snapshot_metadata": 1,
+    }
+    for table, expected in expected_counts.items():
+        actual = connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+        if actual != expected:
+            raise ValueError(f"{table} count mismatch: expected {expected}, got {actual}.")
+        if counts[table] != expected:
+            raise ValueError(
+                f"{table} inserted-count mismatch: expected {expected}, got {counts[table]}."
+            )
+
+    expected_commissioning_years = sum(
+        1
+        for row in require_list(snapshot, "windTurbines")
+        if row.get("commissioningYear") is not None
+    )
+    actual_commissioning_years = connection.execute(
+        "SELECT COUNT(*) FROM wind_turbine WHERE commissioning_year IS NOT NULL"
+    ).fetchone()[0]
+    if actual_commissioning_years != expected_commissioning_years:
+        raise ValueError(
+            "commissioning_year count mismatch: "
+            f"expected {expected_commissioning_years}, got {actual_commissioning_years}."
+        )
+
+    stored_import_version = connection.execute(
+        "SELECT value FROM app_setting WHERE key = ?",
+        (SETTING_SNAPSHOT_IMPORT_VERSION_KEY,),
+    ).fetchone()
+    if stored_import_version is None or stored_import_version[0] != SETTING_SNAPSHOT_IMPORT_VERSION:
+        raise ValueError("Snapshot import version setting is missing or outdated.")
+
+    user_version = connection.execute("PRAGMA user_version").fetchone()[0]
+    expected_user_version = current_sqldelight_schema_version()
+    if user_version != expected_user_version:
+        raise ValueError(
+            f"SQLite user_version mismatch: expected {expected_user_version}, got {user_version}."
+        )
 
 
 def generate_database(snapshot_path: Path, metadata_path: Path, output_path: Path, force: bool) -> None:
@@ -418,6 +473,7 @@ def generate_database(snapshot_path: Path, metadata_path: Path, output_path: Pat
             violations = connection.execute("PRAGMA foreign_key_check").fetchall()
             if violations:
                 raise ValueError(f"Foreign key check failed: {violations[:5]}")
+            validate_generated_database(connection, snapshot, counts)
         finally:
             connection.close()
 

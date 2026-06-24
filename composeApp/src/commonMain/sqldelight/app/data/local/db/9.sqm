@@ -1,0 +1,3 @@
+-- Add recents timestamp index for profile and search overlay recent lists.
+CREATE INDEX IF NOT EXISTS idx_recent_wind_park_opened_at
+ON recent_wind_park(opened_at_epoch_millis DESC);

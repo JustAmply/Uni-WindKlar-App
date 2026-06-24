@@ -25,7 +25,7 @@ ORDER BY imported_at DESC
 LIMIT 1;
 
 upsertSnapshotMetadata:
-INSERT OR REPLACE INTO snapshot_metadata(
+INSERT OR IGNORE INTO snapshot_metadata(
     snapshot_id,
     schema_version,
     source_name,
@@ -40,3 +40,22 @@ INSERT OR REPLACE INTO snapshot_metadata(
     imported_at
 )
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateSnapshotMetadata:
+UPDATE snapshot_metadata
+SET
+    schema_version = :schema_version,
+    source_name = :source_name,
+    source_url = :source_url,
+    attribution = :attribution,
+    mastr_export_date = :mastr_export_date,
+    processed_at = :processed_at,
+    pipeline_version = :pipeline_version,
+    checksum_sha256 = :checksum_sha256,
+    assumptions_json = :assumptions_json,
+    limitations = :limitations,
+    imported_at = :imported_at
+WHERE snapshot_id = :snapshot_id;
+
+deleteAllSnapshotMetadata:
+DELETE FROM snapshot_metadata;

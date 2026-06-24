@@ -69,8 +69,32 @@ class SqlDelightWindTurbineDao(private val database: AppDatabase) : WindTurbineD
         }
     }
     override suspend fun insertOrReplace(turbine: WindTurbine) {
-
         database.windTurbineQueries.upsertWindTurbine(
+            id = turbine.id,
+            wind_park_id = turbine.windParkId,
+            name = turbine.name,
+            municipality_id = turbine.municipalityId,
+            municipality_name = turbine.municipalityName,
+            district_id = turbine.districtId,
+            district_name = turbine.districtName,
+            state_id = turbine.stateId,
+            state_name = turbine.stateName,
+            latitude = turbine.latitude,
+            longitude = turbine.longitude,
+            installed_capacity_kw = turbine.installedCapacityKw,
+            status = turbine.status,
+            turbine_type = turbine.turbineType,
+            manufacturer = turbine.manufacturer,
+            model = turbine.model,
+            hub_height_m = turbine.hubHeightM,
+            rotor_diameter_m = turbine.rotorDiameterM,
+            commissioning_year = turbine.commissioningYear,
+            source_name = turbine.sourceName,
+            source_url = turbine.sourceUrl,
+            source_updated_at = turbine.sourceUpdatedAt,
+            data_quality = turbine.dataQuality
+        )
+        database.windTurbineQueries.updateWindTurbine(
             id = turbine.id,
             wind_park_id = turbine.windParkId,
             name = turbine.name,
@@ -188,6 +212,20 @@ class SqlDelightMetricDao(private val database: AppDatabase) : MetricDao {
             data_quality = metric.dataQuality,
             calculation_note = metric.calculationNote
         )
+        database.metricQueries.updateMetric(
+            id = metric.id,
+            subject_type = metric.subjectType,
+            subject_id = metric.subjectId,
+            metric_type = metric.metricType,
+            metric_value = metric.value,
+            unit = metric.unit,
+            period = metric.period,
+            source_name = metric.sourceName,
+            source_url = metric.sourceUrl,
+            source_updated_at = metric.sourceUpdatedAt,
+            data_quality = metric.dataQuality,
+            calculation_note = metric.calculationNote
+        )
     }
 
     private fun DbMetric.toDomain() = Metric(
@@ -237,6 +275,7 @@ class SqlDelightFavoriteDao(private val database: AppDatabase) : FavoriteDao {
 
     override suspend fun addFavorite(parkId: String, timestamp: Long) {
         database.favoriteQueries.addFavorite(parkId, timestamp)
+        database.favoriteQueries.updateFavoriteTimestamp(timestamp, parkId)
     }
 
     override suspend fun removeFavorite(parkId: String) {
@@ -259,6 +298,7 @@ class SqlDelightFavoriteDao(private val database: AppDatabase) : FavoriteDao {
 
     override suspend fun addRegionFavorite(type: String, id: String, timestamp: Long) {
         database.favoriteQueries.addRegionFavorite(type, id, timestamp)
+        database.favoriteQueries.updateRegionFavoriteTimestamp(timestamp, type, id)
     }
 
     override suspend fun removeRegionFavorite(type: String, id: String) {
@@ -276,11 +316,12 @@ interface RecentWindParkDao {
 
 class SqlDelightRecentWindParkDao(private val database: AppDatabase) : RecentWindParkDao {
     override suspend fun getRecentWindParkIds(limit: Long): List<String> {
-        return database.recentWindParkQueries.selectRecentWindParks(limit).executeAsList().map { it.id }
+        return database.recentWindParkQueries.selectRecentWindParks(limit).executeAsList()
     }
 
     override suspend fun recordRecentWindPark(parkId: String, timestamp: Long) {
         database.recentWindParkQueries.recordRecentWindPark(parkId, timestamp)
+        database.recentWindParkQueries.updateRecentWindParkTimestamp(timestamp, parkId)
     }
 
     override suspend fun clear() {
@@ -347,6 +388,22 @@ class SqlDelightDataHintDao(private val database: AppDatabase) : DataHintDao {
             created_at_epoch_millis = createdAt,
             updated_at_epoch_millis = updatedAt
         )
+        database.dataHintQueries.updateDataHint(
+            id = id,
+            category = category,
+            confidence = confidence,
+            status = status,
+            description = description,
+            wind_turbine_id = windTurbineId,
+            wind_park_id = windParkId,
+            municipality_id = municipalityId,
+            latitude = latitude,
+            longitude = longitude,
+            suggested_value = suggestedValue,
+            image_uri = imageUri,
+            created_at_epoch_millis = createdAt,
+            updated_at_epoch_millis = updatedAt
+        )
     }
 
     private fun Data_hint.toDomain() = DataHint(
@@ -393,6 +450,7 @@ class SqlDelightSettingsDao(private val database: AppDatabase) : SettingsDao {
 
     override suspend fun upsertValue(key: String, value: String) {
         database.settingQueries.upsertSetting(key, value)
+        database.settingQueries.updateSetting(value, key)
     }
 }
 

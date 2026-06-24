@@ -9,6 +9,7 @@ import platform.UIKit.UIViewController
 fun MainViewController(): UIViewController {
     val driver = NativeSqliteDriver(AppDatabase.Schema, "windklar.db")
     try {
+        driver.execute(null, "PRAGMA foreign_keys = ON;", 0)
         driver.execute(null, "PRAGMA journal_mode = WAL;", 0)
         driver.execute(null, "PRAGMA synchronous = NORMAL;", 0)
         driver.execute(null, "PRAGMA temp_store = MEMORY;", 0)

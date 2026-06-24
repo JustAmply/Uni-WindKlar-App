@@ -21,7 +21,7 @@ FROM data_hint
 ORDER BY updated_at_epoch_millis DESC;
 
 upsertDataHint:
-INSERT OR REPLACE INTO data_hint(
+INSERT OR IGNORE INTO data_hint(
     id,
     category,
     confidence,
@@ -38,3 +38,21 @@ INSERT OR REPLACE INTO data_hint(
     updated_at_epoch_millis
 )
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateDataHint:
+UPDATE data_hint
+SET
+    category = :category,
+    confidence = :confidence,
+    status = :status,
+    description = :description,
+    wind_turbine_id = :wind_turbine_id,
+    wind_park_id = :wind_park_id,
+    municipality_id = :municipality_id,
+    latitude = :latitude,
+    longitude = :longitude,
+    suggested_value = :suggested_value,
+    image_uri = :image_uri,
+    created_at_epoch_millis = :created_at_epoch_millis,
+    updated_at_epoch_millis = :updated_at_epoch_millis
+WHERE id = :id;

@@ -9,5 +9,10 @@ FROM app_setting
 WHERE key = ?;
 
 upsertSetting:
-INSERT OR REPLACE INTO app_setting(key, value)
+INSERT OR IGNORE INTO app_setting(key, value)
 VALUES (?, ?);
+
+updateSetting:
+UPDATE app_setting
+SET value = ?
+WHERE key = ?;

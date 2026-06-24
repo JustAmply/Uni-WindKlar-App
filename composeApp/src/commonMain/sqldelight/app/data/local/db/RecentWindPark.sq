@@ -3,16 +3,28 @@ CREATE TABLE recent_wind_park (
     opened_at_epoch_millis INTEGER NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_recent_wind_park_opened_at
+ON recent_wind_park(opened_at_epoch_millis DESC);
+
 selectRecentWindParks:
-SELECT wind_park.*
+SELECT wind_park_id AS id
 FROM recent_wind_park
-JOIN wind_park ON wind_park.id = recent_wind_park.wind_park_id
 ORDER BY recent_wind_park.opened_at_epoch_millis DESC
 LIMIT ?;
 
+selectRecentWindParkRows:
+SELECT *
+FROM recent_wind_park
+ORDER BY opened_at_epoch_millis DESC;
+
 recordRecentWindPark:
-INSERT OR REPLACE INTO recent_wind_park(wind_park_id, opened_at_epoch_millis)
+INSERT OR IGNORE INTO recent_wind_park(wind_park_id, opened_at_epoch_millis)
 VALUES (?, ?);
+
+updateRecentWindParkTimestamp:
+UPDATE recent_wind_park
+SET opened_at_epoch_millis = ?
+WHERE wind_park_id = ?;
 
 clearRecentWindParks:
 DELETE FROM recent_wind_park;
