@@ -208,16 +208,9 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
             )
 
             uiState = StatsUiState(
-                subtitle = snapshotInfo?.let { "Deutschland · lokaler Snapshot ${it.mastrExportDate}" }
-                    ?: "Deutschland · lokaler Snapshot",
-                snapshotInfoLine = snapshotInfo?.let { info ->
-                    buildString {
-                        append("Lokaler Snapshot, keine Live-Daten")
-                        if (info.processedAt.isNotBlank()) {
-                            append(" · verarbeitet ${info.processedAt}")
-                        }
-                    }
-                } ?: "Lokaler Snapshot, keine Live-Daten",
+                subtitle = snapshotInfo?.let { "Deutschland · Snapshot ${formatGermanDate(it.mastrExportDate)}" }
+                    ?: "Deutschland · Snapshot",
+                snapshotInfoLine = "Lokaler Datenstand · keine Live-Daten",
                 overviewCards = listOf(
                     StatsOverviewCard(
                         value = formatInteger(parks.size),
@@ -785,6 +778,13 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
         .chunked(3)
         .joinToString(".")
         .reversed()
+
+    private fun formatGermanDate(isoDate: String): String {
+        val parts = isoDate.split("-")
+        if (parts.size != 3) return isoDate
+        val (year, month, day) = parts
+        return "$day.$month.$year"
+    }
 
     private fun formatEnergy(kwh: Double): String {
         val twh = kwh / 1_000_000_000.0
