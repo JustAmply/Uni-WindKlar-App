@@ -94,16 +94,23 @@ def read_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def extract_create_table(sql_path: Path) -> str:
+def extract_create_tables(sql_path: Path) -> list[str]:
     sql = sql_path.read_text(encoding="utf-8")
     marker = "CREATE TABLE"
-    start = sql.find(marker)
-    if start == -1:
+    statements = []
+    start = 0
+    while True:
+        start = sql.find(marker, start)
+        if start == -1:
+            break
+        end = sql.find(";", start)
+        if end == -1:
+            raise ValueError(f"Unterminated CREATE TABLE statement in {sql_path}.")
+        statements.append(sql[start : end + 1])
+        start = end + 1
+    if not statements:
         raise ValueError(f"No CREATE TABLE statement found in {sql_path}.")
-    end = sql.find(";", start)
-    if end == -1:
-        raise ValueError(f"Unterminated CREATE TABLE statement in {sql_path}.")
-    return sql[start : end + 1]
+    return statements
 
 
 def current_sqldelight_schema_version() -> int:
@@ -152,7 +159,8 @@ def validate_metadata(snapshot: dict[str, Any], metadata_wrapper: dict[str, Any]
 
 def create_schema(connection: sqlite3.Connection) -> None:
     for filename in SCHEMA_FILES:
-        connection.execute(extract_create_table(SCHEMA_DIR / filename))
+        for statement in extract_create_tables(SCHEMA_DIR / filename):
+            connection.execute(statement)
     connection.execute(f"PRAGMA user_version = {current_sqldelight_schema_version()}")
 
 
