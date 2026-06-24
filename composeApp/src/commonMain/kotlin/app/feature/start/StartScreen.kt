@@ -239,6 +239,17 @@ fun StartScreen(
                         }
                     },
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Keine Registrierung erforderlich. Die GPS-Standortnutzung ist optional und alle Ihre Suchen und Favoriten bleiben ausschließlich lokal auf Ihrem Gerät gespeichert.",
+                    color = Color.White.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
             }
         }
     }
