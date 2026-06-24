@@ -310,7 +310,7 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
                     isLoading = false,
                 )
             }
-            uiState = newState
+            uiState = newState.copy(selectedTab = uiState.selectedTab)
         }
     }
 
