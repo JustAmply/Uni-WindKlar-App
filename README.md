@@ -107,11 +107,14 @@ Platform-specific code should stay thin. Prefer shared code in `commonMain` unle
 
 ## Current Baseline
 - App root: `app.App`, wrapping `AppNavHost` in `WindklarTheme`.
-- Implemented visual slices: `StartScreen`, `MapScreen`, `FavoritesScreen`, `FaqScreen`, `StatsScreen`, `ProfileScreen`.
-- Search is implemented inside the `Map` flow; the separate `SearchScreen`/`SearchViewModel`/`SearchUiState` placeholder has been removed.
-- Remaining scaffold slices: `ParkDetailScreen`, map/detail viewmodels, database driver factory and seed importer.
-- Missing slice: `ReportWindTurbine` route/package/form.
-- UI is mostly mock `UiState`; repositories/DAO contracts are not yet wired through generated SQLDelight APIs.
+- All screens implemented and wired to repository: `StartScreen`, `MapScreen`, `StatsScreen`, `FavoritesScreen`, `FaqScreen`, `ProfileScreen`, `ParkDetailScreen`, `RegionDetailScreen`.
+- Search is implemented inside the `Map` flow as an overlay/sheet; the separate `SearchScreen`/`SearchViewModel`/`SearchUiState` placeholder has been removed.
+- `ReportWindTurbine` is implemented as a dialog composable (`ReportWindTurbineDialog`) triggered from the `MapScreen` pin-placement FAB.
+- All repositories/DAO contracts are wired through generated SQLDelight APIs.
+- Snapshot seed importer (`SnapshotSeedDataImporter`) runs on app startup with checksum-aware fast-path.
+- Data wireframe: `UI -> ViewModel -> Repository -> SQLDelight DAOs -> SQLite`.
+- `Favorites` supports both parks and regions; `Recents` records every opened park.
+- `FaqScreen` renders static content from `FaqUiState.defaultFaqQuestions` (no ViewModel).
 - AGP 9.x/KMP compatibility warning is accepted for the seminar MVP unless the build breaks.
 
 ## Build And Run

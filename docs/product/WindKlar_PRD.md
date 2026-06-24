@@ -493,13 +493,16 @@ Figma ist die Quelle der Wahrheit für Screenset, Informationsarchitektur, Kompo
 - Paket-Namespace/Application-ID: `product.lifecycle.windenergy`.
 - Aktuelle Bibliotheken: Kotlin 2.3.21, Compose Multiplatform 1.10.3, Material 3 1.10.0-alpha05, SQLDelight 2.3.2, Android compile/target SDK 36 und min SDK 24.
 - Geteilte App-Wurzel: `app.App`, umschließt `AppNavHost` in `WindklarTheme`.
-- Aktuelles Routenmodell: `Start`, `Map`, `Stats`, `Favorites`, `Faq`, `Profile`, `Detail(parkId)`.
+- Aktuelles Routenmodell: `Start`, `Map`, `Stats`, `Favorites`, `Faq`, `Profile`, `Detail(parkId)`, `RegionDetail(type, id)`.
 - Aktuelle Routen der obersten Ebene in der unteren Navigation: `Map`, `Stats`, `Favorites`, `Faq`, `Profile` / `Info & Einstellungen`.
-- Implementierte visuelle Umsetzungsschritte: `StartScreen`, `MapScreen`, `FavoritesScreen`, `FaqScreen`, `StatsScreen` und `ProfileScreen`.
+- Implementierte Screens: `StartScreen`, `MapScreen`, `StatsScreen`, `FavoritesScreen`, `FaqScreen`, `ProfileScreen`, `ParkDetailScreen`, `RegionDetailScreen`.
 - Suche ist im `Map`-Flow umgesetzt; der separate `SearchScreen`-/`SearchViewModel`-/`SearchUiState`-Platzhalter wurde entfernt.
-- Verbleibende Platzhalter- oder Gerüst-Umsetzungsschritte: `ParkDetailScreen`, `MapViewModel`, `ParkDetailViewModel`, Datenbank-Driver-Factory und Seed-Importer.
-- Fehlender Umsetzungsschritt: `ReportWindTurbine`-Route/-Paket/-Formular ist noch nicht implementiert.
-- Aktueller Datenstand: Die UI ist überwiegend durch Mock-`UiState`-Defaults gestützt; Repository- und DAO-Verträge existieren, sind aber noch nicht über generierte SQLDelight-Datenbank-APIs verdrahtet.
+- `ReportWindTurbine` ist als Dialog-Composable (`ReportWindTurbineDialog`) umgesetzt und wird über den Pin-Placement-FAB in `MapScreen` ausgelöst.
+- Alle Repositories/DAO-Verträge sind über generierte SQLDelight-Datenbank-APIs verdrahtet.
+- Snapshot-Seed-Importer (`SnapshotSeedDataImporter`) läuft beim App-Start mit Checksum-aware Fast-Path.
+- Daten-Fluss: `UI -> ViewModel -> Repository -> SQLDelight DAOs -> SQLite`.
+- `Favorites` unterstützt Parks und Regionen; `Recents` speichert jeden geöffneten Park.
+- Aktueller Datenstand: Die UI ist an reale Repository- und SQLDelight-Daten angebunden; Mock-`UiState`-Defaults sind durch echte Daten ersetzt.
 - Aktuelle Assets: Start-Hintergrund/Icon und Favoriten-Windpark-Thumbnails sind unter `composeResources/drawable` gebündelt.
 - Aktuelles Build-Risiko: Der Gradle-Problems-Report markiert eine Kotlin-Multiplatform-/Android-Gradle-Plugin-Kompatibilitätswarnung für die Nutzung von `org.jetbrains.kotlin.multiplatform` mit `com.android.application` unter AGP 9.x. Dies ist für den Seminar-MVP akzeptiert; eine spätere Migration könnte ein separates Android-App-Subprojekt erfordern, wenn die App über das Seminar hinaus weitergeführt wird oder der Build bricht.
 
@@ -511,10 +514,11 @@ Für das aktuelle Seminarprojekt sind neue automatisierte Tests kein Teil des an
 
 - Datentransformations-Prüfpunkt: rohe Quellen-/Demo-Windparkdaten werden zu appfertigen Windpark- und Metrikobjekten.
 - Karteninteraktions-Prüfpunkt: Die Auswahl einer Kartenvorschau öffnet die korrekte Route `Detail(parkId)`.
-- Detailansichts-Prüfpunkt: fehlende, abgeleitete, geschätzte und offizielle Werte werden mit korrekten Labels gerendert, sobald Quellenmetadaten implementiert sind.
+- Detailansichts-Prüfpunkt: fehlende, abgeleitete, geschätzte und offizielle Werte werden mit korrekten Labels gerendert.
 - Wirkungsberechnungs-Prüfpunkt: Haushalts- und CO2-Äquivalent-Berechnungen sind deterministisch und als Schätzungen gekennzeichnet.
-- Lokaler-Zustands-Prüfpunkt: Favoriten und zuletzt angesehene Windparks bleiben lokal erhalten und können von Nutzerinnen und Nutzern geändert werden, sobald die SQLDelight-Verdrahtung abgeschlossen ist.
-- Berechtigungs-Prüfpunkt: verweigerter, nicht verfügbarer oder gewährter Standortzugriff führt zu verständlichen UI-Zuständen, sobald Standortunterstützung implementiert ist.
+- Lokaler-Zustands-Prüfpunkt: Favoriten und zuletzt angesehene Windparks bleiben lokal erhalten und können von Nutzerinnen und Nutzern geändert werden.
+- Berechtigungs-Prüfpunkt: verweigerter, nicht verfügbarer oder gewährter Standortzugriff führt zu verständlichen UI-Zuständen.
+- Datenhinweis-Prüfpunkt: Über den Pin-Placement-FAB erstellte Datenhinweise werden lokal gespeichert, erhalten den ausgewählten Park-Kontext und können exportiert werden.
 - Fehler-Prüfpunkt: fehlgeschlagenes Quellen-/API-Laden zeigt Ausweich- oder Fehlerzustände ohne Absturz, falls externe Daten eingeführt werden.
 
 ### Akzeptanzprüfungen
