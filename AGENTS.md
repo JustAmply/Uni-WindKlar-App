@@ -97,7 +97,7 @@ Data-quality labels: `official`, `measured`, `derived`, `estimated`, `simulated`
 - Search is implemented inside the `Map` flow as an overlay/sheet.
 - `ReportWindTurbine` is implemented as a dialog composable (`ReportWindTurbineDialog`) triggered from the `MapScreen` pin-placement FAB.
 - All repositories/DAO contracts are wired through generated SQLDelight APIs.
-- Snapshot seed importer (`SnapshotSeedDataImporter`) runs on app startup with checksum-aware fast-path.
+- Snapshot seed importer (`SnapshotSeedDataImporter`) runs on app startup with checksum-aware fast-path. Android first start uses a bundled preseed SQLite database (`windklar_seed.db`) copied before driver creation; iOS falls back to JSON import.
 - Data wireframe: `UI -> ViewModel -> Repository -> SQLDelight DAOs -> SQLite`.
 - `Favorites` supports both parks and regions; `Recents` records every opened park.
 - `FaqScreen` renders static content from `FaqUiState.defaultFaqQuestions` (no ViewModel).

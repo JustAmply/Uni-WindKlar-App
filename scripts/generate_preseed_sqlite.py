@@ -23,6 +23,13 @@ DEFAULT_SNAPSHOT = (
 )
 DEFAULT_METADATA = DEFAULT_SNAPSHOT.with_name("windklar_snapshot_metadata.json")
 DEFAULT_OUTPUT = REPO_ROOT / "data" / "snapshots" / "windklar_seed.db"
+ANDROID_ASSETS_OUTPUT = (
+    REPO_ROOT / "androidApp" / "src" / "main" / "assets" / "windklar_seed.db"
+)
+# Mirrors SnapshotSeedDataImporter companion constants so the importer's
+# fast-path detects the preseeded DB and skips the full JSON import.
+SETTING_METRIC_IMPORT_VERSION_KEY = "snapshot_metric_import_version"
+SETTING_METRIC_IMPORT_VERSION = "snapshot_metrics_v1"
 SCHEMA_DIR = (
     REPO_ROOT
     / "composeApp"
@@ -355,6 +362,10 @@ def populate_database(connection: sqlite3.Connection, snapshot: dict[str, Any]) 
         turbine_count = insert_wind_turbines(connection, wind_turbines)
         metric_count = insert_metrics(connection, metrics)
         insert_snapshot_metadata(connection, snapshot)
+        connection.execute(
+            "INSERT OR REPLACE INTO app_setting(key, value) VALUES (?, ?)",
+            (SETTING_METRIC_IMPORT_VERSION_KEY, SETTING_METRIC_IMPORT_VERSION),
+        )
 
     return {
         "wind_park": park_count,
@@ -399,6 +410,16 @@ def generate_database(snapshot_path: Path, metadata_path: Path, output_path: Pat
     print(f"Wrote {output_path}")
     print(f"Rows: {formatted_counts}")
     print(f"SQLDelight user_version={current_sqldelight_schema_version()}")
+
+    if ANDROID_ASSETS_OUTPUT.parent.exists():
+        ANDROID_ASSETS_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+        import shutil
+        shutil.copy2(output_path, ANDROID_ASSETS_OUTPUT)
+        print(f"Copied preseed DB to Android assets: {ANDROID_ASSETS_OUTPUT}")
+    else:
+        print(
+            "Skipped Android assets copy (androidApp/src/main/assets not found)."
+        )
 
 
 def main() -> None:

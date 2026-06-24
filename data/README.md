@@ -54,11 +54,11 @@ Copy the selected demo snapshot to
 `composeApp/src/commonMain/composeResources/files/snapshots/windklar_snapshot.json`
 before building the app.
 
-### Manual preseed SQLite generator
+### Preseed SQLite generator
 
-Measure A starts the preseed path without changing app runtime startup yet. To
-generate a SQLDelight-compatible SQLite database from the bundled app snapshot,
-run this command from the repository root:
+The preseed path is active on Android. To regenerate a SQLDelight-compatible
+SQLite database from the bundled app snapshot, run this command from the
+repository root:
 
 ```powershell
 python scripts/generate_preseed_sqlite.py --force
@@ -67,10 +67,26 @@ python scripts/generate_preseed_sqlite.py --force
 By default this reads
 `composeApp/src/commonMain/composeResources/files/snapshots/windklar_snapshot.json`
 and `windklar_snapshot_metadata.json`, then writes
-`data/snapshots/windklar_seed.db`. The output directory is ignored, so the
-database can be regenerated manually when the bundled snapshot or SQLDelight
-schema changes. The current app runtime still uses the JSON import fallback
-until platform-specific asset copying is implemented in a separate slice.
+`data/snapshots/windklar_seed.db` and copies the result to
+`androidApp/src/main/assets/windklar_seed.db`. The preseed database also
+contains the `app_setting` row for the snapshot metric import version, so
+`SnapshotSeedDataImporter` detects it via its fast-path checksum check and
+skips the full JSON import on first start.
+
+The output directory is ignored, so the database can be regenerated manually
+when the bundled snapshot or SQLDelight schema changes.
+
+Runtime behavior:
+
+- Android (`MainActivity`): on first start, copies the bundled
+  `windklar_seed.db` asset to the app database path before creating the
+  SQLDelight driver. The importer then verifies the checksum and skips the
+  JSON import. Subsequent starts reuse the existing database file.
+- iOS: the preseed database is not yet added to the Xcode app bundle; iOS
+  falls back to the JSON import path. To activate iOS preseed, add
+  `windklar_seed.db` to the `iosApp` target resources and mirror the
+  `preseedDatabaseFromAssets` copy step in `MainViewController.kt` before
+  `NativeSqliteDriver` is created.
 
 ## Known limitations
 
