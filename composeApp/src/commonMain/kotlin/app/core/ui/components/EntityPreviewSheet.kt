@@ -110,7 +110,7 @@ fun EntityPreviewSheet(
         dragOffsetY = 0f
     }
 
-    val LightOverlayGreen = Color(0xFFD8E7D8)
+    val lightOverlayGreen = WindklarTheme.colors.lightOverlayGreen
 
     Surface(
         modifier = modifier
@@ -197,7 +197,7 @@ fun EntityPreviewSheet(
                     .width(44.dp)
                     .height(5.dp)
                     .clip(CircleShape)
-                    .background(LightOverlayGreen),
+                    .background(lightOverlayGreen),
             )
 
             if (sheetState == PreviewSheetState.Minimized) {

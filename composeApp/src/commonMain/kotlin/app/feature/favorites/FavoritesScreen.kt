@@ -266,7 +266,7 @@ private fun FavoriteThumbnail(
                 Icon(
                     imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                     contentDescription = if (isFavorite) "Favorit" else "Nicht Favorit",
-                    tint = if (isFavorite) WindklarTheme.colors.heartRed else Color.Gray,
+                    tint = if (isFavorite) WindklarTheme.colors.heartRed else WindklarTheme.colors.gray,
                     modifier = Modifier.size(16.dp),
                 )
             }

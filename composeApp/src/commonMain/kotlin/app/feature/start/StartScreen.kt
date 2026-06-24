@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.core.ui.components.PrimaryButton
+import app.core.ui.theme.WindklarTheme
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import windklar.composeapp.generated.resources.Res
@@ -94,10 +95,10 @@ fun StartScreen(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xD907170F),
-                            Color(0x9E4E7B2D),
-                            Color(0xB277A03A),
-                            Color(0xCC234E25),
+                            WindklarTheme.colors.startGradientStop1,
+                            WindklarTheme.colors.startGradientStop2,
+                            WindklarTheme.colors.startGradientStop3,
+                            WindklarTheme.colors.startGradientStop4,
                         ),
                     ),
                 ),

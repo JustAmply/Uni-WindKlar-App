@@ -8,7 +8,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,10 +28,10 @@ fun PrimaryButton(
             .height(56.dp),
         shape = RoundedCornerShape(14.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFFE6E8E5),
+            containerColor = WindklarTheme.colors.primaryButtonContainer,
             contentColor = WindklarTheme.colors.primaryGreen,
-            disabledContainerColor = Color(0xFFB7BCB6),
-            disabledContentColor = Color(0xFF4C594C),
+            disabledContainerColor = WindklarTheme.colors.primaryButtonDisabledContainer,
+            disabledContentColor = WindklarTheme.colors.primaryButtonDisabledContent,
         ),
     ) {
         Text(

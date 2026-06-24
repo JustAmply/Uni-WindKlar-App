@@ -61,7 +61,7 @@ private val HeaderEndGreen @Composable get() = WindklarTheme.colors.headerEndGre
 private val DarkGreen @Composable get() = WindklarTheme.colors.darkGreen
 private val MutedGreen @Composable get() = WindklarTheme.colors.mutedGreen
 private val PaleGreen @Composable get() = WindklarTheme.colors.paleGreen
-private val ContactCardEndGreen @Composable get() = Color(0xFFC8E6C9)
+private val ContactCardEndGreen @Composable get() = WindklarTheme.colors.contactCardEndGreen
 
 @Composable
 fun FaqScreen(

@@ -357,8 +357,8 @@ private fun TurbineCard(turbine: WindTurbine) {
                 Spacer(modifier = Modifier.width(8.dp))
                 StatusBadge(
                     text = turbine.status ?: "Unbekannt",
-                    containerColor = if (turbine.status?.lowercase() == "in betrieb") WindklarTheme.colors.paleGreen else Color(0xFFFFF3E0),
-                    contentColor = if (turbine.status?.lowercase() == "in betrieb") WindklarTheme.colors.primaryGreen else Color(0xFFE65100),
+                    containerColor = if (turbine.status?.lowercase() == "in betrieb") WindklarTheme.colors.paleGreen else WindklarTheme.colors.statusOrangeLight,
+                    contentColor = if (turbine.status?.lowercase() == "in betrieb") WindklarTheme.colors.primaryGreen else WindklarTheme.colors.statusOrangeDark,
                 )
             }
 

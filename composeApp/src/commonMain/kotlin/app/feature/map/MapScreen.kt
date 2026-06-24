@@ -101,7 +101,7 @@ private val HeaderEndGreen @Composable get() = WindklarTheme.colors.headerEndGre
 private val DarkGreen @Composable get() = WindklarTheme.colors.darkGreen
 private val MutedGreen @Composable get() = WindklarTheme.colors.mutedGreen
 private val PaleGreen @Composable get() = WindklarTheme.colors.paleGreen
-private val LightOverlayGreen @Composable get() = Color(0xFFD8E7D8)
+private val LightOverlayGreen @Composable get() = WindklarTheme.colors.lightOverlayGreen
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

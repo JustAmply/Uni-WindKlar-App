@@ -488,7 +488,7 @@ private fun AboutCard(
                 .fillMaxWidth()
                 .background(
                     brush = Brush.linearGradient(
-                        colors = listOf(PaleGreen, Color(0xFFC8E6C9)),
+                        colors = listOf(PaleGreen, WindklarTheme.colors.contactCardEndGreen),
                     ),
                     shape = RoundedCornerShape(16.dp),
                 )

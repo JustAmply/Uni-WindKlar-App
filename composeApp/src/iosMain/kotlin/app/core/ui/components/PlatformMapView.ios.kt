@@ -11,9 +11,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.interop.UIKitView
 import app.core.model.MapMarkerUiModel
+import app.core.ui.theme.WindklarTheme
+import app.core.ui.theme.toHexRgb
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import kotlinx.serialization.json.Json
@@ -77,6 +78,13 @@ actual fun PlatformMapView(
         }
     }
 
+    val colors = WindklarTheme.colors
+    val bg = colors.screenBackground.toHexRgb()
+    val primary = colors.primaryGreen.toHexRgb()
+    val white = colors.cardBackground.toHexRgb()
+    val error = colors.errorRed.toHexRgb()
+    val teal = colors.turbineTeal.toHexRgb()
+
     val htmlContent = remember(leafletCss, leafletJs) {
         val css = leafletCss ?: ""
         val js = leafletJs ?: ""
@@ -93,7 +101,7 @@ actual fun PlatformMapView(
                 
                 body, html {
                     margin: 0; padding: 0; width: 100%; height: 100%;
-                    background: #F8FAF7;
+                    background: $bg;
                 }
                 #map {
                     width: 100%; height: 100%;
@@ -103,7 +111,7 @@ actual fun PlatformMapView(
                     padding: 20px;
                     text-align: center;
                     font-family: sans-serif;
-                    color: #2D5A2D;
+                    color: $primary;
                     margin-top: 100px;
                 }
                 .leaflet-control-zoom { display: none !important; }
@@ -112,9 +120,9 @@ actual fun PlatformMapView(
                     width: 30px;
                     height: 30px;
                     border-radius: 999px;
-                    background: #2D5A2D;
-                    border: 2px solid #FFFFFF;
-                    color: #FFFFFF;
+                    background: $primary;
+                    border: 2px solid $white;
+                    color: $white;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -223,7 +231,7 @@ actual fun PlatformMapView(
                             var isSelected = item.parkId === selectedId;
                             var turbineIcon = L.divIcon({
                                 className: '',
-                                html: '<div style="width: 14px; height: 14px; background: ' + (isSelected ? '#D32F2F' : '#009688') + '; border: 1.5px solid #FFFFFF; border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;"><div style="width: 4px; height: 4px; background: white; border-radius: 50%;"></div></div>',
+                                html: '<div style="width: 14px; height: 14px; background: ' + (isSelected ? '$error' : '$teal') + '; border: 1.5px solid $white; border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;"><div style="width: 4px; height: 4px; background: $white; border-radius: 50%;"></div></div>',
                                 iconSize: [14, 14],
                                 iconAnchor: [7, 7]
                             });
@@ -238,7 +246,7 @@ actual fun PlatformMapView(
                         } else if (item.kind === 'PlacementPin') {
                             var placementIcon = L.divIcon({
                                 className: '',
-                                html: '<div style="width: 34px; height: 42px; display: flex; align-items: flex-start; justify-content: center; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.35));"><svg width="34" height="42" viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17 40C17 40 31 24.9 31 14.8C31 6.6 24.7 1 17 1C9.3 1 3 6.6 3 14.8C3 24.9 17 40 17 40Z" fill="#D32F2F" stroke="#FFFFFF" stroke-width="2"/><circle cx="17" cy="15" r="5.8" fill="#FFFFFF"/></svg></div>',
+                                html: '<div style="width: 34px; height: 42px; display: flex; align-items: flex-start; justify-content: center; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.35));"><svg width="34" height="42" viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17 40C17 40 31 24.9 31 14.8C31 6.6 24.7 1 17 1C9.3 1 3 6.6 3 14.8C3 24.9 17 40 17 40Z" fill="$error" stroke="$white" stroke-width="2"/><circle cx="17" cy="15" r="5.8" fill="$white"/></svg></div>',
                                 iconSize: [34, 42],
                                 iconAnchor: [17, 40]
                             });
@@ -258,8 +266,8 @@ actual fun PlatformMapView(
                             var isSelected = item.parkId === selectedId;
                             var parkMarker = L.circleMarker([item.latitude, item.longitude], {
                                 radius: isSelected ? 8 : 4,
-                                fillColor: isSelected ? '#D32F2F' : '#2D5A2D',
-                                color: '#FFFFFF',
+                                fillColor: isSelected ? '$error' : '$primary',
+                                color: '$white',
                                 weight: 2,
                                 fillOpacity: 1.0,
                                 opacity: 1.0
@@ -427,7 +435,7 @@ actual fun PlatformMapView(
             modifier = modifier,
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(color = Color(0xFF2D5A2D))
+            CircularProgressIndicator(color = WindklarTheme.colors.primaryGreen)
         }
     }
 }

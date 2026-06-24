@@ -31,6 +31,31 @@ data class WindklarColors(
     val gray: Color,
     val darkText: Color,
     val mutedText: Color,
+    val contactCardEndGreen: Color,
+    val lightOverlayGreen: Color,
+    val statusOrangeLight: Color,
+    val statusOrangeDark: Color,
+    val turbineTeal: Color,
+    val impactToneContainer2: Color,
+    val impactToneIcon2: Color,
+    val impactToneContainer3: Color,
+    val impactToneAccent3: Color,
+    val impactToneIcon3: Color,
+    val impactToneIcon4: Color,
+    val startGradientStop1: Color,
+    val startGradientStop2: Color,
+    val startGradientStop3: Color,
+    val startGradientStop4: Color,
+    val qualityOfficialContent: Color,
+    val qualityDerivedContainer: Color,
+    val qualityDerivedContent: Color,
+    val qualityEstimatedContainer: Color,
+    val qualityEstimatedContent: Color,
+    val qualityMissingContainer: Color,
+    val qualityMissingContent: Color,
+    val primaryButtonContainer: Color,
+    val primaryButtonDisabledContainer: Color,
+    val primaryButtonDisabledContent: Color,
 )
 
 val LightWindklarColors = WindklarColors(
@@ -53,6 +78,31 @@ val LightWindklarColors = WindklarColors(
     gray = Color(0xFF757575),
     darkText = Color(0xFF17261A),
     mutedText = Color(0xFF647568),
+    contactCardEndGreen = Color(0xFFC8E6C9),
+    lightOverlayGreen = Color(0xFFD8E7D8),
+    statusOrangeLight = Color(0xFFFFF3E0),
+    statusOrangeDark = Color(0xFFE65100),
+    turbineTeal = Color(0xFF009688),
+    impactToneContainer2 = Color(0xFFF4FAF1),
+    impactToneIcon2 = Color(0xFFDDF1DA),
+    impactToneContainer3 = Color(0xFFF7FBF4),
+    impactToneAccent3 = Color(0xFF2F6B45),
+    impactToneIcon3 = Color(0xFFE1F2DE),
+    impactToneIcon4 = Color(0xFFEAF4E7),
+    startGradientStop1 = Color(0xD907170F),
+    startGradientStop2 = Color(0x9E4E7B2D),
+    startGradientStop3 = Color(0xB277A03A),
+    startGradientStop4 = Color(0xCC234E25),
+    qualityOfficialContent = Color(0xFF1B5E20),
+    qualityDerivedContainer = Color(0xFFD5F0EA),
+    qualityDerivedContent = Color(0xFF00695C),
+    qualityEstimatedContainer = Color(0xFFFFECB3),
+    qualityEstimatedContent = Color(0xFF8A5A00),
+    qualityMissingContainer = Color(0xFFE0E0E0),
+    qualityMissingContent = Color(0xFF616161),
+    primaryButtonContainer = Color(0xFFE6E8E5),
+    primaryButtonDisabledContainer = Color(0xFFB7BCB6),
+    primaryButtonDisabledContent = Color(0xFF4C594C),
 )
 
 @Immutable
@@ -82,6 +132,26 @@ val LocalWindklarColors = staticCompositionLocalOf { LightWindklarColors }
 val LocalWindklarSpacing = staticCompositionLocalOf { WindklarSpacing() }
 val LocalWindklarRadii = staticCompositionLocalOf { WindklarRadii() }
 val LocalWindklarElevation = staticCompositionLocalOf { WindklarElevation() }
+
+fun Color.toHexRgb(): String {
+    val r = (red * 255f + 0.5f).toInt().coerceIn(0, 255)
+    val g = (green * 255f + 0.5f).toInt().coerceIn(0, 255)
+    val b = (blue * 255f + 0.5f).toInt().coerceIn(0, 255)
+    return "#" + r.toString(16).padStart(2, '0').uppercase() +
+        g.toString(16).padStart(2, '0').uppercase() +
+        b.toString(16).padStart(2, '0').uppercase()
+}
+
+fun Color.toHexArgb(): String {
+    val a = (alpha * 255f + 0.5f).toInt().coerceIn(0, 255)
+    val r = (red * 255f + 0.5f).toInt().coerceIn(0, 255)
+    val g = (green * 255f + 0.5f).toInt().coerceIn(0, 255)
+    val b = (blue * 255f + 0.5f).toInt().coerceIn(0, 255)
+    return "#" + a.toString(16).padStart(2, '0').uppercase() +
+        r.toString(16).padStart(2, '0').uppercase() +
+        g.toString(16).padStart(2, '0').uppercase() +
+        b.toString(16).padStart(2, '0').uppercase()
+}
 
 object WindklarTheme {
     val colors: WindklarColors
