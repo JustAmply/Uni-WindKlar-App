@@ -23,8 +23,9 @@ class SnapshotSeedDataImporter(
         const val SNAPSHOT_METRIC_IMPORT_VERSION = "snapshot_metrics_v1"
     }
 
-    override suspend fun importIfNeeded(): Unit = withContext(Dispatchers.Default) {
+    override suspend fun importIfNeeded(onProgress: (ImportProgress) -> Unit): Unit = withContext(Dispatchers.Default) {
         println("SnapshotSeedDataImporter: Starting importIfNeeded...")
+        onProgress(ImportProgress.CheckingChecksum)
         try {
             // Fast-path checksum detection using the 1 KB metadata file to avoid loading 64 MB of JSON on every launch
             val metadataJson = snapshotProvider.readMetadataJson()
@@ -55,6 +56,7 @@ class SnapshotSeedDataImporter(
                     .executeAsOneOrNull() == SNAPSHOT_METRIC_IMPORT_VERSION
                 if (existingSnapshot != null && hasCurrentMetricImport) {
                     println("SnapshotSeedDataImporter: Fast-path checksum matches database. Skipping full JSON parsing and import.")
+                    onProgress(ImportProgress.Completed)
                     return@withContext
                 }
                 if (existingSnapshot != null) {
@@ -63,10 +65,12 @@ class SnapshotSeedDataImporter(
             }
 
             println("SnapshotSeedDataImporter: Seeding database required. Reading full JSON snapshot...")
+            onProgress(ImportProgress.ReadingJson)
             val jsonString = snapshotProvider.readSnapshotJson()
             println("SnapshotSeedDataImporter: Read JSON snapshot. Size = ${jsonString.length} characters.")
 
             println("SnapshotSeedDataImporter: Decoding full JSON snapshot...")
+            onProgress(ImportProgress.DecodingJson)
             val snapshot = json.decodeFromString<WindklarSnapshot>(jsonString)
             println("SnapshotSeedDataImporter: Decoded JSON. Parks = ${snapshot.windParks.size}, Turbines = ${snapshot.windTurbines.size}, Metrics = ${snapshot.metrics.size}")
             require(snapshot.metrics.isNotEmpty()) {
@@ -84,6 +88,7 @@ class SnapshotSeedDataImporter(
 
             if (existingSnapshot != null && hasCurrentMetricImport) {
                 println("SnapshotSeedDataImporter: Snapshot checksum already exists in DB. Skipping import.")
+                onProgress(ImportProgress.Completed)
                 return@withContext
             }
             if (existingSnapshot != null) {
@@ -93,7 +98,11 @@ class SnapshotSeedDataImporter(
             println("SnapshotSeedDataImporter: Seeding database within transaction...")
             database.transaction {
                 println("SnapshotSeedDataImporter: Seeding wind parks...")
-                snapshot.windParks.forEach { park ->
+                val totalParks = snapshot.windParks.size
+                snapshot.windParks.forEachIndexed { index, park ->
+                    if (index % 100 == 0 || index == totalParks - 1) {
+                        onProgress(ImportProgress.SeedingParks(index + 1, totalParks))
+                    }
                     database.windParkQueries.upsertWindPark(
                         id = park.id,
                         name = park.name,
@@ -116,7 +125,11 @@ class SnapshotSeedDataImporter(
                 }
 
                 println("SnapshotSeedDataImporter: Seeding wind turbines...")
-                snapshot.windTurbines.forEach { turbine ->
+                val totalTurbines = snapshot.windTurbines.size
+                snapshot.windTurbines.forEachIndexed { index, turbine ->
+                    if (index % 500 == 0 || index == totalTurbines - 1) {
+                        onProgress(ImportProgress.SeedingTurbines(index + 1, totalTurbines))
+                    }
                     database.windTurbineQueries.upsertWindTurbine(
                         id = turbine.id,
                         wind_park_id = turbine.windParkId,
@@ -145,7 +158,11 @@ class SnapshotSeedDataImporter(
                 }
 
                 println("SnapshotSeedDataImporter: Seeding metrics from snapshot...")
-                snapshot.metrics.forEach { metric ->
+                val totalMetrics = snapshot.metrics.size
+                snapshot.metrics.forEachIndexed { index, metric ->
+                    if (index % 1000 == 0 || index == totalMetrics - 1) {
+                        onProgress(ImportProgress.SeedingMetrics(index + 1, totalMetrics))
+                    }
                     database.metricQueries.upsertMetric(
                         id = metric.id,
                         subject_type = metric.subjectType,
@@ -163,6 +180,7 @@ class SnapshotSeedDataImporter(
                 }
 
                 println("SnapshotSeedDataImporter: Seeding metadata...")
+                onProgress(ImportProgress.SeedingMetadata)
                 database.snapshotMetadataQueries.upsertSnapshotMetadata(
                     snapshot_id = metadata.snapshotId,
                     schema_version = snapshot.schemaVersion,
@@ -182,6 +200,7 @@ class SnapshotSeedDataImporter(
                     value_ = SNAPSHOT_METRIC_IMPORT_VERSION,
                 )
             }
+            onProgress(ImportProgress.Completed)
             println("SnapshotSeedDataImporter: Seeding database completed successfully.")
         } catch (e: Throwable) {
             println("SnapshotSeedDataImporter ERROR: Seeding failed with exception!")
