@@ -6,18 +6,20 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.core.model.Metric
+import app.core.model.NationalStatsSummary
+import app.core.model.RegionSummary
 import app.core.model.SnapshotAssumption
 import app.core.model.WindPark
 import app.core.model.RankingItem
 import app.core.model.RankingDetailLine
 
+import app.core.ui.components.formatDataQuality
 import app.data.repository.WindParkRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.round
 import app.core.util.formatGermanNumber
-import app.core.util.roundTo
 import kotlinx.coroutines.Job
 
 class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
@@ -28,7 +30,10 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
     private var loadJob: Job? = null
     private val loadingImpactDetails = mutableSetOf<String>()
     private var loadedParks: List<WindPark> = emptyList()
-    private var loadedMetricsByParkId: Map<String, List<Metric>> = emptyMap()
+    private var loadedNationalSummary: NationalStatsSummary? = null
+    private var loadedCitySummariesById: Map<String, RegionSummary> = emptyMap()
+    private var loadedDistrictSummariesById: Map<String, RegionSummary> = emptyMap()
+    private var loadedStateSummariesById: Map<String, RegionSummary> = emptyMap()
     private var loadedCities: List<CityStat> = emptyList()
     private var loadedDistricts: List<DistrictStat> = emptyList()
     private var loadedStates: List<StateStat> = emptyList()
@@ -64,10 +69,9 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
                 when (metricType) {
                     StatsImpactType.Households.name -> {
                         val detail = withContext(Dispatchers.Default) {
-                            buildHouseholdsImpactDetail(
+                            buildHouseholdsImpactDetailFromSummary(
                                 parks = loadedParks,
-                                totalHouseholds = totalHouseholdsValue,
-                                metricsByParkId = loadedMetricsByParkId,
+                                nationalSummary = loadedNationalSummary,
                                 assumptions = loadedAssumptions,
                             )
                         }
@@ -75,32 +79,29 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
                     }
                     StatsImpactType.MunicipalBenefit.name -> {
                         val detail = withContext(Dispatchers.Default) {
-                            buildMunicipalBenefitImpactDetail(
+                            buildMunicipalBenefitImpactDetailFromSummary(
                                 parks = loadedParks,
                                 districts = loadedDistricts,
                                 states = loadedStates,
-                                metricsByParkId = loadedMetricsByParkId,
                                 assumptions = loadedAssumptions,
                             )
                         }
                         uiState = uiState.copy(municipalBenefitDetail = detail)
                     }
                     StatsImpactType.Turbines.name -> {
-                        val allTurbines = repository.getAllWindTurbines()
                         val detail = withContext(Dispatchers.Default) {
-                            buildTurbinesImpactDetail(
+                            buildTurbinesImpactDetailFromSummary(
                                 parks = loadedParks,
-                                turbines = allTurbines,
+                                nationalSummary = loadedNationalSummary,
                             )
                         }
                         uiState = uiState.copy(turbinesDetail = detail)
                     }
                     StatsImpactType.Co2.name -> {
                         val detail = withContext(Dispatchers.Default) {
-                            buildCo2ImpactDetail(
+                            buildCo2ImpactDetailFromSummary(
                                 parks = loadedParks,
-                                totalCo2Kg = totalCo2KgValue,
-                                metricsByParkId = loadedMetricsByParkId,
+                                nationalSummary = loadedNationalSummary,
                                 assumptions = loadedAssumptions,
                             )
                         }
@@ -210,37 +211,43 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
         uiState = uiState.copy(isLoading = true)
         loadJob = viewModelScope.launch {
             val parks = repository.getWindParks()
-            val activeTurbineCount = repository.countActiveWindTurbines()
-            val nationalMetrics = repository.getMetricsForNational()
+            val nationalSummary = repository.getNationalStatsSummary()
+            val citySummaries = repository.getRegionSummaries("city")
+            val districtSummaries = repository.getRegionSummaries("district")
+            val stateSummaries = repository.getRegionSummaries("state")
             val recentParks = repository.getRecentWindParks(limit = 1)
             val assumptions = repository.getSnapshotAssumptions()
             val attribution = repository.getSnapshotAttribution()
             val snapshotInfo = repository.getSnapshotInfo()
 
-            val allMetrics = repository.getMetricsForParks(parks.map { it.id })
             val newState = withContext(Dispatchers.Default) {
-                loadedMetricsByParkId = allMetrics.groupBy { it.subjectId }
                 loadedParks = parks
+                loadedNationalSummary = nationalSummary
+                loadedCitySummariesById = citySummaries.associateBy { it.regionId }
+                loadedDistrictSummariesById = districtSummaries.associateBy { it.regionId }
+                loadedStateSummariesById = stateSummaries.associateBy { it.regionId }
                 loadedAssumptions = assumptions
                 parkMetricCache.clear()
 
-                val totalCapacityKw = parks.sumOf { it.installedCapacityKw ?: 0L }
+                val totalCapacityKw = nationalSummary?.installedCapacityKw
+                    ?: parks.sumOf { it.installedCapacityKw ?: 0L }
                 val totalCapacityMw = totalCapacityKw / 1_000.0
-                val totalProductionKwh = nationalMetrics.firstValue("annual_production")
+                val totalProductionKwh = nationalSummary?.annualProductionKwh
                     ?: totalCapacityKw * assumptionValue("full_load_hours", assumptions, DEFAULT_FULL_LOAD_HOURS)
-                val totalCo2Kg = nationalMetrics.firstValue("co2_savings") ?: 0.0
-                val totalHouseholds = nationalMetrics.firstValue("household_equivalent") ?: 0.0
-                val totalMunicipalBenefit = nationalMetrics.firstValue("municipal_participation") ?: 0.0
+                val totalCo2Kg = nationalSummary?.co2SavingsKg ?: 0.0
+                val totalHouseholds = nationalSummary?.householdEquivalent ?: 0.0
+                val totalMunicipalBenefit = nationalSummary?.municipalBenefitEur ?: 0.0
+                val activeTurbineCount = nationalSummary?.activeTurbineCount ?: parks.sumOf { it.turbineCount }
                 totalHouseholdsValue = totalHouseholds
                 totalCo2KgValue = totalCo2Kg
 
-                val cities = buildCityStats(parks, totalCapacityMw, assumptions, loadedMetricsByParkId)
+                val cities = buildCityStats(citySummaries, stateSummaries, totalCapacityMw)
                 loadedCities = cities
 
-                val districts = buildDistrictStats(parks, totalCapacityMw, assumptions, loadedMetricsByParkId)
+                val districts = buildDistrictStats(districtSummaries, stateSummaries, totalCapacityMw)
                 loadedDistricts = districts
 
-                val states = buildStateStats(parks, totalCapacityMw, assumptions, loadedMetricsByParkId)
+                val states = buildStateStats(stateSummaries, totalCapacityMw)
                 loadedStates = states
 
                 val recentPark = recentParks.firstOrNull()
@@ -288,7 +295,7 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
                     snapshotInfoLine = "Lokaler Datenstand · keine Live-Daten",
                     overviewCards = listOf(
                         StatsOverviewCard(
-                            value = formatInteger(parks.size),
+                            value = formatInteger(nationalSummary?.windParkCount ?: parks.size),
                             label = "Windparks",
                             icon = StatsIcon.Wind,
                         ),
@@ -366,7 +373,7 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
                     comparisonRows = comparisonRows,
                     co2Summary = formatCo2(totalCo2Kg),
                     co2Comparisons = buildCo2Comparisons(totalCo2Kg),
-                    capacityClasses = buildCapacityClasses(parks),
+                    capacityClasses = buildCapacityClasses(nationalSummary, parks),
                     qualityNotes = listOf(
                         StatsQualityNote(
                             label = "Windanlagen",
@@ -422,39 +429,25 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
     }
 
     private fun buildCityStats(
-        parks: List<WindPark>,
+        citySummaries: List<RegionSummary>,
+        stateSummaries: List<RegionSummary>,
         totalCapacityMw: Double,
-        assumptions: List<SnapshotAssumption>,
-        metricsByParkId: Map<String, List<Metric>>,
     ): List<CityStat> {
-        val parkGroups = parks
-            .groupBy { it.municipalityId }
-        val stateCapacityMw = parks
-            .groupBy { it.stateId }
-            .mapValues { (_, stateParks) ->
-                stateParks.sumOf { it.installedCapacityKw ?: 0L } / 1_000.0
-            }
+        val stateCapacityByName = stateSummaries.associate { it.name to it.installedCapacityKw / 1_000.0 }
 
-        return parkGroups.map { (cityId, cityParks) ->
-            val capacityMw = cityParks.sumOf { it.installedCapacityKw ?: 0L } / 1_000.0
-            val turbines = cityParks.sumOf { it.turbineCount }
-            val firstPark = cityParks.first()
-            val stateCapacity = stateCapacityMw[firstPark.stateId] ?: 0.0
-            val municipalBenefitEur = cityParks
-                .takeIf { it.isNotEmpty() }
-                ?.sumOf { park ->
-                    metricsByParkId[park.id]
-                        ?.firstOrNull { it.metricType == "municipal_participation" }
-                        ?.value
-                        ?: 0.0
-                }
+        return citySummaries.map { summary ->
+            val capacityMw = summary.installedCapacityKw / 1_000.0
+            val parentParts = summary.parentName.orEmpty().split(",").map { it.trim() }
+            val districtName = parentParts.getOrNull(0).orEmpty()
+            val stateName = parentParts.getOrNull(1).orEmpty()
+            val stateCapacity = stateCapacityByName[stateName] ?: 0.0
             CityStat(
-                cityId = cityId,
-                label = firstPark.municipalityName,
-                districtName = firstPark.districtName,
-                stateName = firstPark.stateName,
-                windParkCount = cityParks.size,
-                turbineCount = turbines,
+                cityId = summary.regionId,
+                label = summary.name,
+                districtName = districtName,
+                stateName = stateName,
+                windParkCount = summary.windParkCount,
+                turbineCount = summary.turbineCount,
                 installedCapacityMw = capacityMw,
                 shareOfNationalCapacity = if (totalCapacityMw > 0.0) {
                     (capacityMw / totalCapacityMw).toFloat().coerceIn(0f, 1f)
@@ -466,52 +459,29 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
                 } else {
                     0f
                 },
-                municipalBenefitEur = municipalBenefitEur,
+                municipalBenefitEur = summary.municipalBenefitEur,
             )
         }.sortedByDescending { it.installedCapacityMw }
     }
 
     private fun buildDistrictStats(
-        parks: List<WindPark>,
+        districtSummaries: List<RegionSummary>,
+        stateSummaries: List<RegionSummary>,
         totalCapacityMw: Double,
-        assumptions: List<SnapshotAssumption>,
-        metricsByParkId: Map<String, List<Metric>>,
     ): List<DistrictStat> {
-        val parkGroups = parks
-            .groupBy { it.districtId }
-        val stateCapacityMw = parks
-            .groupBy { it.stateId }
-            .mapValues { (_, stateParks) ->
-                stateParks.sumOf { it.installedCapacityKw ?: 0L } / 1_000.0
-            }
+        val stateCapacityByName = stateSummaries.associate { it.name to it.installedCapacityKw / 1_000.0 }
 
-        return parkGroups.map { (districtId, districtParks) ->
-            val capacityMw = districtParks.sumOf { it.installedCapacityKw ?: 0L } / 1_000.0
-            val turbines = districtParks.sumOf { it.turbineCount }
-            val firstPark = districtParks.first()
-            val representativeMunicipality = districtParks
-                .groupBy { it.municipalityName }
-                .maxByOrNull { (_, municipalityParks) ->
-                    municipalityParks.sumOf { it.installedCapacityKw ?: 0L }
-                }
-                ?.key
-                ?: firstPark.municipalityName
-            val stateCapacity = stateCapacityMw[firstPark.stateId] ?: 0.0
-            val municipalBenefitEur = districtParks
-                .takeIf { it.isNotEmpty() }
-                ?.sumOf { park ->
-                    metricsByParkId[park.id]
-                        ?.firstOrNull { it.metricType == "municipal_participation" }
-                        ?.value
-                        ?: 0.0
-                }
+        return districtSummaries.map { summary ->
+            val capacityMw = summary.installedCapacityKw / 1_000.0
+            val stateName = summary.parentName.orEmpty()
+            val stateCapacity = stateCapacityByName[stateName] ?: 0.0
             DistrictStat(
-                districtId = districtId,
-                label = firstPark.districtName,
-                contextLabel = representativeMunicipality,
-                stateName = firstPark.stateName,
-                windParkCount = districtParks.size,
-                turbineCount = turbines,
+                districtId = summary.regionId,
+                label = summary.name,
+                contextLabel = summary.contextLabel.orEmpty(),
+                stateName = stateName,
+                windParkCount = summary.windParkCount,
+                turbineCount = summary.turbineCount,
                 installedCapacityMw = capacityMw,
                 shareOfNationalCapacity = if (totalCapacityMw > 0.0) {
                     (capacityMw / totalCapacityMw).toFloat().coerceIn(0f, 1f)
@@ -523,44 +493,29 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
                 } else {
                     0f
                 },
-                municipalBenefitEur = municipalBenefitEur,
+                municipalBenefitEur = summary.municipalBenefitEur,
             )
         }.sortedByDescending { it.installedCapacityMw }
     }
 
     private fun buildStateStats(
-        parks: List<WindPark>,
+        stateSummaries: List<RegionSummary>,
         totalCapacityMw: Double,
-        assumptions: List<SnapshotAssumption>,
-        metricsByParkId: Map<String, List<Metric>>,
     ): List<StateStat> {
-        val parkGroups = parks
-            .groupBy { it.stateId }
-
-        return parkGroups.map { (stateId, stateParks) ->
-            val capacityMw = stateParks.sumOf { it.installedCapacityKw ?: 0L } / 1_000.0
-            val turbines = stateParks.sumOf { it.turbineCount }
-            val firstPark = stateParks.first()
-            val municipalBenefitEur = stateParks
-                .takeIf { it.isNotEmpty() }
-                ?.sumOf { park ->
-                    metricsByParkId[park.id]
-                        ?.firstOrNull { it.metricType == "municipal_participation" }
-                        ?.value
-                        ?: 0.0
-                }
+        return stateSummaries.map { summary ->
+            val capacityMw = summary.installedCapacityKw / 1_000.0
             StateStat(
-                stateId = stateId,
-                label = firstPark.stateName,
-                windParkCount = stateParks.size,
-                turbineCount = turbines,
+                stateId = summary.regionId,
+                label = summary.name,
+                windParkCount = summary.windParkCount,
+                turbineCount = summary.turbineCount,
                 installedCapacityMw = capacityMw,
                 shareOfNationalCapacity = if (totalCapacityMw > 0.0) {
                     (capacityMw / totalCapacityMw).toFloat().coerceIn(0f, 1f)
                 } else {
                     0f
                 },
-                municipalBenefitEur = municipalBenefitEur,
+                municipalBenefitEur = summary.municipalBenefitEur,
             )
         }.sortedByDescending { it.installedCapacityMw }
     }
@@ -715,41 +670,45 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
         )
     }
 
-    private fun aggregateComparisonMetrics(
-        parks: List<WindPark>,
+    private fun CityStat.comparisonMetrics(): ComparisonMetrics {
+        return loadedCitySummariesById[cityId]?.comparisonMetrics()
+            ?: comparisonMetricsFromDisplayedStats(installedCapacityMw, turbineCount, municipalBenefitEur)
+    }
+
+    private fun DistrictStat.comparisonMetrics(): ComparisonMetrics {
+        return loadedDistrictSummariesById[districtId]?.comparisonMetrics()
+            ?: comparisonMetricsFromDisplayedStats(installedCapacityMw, turbineCount, municipalBenefitEur)
+    }
+
+    private fun StateStat.comparisonMetrics(): ComparisonMetrics {
+        return loadedStateSummariesById[stateId]?.comparisonMetrics()
+            ?: comparisonMetricsFromDisplayedStats(installedCapacityMw, turbineCount, municipalBenefitEur)
+    }
+
+    private fun RegionSummary.comparisonMetrics(): ComparisonMetrics =
+        ComparisonMetrics(
+            turbines = turbineCount,
+            capacityMw = installedCapacityKw / 1_000.0,
+            annualProductionKwh = annualProductionKwh,
+            co2Kg = co2SavingsKg,
+            households = householdEquivalent,
+            municipalBenefit = municipalBenefitEur,
+        )
+
+    private fun comparisonMetricsFromDisplayedStats(
         capacityMw: Double,
         turbineCount: Int,
         municipalBenefit: Double?,
     ): ComparisonMetrics {
-        val parkIds = parks.map { it.id }.toSet()
-        val regionMetrics = loadedMetricsByParkId.filterKeys { it in parkIds }.values.flatten()
-        val annualProduction = regionMetrics.filter { it.metricType == "annual_production" }.sumOf { it.value ?: 0.0 }
-        val co2 = regionMetrics.filter { it.metricType == "co2_savings" }.sumOf { it.value ?: 0.0 }
-        val households = regionMetrics.filter { it.metricType == "household_equivalent" || it.metricType == "households_supplied" }.sumOf { it.value ?: 0.0 }
-
+        val annualProduction = capacityMw * 1_000.0 * DEFAULT_FULL_LOAD_HOURS
         return ComparisonMetrics(
             turbines = turbineCount,
             capacityMw = capacityMw,
             annualProductionKwh = annualProduction,
-            co2Kg = co2,
-            households = households,
+            co2Kg = annualProduction * DEFAULT_EMISSION_FACTOR_KG_PER_KWH,
+            households = annualProduction / DEFAULT_HOUSEHOLD_CONSUMPTION_KWH,
             municipalBenefit = municipalBenefit,
         )
-    }
-
-    private fun CityStat.comparisonMetrics(): ComparisonMetrics {
-        val cityParks = loadedParks.filter { it.municipalityId == cityId }
-        return aggregateComparisonMetrics(cityParks, installedCapacityMw, turbineCount, municipalBenefitEur)
-    }
-
-    private fun DistrictStat.comparisonMetrics(): ComparisonMetrics {
-        val districtParks = loadedParks.filter { it.districtId == districtId }
-        return aggregateComparisonMetrics(districtParks, installedCapacityMw, turbineCount, municipalBenefitEur)
-    }
-
-    private fun StateStat.comparisonMetrics(): ComparisonMetrics {
-        val stateParks = loadedParks.filter { it.stateId == stateId }
-        return aggregateComparisonMetrics(stateParks, installedCapacityMw, turbineCount, municipalBenefitEur)
     }
 
     private fun comparisonRow(
@@ -776,6 +735,205 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
         )
     }
 
+    private fun buildHouseholdsImpactDetailFromSummary(
+        parks: List<WindPark>,
+        nationalSummary: NationalStatsSummary?,
+        assumptions: List<SnapshotAssumption>,
+    ): HouseholdsImpactDetail {
+        val totalHouseholds = nationalSummary?.householdEquivalent ?: totalHouseholdsValue
+        val topParks = buildParkImpactBars(
+            parks = parks,
+            assumptions = assumptions,
+            selector = { it.households },
+            formatter = ::formatCompact,
+        )
+        val avgPerPark = if ((nationalSummary?.windParkCount ?: parks.size) > 0) {
+            totalHouseholds / (nationalSummary?.windParkCount ?: parks.size)
+        } else {
+            0.0
+        }
+        val nationalShare = totalHouseholds / GERMAN_HOUSEHOLDS_TOTAL
+        return HouseholdsImpactDetail(
+            summaryValue = formatCompact(totalHouseholds),
+            summarySubtitle = "Haushalte mit durchschnittlichem Jahresverbrauch",
+            topParks = topParks,
+            nationalSharePercent = "${formatGermanNumber(nationalShare * 100.0, 2)} %",
+            avgPerPark = formatCompact(avgPerPark),
+            assumptions = listOf(
+                StatsImpactFact("Annahme", "3.500 kWh/Jahr je Haushalt"),
+                StatsImpactFact("Basis", "vorberechnete Jahresproduktion"),
+                StatsImpactFact("Bezug", "ca. ${formatGermanNumber(GERMAN_HOUSEHOLDS_TOTAL / 1_000_000.0, 1)} Mio. Haushalte in Deutschland"),
+                StatsImpactFact("Einordnung", "Orientierungswert, kein Liefervertrag"),
+            ),
+            qualityLabel = formatDataQuality("estimated"),
+        )
+    }
+
+    private fun buildMunicipalBenefitImpactDetailFromSummary(
+        parks: List<WindPark>,
+        districts: List<DistrictStat>,
+        states: List<StateStat>,
+        assumptions: List<SnapshotAssumption>,
+    ): MunicipalBenefitImpactDetail {
+        val benefitByPark = parks
+            .map { it.comparisonMetrics(emptyList(), assumptions).municipalBenefit ?: 0.0 }
+            .filter { it > 0.0 }
+            .sorted()
+        val topDistricts = buildImpactBars(
+            districts.mapNotNull { district ->
+                district.municipalBenefitEur?.let {
+                    ImpactBarInput(district.label, it, ImpactNavigateTarget.Region("district", district.districtId))
+                }
+            },
+            formatter = ::formatCurrency,
+        )
+        return MunicipalBenefitImpactDetail(
+            summaryValue = formatCurrency(loadedNationalSummary?.municipalBenefitEur ?: states.sumOf { it.municipalBenefitEur ?: 0.0 }),
+            summarySubtitle = "pro Jahr nach § 6 EEG orientiert",
+            topDistricts = topDistricts,
+            minPerPark = formatCurrency(benefitByPark.firstOrNull() ?: 0.0),
+            medianPerPark = formatCurrency(benefitByPark.medianOrNull() ?: 0.0),
+            maxPerPark = formatCurrency(benefitByPark.lastOrNull() ?: 0.0),
+            assumptions = listOf(
+                StatsImpactFact("Regel", "§ 6 EEG"),
+                StatsImpactFact("Richtwert", "bis zu 0,2 ct/kWh"),
+                StatsImpactFact("Gilt für", "Windenergie an Land"),
+                StatsImpactFact("Einordnung", "Orientierungswert für mögliche Beteiligung"),
+            ),
+            qualityLabel = formatDataQuality("estimated"),
+        )
+    }
+
+    private fun buildTurbinesImpactDetailFromSummary(
+        parks: List<WindPark>,
+        nationalSummary: NationalStatsSummary?,
+    ): TurbinesImpactDetail {
+        val totalTurbines = nationalSummary?.activeTurbineCount ?: parks.sumOf { it.turbineCount }
+        val byDecade = nationalSummary?.let {
+            bucketBars(
+                listOf(
+                    "Vor 2000" to it.turbineCommissioningPre2000.toDouble(),
+                    "2000-2009" to it.turbineCommissioning2000To2009.toDouble(),
+                    "2010-2019" to it.turbineCommissioning2010To2019.toDouble(),
+                    "2020+" to it.turbineCommissioning2020Plus.toDouble(),
+                    "Unbekannt" to it.turbineCommissioningUnknown.toDouble(),
+                )
+            )
+        } ?: emptyList()
+        val heightBuckets = nationalSummary?.let {
+            bucketBars(
+                listOf(
+                    "< 80 m" to it.turbineHeightLt80m.toDouble(),
+                    "80-120 m" to it.turbineHeight80To120m.toDouble(),
+                    "120-160 m" to it.turbineHeight120To160m.toDouble(),
+                    "> 160 m" to it.turbineHeightGte160m.toDouble(),
+                    "Unbekannt" to it.turbineHeightUnknown.toDouble(),
+                )
+            )
+        } ?: emptyList()
+        val topParks = buildImpactBars(
+            parks.map { ImpactBarInput(it.name, it.turbineCount.toDouble(), ImpactNavigateTarget.Park(it.id)) },
+            formatter = { formatGermanNumber(it.roundToInt()) },
+        )
+        val parkCount = (nationalSummary?.windParkCount ?: parks.size).coerceAtLeast(1)
+        return TurbinesImpactDetail(
+            summaryValue = formatGermanNumber(totalTurbines),
+            summarySubtitle = "aus MaStR/Open-MaStR im lokalen Snapshot",
+            byDecade = byDecade,
+            heightBuckets = heightBuckets,
+            topParks = topParks,
+            avgPerPark = "${formatGermanNumber(totalTurbines.toDouble() / parkCount, 1)} Anlagen/Park",
+            assumptions = listOf(
+                StatsImpactFact("Quelle", "MaStR/Open-MaStR"),
+                StatsImpactFact("Einheit", "Windanlage"),
+                StatsImpactFact("Darstellung", "Windpark als UX-Einheit"),
+                StatsImpactFact("Datenstand", "lokaler Snapshot, keine Live-Daten"),
+            ),
+            qualityLabel = formatDataQuality("official"),
+        )
+    }
+
+    private fun buildCo2ImpactDetailFromSummary(
+        parks: List<WindPark>,
+        nationalSummary: NationalStatsSummary?,
+        assumptions: List<SnapshotAssumption>,
+    ): Co2ImpactDetail {
+        val totalCo2Kg = nationalSummary?.co2SavingsKg ?: totalCo2KgValue
+        val topParks = buildParkImpactBars(
+            parks = parks,
+            assumptions = assumptions,
+            selector = { it.co2Kg },
+            formatter = { "${formatGermanNumber(it / 1_000.0, 0)} t" },
+        )
+        return Co2ImpactDetail(
+            summaryValue = formatCo2(totalCo2Kg),
+            summarySubtitle = "pro Jahr gegenüber Strommix-Emissionen",
+            topParks = topParks,
+            equivalents = buildCo2Comparisons(totalCo2Kg),
+            assumptions = listOf(
+                StatsImpactFact("Emissionsfaktor", "380 g/kWh"),
+                StatsImpactFact("Basis", "vorberechnete Jahresproduktion"),
+                StatsImpactFact("Einordnung", "transparente Schätzung, keine gemessene Einsparung"),
+            ),
+            qualityLabel = formatDataQuality("estimated"),
+        )
+    }
+
+    private fun buildParkImpactBars(
+        parks: List<WindPark>,
+        assumptions: List<SnapshotAssumption>,
+        selector: (ComparisonMetrics) -> Double,
+        formatter: (Double) -> String,
+    ): List<ImpactBarEntry> =
+        buildImpactBars(
+            parks.map { park ->
+                ImpactBarInput(
+                    label = park.name,
+                    value = selector(park.comparisonMetrics(emptyList(), assumptions)),
+                    navigateTarget = ImpactNavigateTarget.Park(park.id),
+                )
+            },
+            formatter = formatter,
+        )
+
+    private fun buildImpactBars(
+        entries: List<ImpactBarInput>,
+        formatter: (Double) -> String,
+        limit: Int = 5,
+    ): List<ImpactBarEntry> {
+        val max = entries.maxOfOrNull { it.value }?.takeIf { it > 0.0 } ?: 1.0
+        return entries
+            .sortedByDescending { it.value }
+            .take(limit)
+            .map { input ->
+                ImpactBarEntry(
+                    label = input.label,
+                    value = formatter(input.value),
+                    ratio = (input.value / max).toFloat().coerceIn(0f, 1f),
+                    navigateTarget = input.navigateTarget,
+                )
+            }
+    }
+
+    private fun bucketBars(entries: List<Pair<String, Double>>): List<ImpactBarEntry> {
+        val visibleEntries = entries.filter { it.second > 0.0 }
+        val max = visibleEntries.maxOfOrNull { it.second }?.takeIf { it > 0.0 } ?: 1.0
+        return visibleEntries.map { (label, value) ->
+            ImpactBarEntry(
+                label = label,
+                value = formatGermanNumber(value.toInt()),
+                ratio = (value / max).toFloat().coerceIn(0f, 1f),
+            )
+        }
+    }
+
+    private fun List<Double>.medianOrNull(): Double? =
+        if (isEmpty()) null else {
+            val sorted = sorted()
+            val mid = size / 2
+            if (size % 2 == 0) (sorted[mid - 1] + sorted[mid]) / 2.0 else sorted[mid]
+        }
+
     private fun buildCo2Comparisons(totalCo2Kg: Double): List<Co2Comparison> {
         val values = listOf(
             "Flüge Berlin-NYC" to totalCo2Kg / CO2_PER_BERLIN_NYC_FLIGHT_KG,
@@ -798,14 +956,24 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
         }
     }
 
-    private fun buildCapacityClasses(parks: List<WindPark>): List<CapacityClassStat> {
-        val classes = listOf(
+    private fun buildCapacityClasses(
+        nationalSummary: NationalStatsSummary?,
+        parks: List<WindPark>,
+    ): List<CapacityClassStat> {
+        val classes = nationalSummary?.let {
+            listOf(
+                "< 5 MW" to it.capacityClassLt5Mw,
+                "5-20 MW" to it.capacityClass5To20Mw,
+                "20-50 MW" to it.capacityClass20To50Mw,
+                "> 50 MW" to it.capacityClassGte50Mw,
+            )
+        } ?: listOf(
             "< 5 MW" to parks.count { (it.installedCapacityKw ?: 0L) < 5_000L },
             "5-20 MW" to parks.count { (it.installedCapacityKw ?: 0L) in 5_000L until 20_000L },
             "20-50 MW" to parks.count { (it.installedCapacityKw ?: 0L) in 20_000L until 50_000L },
             "> 50 MW" to parks.count { (it.installedCapacityKw ?: 0L) >= 50_000L },
         )
-        val totalCount = parks.size.coerceAtLeast(1)
+        val totalCount = (nationalSummary?.windParkCount ?: parks.size).coerceAtLeast(1)
         val maxCount = classes.maxOfOrNull { it.second } ?: 0
         return classes.map { (label, count) ->
             CapacityClassStat(

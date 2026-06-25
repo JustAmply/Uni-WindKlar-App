@@ -1,0 +1,68 @@
+CREATE TABLE park_operational_summary (
+    wind_park_id TEXT NOT NULL PRIMARY KEY REFERENCES wind_park(id) ON DELETE CASCADE,
+    park_status TEXT NOT NULL,
+    valid_turbine_count INTEGER NOT NULL,
+    valid_capacity_kw INTEGER NOT NULL
+);
+
+CREATE TABLE region_summary (
+    region_type TEXT NOT NULL,
+    region_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    context_label TEXT,
+    parent_name TEXT,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    wind_park_count INTEGER NOT NULL,
+    turbine_count INTEGER NOT NULL,
+    installed_capacity_kw INTEGER NOT NULL,
+    annual_production_kwh REAL NOT NULL,
+    co2_savings_kg REAL NOT NULL,
+    household_equivalent REAL NOT NULL,
+    municipal_benefit_eur REAL NOT NULL,
+    PRIMARY KEY(region_type, region_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_region_summary_type_capacity
+ON region_summary(region_type, installed_capacity_kw DESC);
+
+CREATE TABLE map_search_entry (
+    id TEXT NOT NULL PRIMARY KEY,
+    result_type TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    label TEXT NOT NULL,
+    description TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    type_rank INTEGER NOT NULL,
+    haystack TEXT NOT NULL,
+    sort_name TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_map_search_entry_rank_sort
+ON map_search_entry(type_rank, sort_name);
+
+CREATE TABLE national_stats_summary (
+    id TEXT NOT NULL PRIMARY KEY,
+    wind_park_count INTEGER NOT NULL,
+    active_turbine_count INTEGER NOT NULL,
+    installed_capacity_kw INTEGER NOT NULL,
+    annual_production_kwh REAL NOT NULL,
+    co2_savings_kg REAL NOT NULL,
+    household_equivalent REAL NOT NULL,
+    municipal_benefit_eur REAL NOT NULL,
+    capacity_class_lt_5mw INTEGER NOT NULL,
+    capacity_class_5_20mw INTEGER NOT NULL,
+    capacity_class_20_50mw INTEGER NOT NULL,
+    capacity_class_gte_50mw INTEGER NOT NULL,
+    turbine_commissioning_pre_2000 INTEGER NOT NULL,
+    turbine_commissioning_2000_2009 INTEGER NOT NULL,
+    turbine_commissioning_2010_2019 INTEGER NOT NULL,
+    turbine_commissioning_2020_plus INTEGER NOT NULL,
+    turbine_commissioning_unknown INTEGER NOT NULL,
+    turbine_height_lt_80m INTEGER NOT NULL,
+    turbine_height_80_120m INTEGER NOT NULL,
+    turbine_height_120_160m INTEGER NOT NULL,
+    turbine_height_gte_160m INTEGER NOT NULL,
+    turbine_height_unknown INTEGER NOT NULL
+);

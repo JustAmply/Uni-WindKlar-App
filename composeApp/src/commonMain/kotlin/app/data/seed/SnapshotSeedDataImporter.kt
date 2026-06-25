@@ -2,6 +2,10 @@ package app.data.seed
 
 import app.data.local.db.AppDatabase
 import app.data.snapshot.MetricDto
+import app.data.snapshot.MapSearchEntryDto
+import app.data.snapshot.NationalStatsSummaryDto
+import app.data.snapshot.ParkOperationalSummaryDto
+import app.data.snapshot.RegionSummaryDto
 import app.data.snapshot.SnapshotProvider
 import app.data.snapshot.WindklarSnapshot
 import app.data.snapshot.WindParkDto
@@ -23,7 +27,7 @@ class SnapshotSeedDataImporter(
 ) : SeedDataImporter {
     private companion object {
         const val SNAPSHOT_IMPORT_VERSION_KEY = "snapshot_source_import_version"
-        const val SNAPSHOT_IMPORT_VERSION = "snapshot_source_v2_commissioning_year"
+        const val SNAPSHOT_IMPORT_VERSION = "snapshot_source_v3_precomputed_summaries"
     }
 
     override suspend fun importIfNeeded(onProgress: (ImportProgress) -> Unit): Unit = withContext(Dispatchers.Default) {
@@ -133,6 +137,8 @@ class SnapshotSeedDataImporter(
         snapshot: WindklarSnapshot,
         onProgress: (ImportProgress) -> Unit,
     ) {
+        clearSummaryData()
+
         println("SnapshotSeedDataImporter: Seeding wind parks...")
         val totalParks = snapshot.windParks.size
         snapshot.windParks.forEachIndexed { index, park ->
@@ -159,6 +165,12 @@ class SnapshotSeedDataImporter(
             }
             upsertMetric(metric)
         }
+
+        println("SnapshotSeedDataImporter: Seeding precomputed summaries...")
+        snapshot.parkOperationalSummaries.forEach(::upsertParkOperationalSummary)
+        snapshot.regionSummaries.forEach(::upsertRegionSummary)
+        snapshot.mapSearchEntries.forEach(::upsertMapSearchEntry)
+        snapshot.nationalStatsSummary?.let(::upsertNationalStatsSummary)
 
         println("SnapshotSeedDataImporter: Seeding metadata...")
         onProgress(ImportProgress.SeedingMetadata)
@@ -326,12 +338,148 @@ class SnapshotSeedDataImporter(
         )
     }
 
+    private fun upsertParkOperationalSummary(summary: ParkOperationalSummaryDto) {
+        database.summaryQueries.upsertParkOperationalSummary(
+            wind_park_id = summary.windParkId,
+            park_status = summary.parkStatus,
+            valid_turbine_count = summary.validTurbineCount,
+            valid_capacity_kw = summary.validCapacityKw,
+        )
+        database.summaryQueries.updateParkOperationalSummary(
+            wind_park_id = summary.windParkId,
+            park_status = summary.parkStatus,
+            valid_turbine_count = summary.validTurbineCount,
+            valid_capacity_kw = summary.validCapacityKw,
+        )
+    }
+
+    private fun upsertRegionSummary(summary: RegionSummaryDto) {
+        database.summaryQueries.upsertRegionSummary(
+            region_type = summary.regionType,
+            region_id = summary.regionId,
+            name = summary.name,
+            context_label = summary.contextLabel,
+            parent_name = summary.parentName,
+            latitude = summary.latitude,
+            longitude = summary.longitude,
+            wind_park_count = summary.windParkCount,
+            turbine_count = summary.turbineCount,
+            installed_capacity_kw = summary.installedCapacityKw,
+            annual_production_kwh = summary.annualProductionKwh,
+            co2_savings_kg = summary.co2SavingsKg,
+            household_equivalent = summary.householdEquivalent,
+            municipal_benefit_eur = summary.municipalBenefitEur,
+        )
+        database.summaryQueries.updateRegionSummary(
+            region_type = summary.regionType,
+            region_id = summary.regionId,
+            name = summary.name,
+            context_label = summary.contextLabel,
+            parent_name = summary.parentName,
+            latitude = summary.latitude,
+            longitude = summary.longitude,
+            wind_park_count = summary.windParkCount,
+            turbine_count = summary.turbineCount,
+            installed_capacity_kw = summary.installedCapacityKw,
+            annual_production_kwh = summary.annualProductionKwh,
+            co2_savings_kg = summary.co2SavingsKg,
+            household_equivalent = summary.householdEquivalent,
+            municipal_benefit_eur = summary.municipalBenefitEur,
+        )
+    }
+
+    private fun upsertMapSearchEntry(entry: MapSearchEntryDto) {
+        database.summaryQueries.upsertMapSearchEntry(
+            id = entry.id,
+            result_type = entry.resultType,
+            target_id = entry.targetId,
+            label = entry.label,
+            description = entry.description,
+            latitude = entry.latitude,
+            longitude = entry.longitude,
+            type_rank = entry.typeRank,
+            haystack = entry.haystack,
+            sort_name = entry.sortName,
+        )
+        database.summaryQueries.updateMapSearchEntry(
+            id = entry.id,
+            result_type = entry.resultType,
+            target_id = entry.targetId,
+            label = entry.label,
+            description = entry.description,
+            latitude = entry.latitude,
+            longitude = entry.longitude,
+            type_rank = entry.typeRank,
+            haystack = entry.haystack,
+            sort_name = entry.sortName,
+        )
+    }
+
+    private fun upsertNationalStatsSummary(summary: NationalStatsSummaryDto) {
+        database.summaryQueries.upsertNationalStatsSummary(
+            id = "DE",
+            wind_park_count = summary.windParkCount,
+            active_turbine_count = summary.activeTurbineCount,
+            installed_capacity_kw = summary.installedCapacityKw,
+            annual_production_kwh = summary.annualProductionKwh,
+            co2_savings_kg = summary.co2SavingsKg,
+            household_equivalent = summary.householdEquivalent,
+            municipal_benefit_eur = summary.municipalBenefitEur,
+            capacity_class_lt_5mw = summary.capacityClassLt5Mw,
+            capacity_class_5_20mw = summary.capacityClass5To20Mw,
+            capacity_class_20_50mw = summary.capacityClass20To50Mw,
+            capacity_class_gte_50mw = summary.capacityClassGte50Mw,
+            turbine_commissioning_pre_2000 = summary.turbineCommissioningPre2000,
+            turbine_commissioning_2000_2009 = summary.turbineCommissioning2000To2009,
+            turbine_commissioning_2010_2019 = summary.turbineCommissioning2010To2019,
+            turbine_commissioning_2020_plus = summary.turbineCommissioning2020Plus,
+            turbine_commissioning_unknown = summary.turbineCommissioningUnknown,
+            turbine_height_lt_80m = summary.turbineHeightLt80m,
+            turbine_height_80_120m = summary.turbineHeight80To120m,
+            turbine_height_120_160m = summary.turbineHeight120To160m,
+            turbine_height_gte_160m = summary.turbineHeightGte160m,
+            turbine_height_unknown = summary.turbineHeightUnknown,
+        )
+        database.summaryQueries.updateNationalStatsSummary(
+            id = "DE",
+            wind_park_count = summary.windParkCount,
+            active_turbine_count = summary.activeTurbineCount,
+            installed_capacity_kw = summary.installedCapacityKw,
+            annual_production_kwh = summary.annualProductionKwh,
+            co2_savings_kg = summary.co2SavingsKg,
+            household_equivalent = summary.householdEquivalent,
+            municipal_benefit_eur = summary.municipalBenefitEur,
+            capacity_class_lt_5mw = summary.capacityClassLt5Mw,
+            capacity_class_5_20mw = summary.capacityClass5To20Mw,
+            capacity_class_20_50mw = summary.capacityClass20To50Mw,
+            capacity_class_gte_50mw = summary.capacityClassGte50Mw,
+            turbine_commissioning_pre_2000 = summary.turbineCommissioningPre2000,
+            turbine_commissioning_2000_2009 = summary.turbineCommissioning2000To2009,
+            turbine_commissioning_2010_2019 = summary.turbineCommissioning2010To2019,
+            turbine_commissioning_2020_plus = summary.turbineCommissioning2020Plus,
+            turbine_commissioning_unknown = summary.turbineCommissioningUnknown,
+            turbine_height_lt_80m = summary.turbineHeightLt80m,
+            turbine_height_80_120m = summary.turbineHeight80To120m,
+            turbine_height_120_160m = summary.turbineHeight120To160m,
+            turbine_height_gte_160m = summary.turbineHeightGte160m,
+            turbine_height_unknown = summary.turbineHeightUnknown,
+        )
+    }
+
     private fun clearSourceOwnedSnapshotData() {
         println("SnapshotSeedDataImporter: Clearing source-owned snapshot tables before replacement.")
+        clearSummaryData()
         database.metricQueries.deleteAllMetrics()
         database.windTurbineQueries.deleteAllWindTurbines()
         database.windParkQueries.deleteAllWindParks()
         database.snapshotMetadataQueries.deleteAllSnapshotMetadata()
+    }
+
+    private fun clearSummaryData() {
+        database.summaryQueries.deleteNationalStatsSummary()
+        database.summaryQueries.deleteMapSearchEntries()
+        database.summaryQueries.deleteRegionSummaries()
+        database.summaryQueries.deleteParkOperationalSummaries()
     }
 
     private fun preserveUserData(): PreservedUserData {

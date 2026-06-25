@@ -58,6 +58,10 @@ class MainActivity : ComponentActivity() {
                     val hasRequiredTables = db.hasTable("wind_park") &&
                         db.hasTable("wind_turbine") &&
                         db.hasTable("metric") &&
+                        db.hasTable("park_operational_summary") &&
+                        db.hasTable("region_summary") &&
+                        db.hasTable("map_search_entry") &&
+                        db.hasTable("national_stats_summary") &&
                         db.hasTable("snapshot_metadata") &&
                         db.hasTable("app_setting")
                     hasRequiredTables

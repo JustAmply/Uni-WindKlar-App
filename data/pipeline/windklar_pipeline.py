@@ -16,7 +16,7 @@ from math import cos, radians, sqrt
 from pathlib import Path
 from typing import Any, Iterable
 
-PIPELINE_VERSION = "0.3.1"
+PIPELINE_VERSION = "0.4.0"
 SOURCE_NAME = "Marktstammdatenregister der Bundesnetzagentur"
 SOURCE_URL = "https://www.marktstammdatenregister.de/MaStR/Datendownload"
 ATTRIBUTION = "Quelle: Marktstammdatenregister der Bundesnetzagentur"
@@ -734,9 +734,10 @@ def build_snapshot(
 
     enriched_turbines = [enrich_entity(snapshot_turbine(turbine)) for turbine in turbines]
     enriched_parks = [enrich_entity(park) for park in parks]
+    summaries = build_precomputed_summaries(enriched_parks, enriched_turbines, metrics)
 
     snapshot = {
-        "schemaVersion": "1",
+        "schemaVersion": "2",
         "snapshotMetadata": {
             "snapshotId": snapshot_id or f"windklar-{mastr_export_date}",
             "sourceName": SOURCE_NAME,
@@ -752,6 +753,10 @@ def build_snapshot(
         "windTurbines": sorted(enriched_turbines, key=lambda item: item["id"]),
         "windParks": sorted(enriched_parks, key=lambda item: item["id"]),
         "metrics": sorted(metrics, key=lambda item: item["id"]),
+        "parkOperationalSummaries": summaries["parkOperationalSummaries"],
+        "regionSummaries": summaries["regionSummaries"],
+        "mapSearchEntries": summaries["mapSearchEntries"],
+        "nationalStatsSummary": summaries["nationalStatsSummary"],
     }
     snapshot["snapshotMetadata"]["checksumSha256"] = snapshot_checksum(snapshot)
     return snapshot
@@ -827,6 +832,359 @@ def metric(park_id: str, metric_type: str, value: float, unit: str, note: str) -
         "dataQuality": "estimated",
         "calculationNote": note,
     }
+
+
+def build_precomputed_summaries(
+    parks: list[dict[str, Any]],
+    turbines: list[dict[str, Any]],
+    metrics: list[dict[str, Any]],
+) -> dict[str, Any]:
+    turbines_by_park: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for turbine in turbines:
+        turbines_by_park[turbine["windParkId"]].append(turbine)
+
+    metrics_by_park: dict[str, dict[str, float]] = defaultdict(dict)
+    for item in metrics:
+        if item.get("subjectType") == "wind_park":
+            metrics_by_park[item["subjectId"]][item["metricType"]] = float(item.get("value") or 0.0)
+
+    park_summaries = []
+    visible_parks = []
+    for park in parks:
+        park_turbines = turbines_by_park.get(park["id"], [])
+        status = park_status(park_turbines)
+        valid_turbines = [t for t in park_turbines if "stillgelegt" not in str(t.get("status") or "").lower()]
+        valid_capacity = sum(int(t.get("installedCapacityKw") or 0) for t in valid_turbines)
+        valid_count = len(valid_turbines)
+        park_summaries.append(
+            {
+                "windParkId": park["id"],
+                "parkStatus": status,
+                "validTurbineCount": valid_count,
+                "validCapacityKw": valid_capacity,
+            }
+        )
+        if status != "Stillgelegt":
+            visible = dict(park)
+            visible["turbineCount"] = valid_count
+            visible["installedCapacityKw"] = valid_capacity
+            visible_parks.append(visible)
+
+    region_summaries = build_region_summaries(visible_parks, metrics_by_park)
+    map_search_entries = build_map_search_entries(visible_parks, region_summaries)
+    national_summary = build_national_stats_summary(visible_parks, turbines, metrics_by_park)
+
+    return {
+        "parkOperationalSummaries": sorted(park_summaries, key=lambda item: item["windParkId"]),
+        "regionSummaries": sorted(
+            region_summaries,
+            key=lambda item: (item["regionType"], -item["installedCapacityKw"], item["name"], item["regionId"]),
+        ),
+        "mapSearchEntries": sorted(map_search_entries, key=lambda item: (item["typeRank"], item["sortName"], item["id"])),
+        "nationalStatsSummary": national_summary,
+    }
+
+
+def park_status(turbines: list[dict[str, Any]]) -> str:
+    statuses = [str(t.get("status") or "").lower() for t in turbines]
+    if any("bau" in status or "errichtung" in status for status in statuses):
+        return "Im Bau"
+    if any(status == "" or "betrieb" in status or "aktiv" in status for status in statuses):
+        return "Aktiv"
+    if any("stillgelegt" in status for status in statuses):
+        return "Stillgelegt"
+    return "Geplant"
+
+
+def build_region_summaries(
+    parks: list[dict[str, Any]],
+    metrics_by_park: dict[str, dict[str, float]],
+) -> list[dict[str, Any]]:
+    summaries = []
+    for region_type, id_key, name_key, parent_keys in (
+        ("city", "municipalityId", "municipalityName", ("districtName", "stateName")),
+        ("district", "districtId", "districtName", ("stateName",)),
+        ("state", "stateId", "stateName", ()),
+    ):
+        groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for park in parks:
+            region_id = str(park.get(id_key) or "").strip()
+            if region_id:
+                groups[region_id].append(park)
+
+        for region_id, region_parks in groups.items():
+            first = region_parks[0]
+            capacity = sum(int(park.get("installedCapacityKw") or 0) for park in region_parks)
+            turbines = sum(int(park.get("turbineCount") or 0) for park in region_parks)
+            wind_park_count = len(region_parks)
+            lat = sum(float(park["latitude"]) for park in region_parks) / wind_park_count
+            lon = sum(float(park["longitude"]) for park in region_parks) / wind_park_count
+            metric_sums = aggregate_metric_values(region_parks, metrics_by_park)
+            parent_parts = [str(first.get(key) or "") for key in parent_keys if first.get(key)]
+            context_label = representative_municipality_name(region_parks) if region_type == "district" else None
+            summaries.append(
+                {
+                    "regionType": region_type,
+                    "regionId": region_id,
+                    "name": str(first.get(name_key) or region_id),
+                    "contextLabel": context_label,
+                    "parentName": ", ".join(parent_parts) or None,
+                    "latitude": round(lat, 6),
+                    "longitude": round(lon, 6),
+                    "windParkCount": wind_park_count,
+                    "turbineCount": turbines,
+                    "installedCapacityKw": capacity,
+                    "annualProductionKwh": metric_sums["annual_production"],
+                    "co2SavingsKg": metric_sums["co2_savings"],
+                    "householdEquivalent": metric_sums["household_equivalent"],
+                    "municipalBenefitEur": metric_sums["municipal_participation"],
+                }
+            )
+    return summaries
+
+
+def aggregate_metric_values(
+    parks: list[dict[str, Any]],
+    metrics_by_park: dict[str, dict[str, float]],
+) -> dict[str, float]:
+    values = {
+        "annual_production": 0.0,
+        "co2_savings": 0.0,
+        "household_equivalent": 0.0,
+        "municipal_participation": 0.0,
+    }
+    for park in parks:
+        metrics = metrics_by_park.get(park["id"], {})
+        for key in values:
+            values[key] += metrics.get(key, 0.0)
+    return {key: round(value, 3) for key, value in values.items()}
+
+
+def representative_municipality_name(parks: list[dict[str, Any]]) -> str | None:
+    by_name: dict[str, int] = defaultdict(int)
+    for park in parks:
+        by_name[str(park.get("municipalityName") or "")] += int(park.get("installedCapacityKw") or 0)
+    ranked = sorted(((capacity, name) for name, capacity in by_name.items() if name), reverse=True)
+    return ranked[0][1] if ranked else None
+
+
+def build_map_search_entries(
+    parks: list[dict[str, Any]],
+    region_summaries: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    entries = []
+    region_rank = {"state": 0, "district": 1, "city": 2}
+    for summary in region_summaries:
+        region_type = summary["regionType"]
+        if region_type == "city" and is_redundant_municipality(summary.get("parentName") or "", summary["name"]):
+            continue
+        description = {
+            "state": "Bundesland",
+            "district": f"Landkreis in {summary.get('parentName') or 'Deutschland'}",
+            "city": f"Gemeinde in {summary.get('parentName') or 'Deutschland'}",
+        }.get(region_type, "Region")
+        entries.append(
+            map_search_entry(
+                entry_id=f"{region_type}:{summary['regionId']}",
+                result_type=region_type,
+                target_id=summary["regionId"],
+                label=summary["name"],
+                description=description,
+                latitude=summary["latitude"],
+                longitude=summary["longitude"],
+                type_rank=region_rank[region_type],
+                fields=[
+                    summary["regionId"],
+                    summary["name"],
+                    summary.get("contextLabel") or "",
+                    summary.get("parentName") or "",
+                ],
+            )
+        )
+
+    for park in parks:
+        entries.append(
+            map_search_entry(
+                entry_id=f"park:{park['id']}",
+                result_type="park",
+                target_id=park["id"],
+                label=park["name"],
+                description=f"{park['municipalityName']}, {park['stateName']}",
+                latitude=park["latitude"],
+                longitude=park["longitude"],
+                type_rank=3,
+                fields=[
+                    park["id"],
+                    park["name"],
+                    park["municipalityName"],
+                    park["districtName"],
+                    park["stateName"],
+                ],
+            )
+        )
+    return entries
+
+
+def map_search_entry(
+    entry_id: str,
+    result_type: str,
+    target_id: str,
+    label: str,
+    description: str,
+    latitude: float,
+    longitude: float,
+    type_rank: int,
+    fields: list[str],
+) -> dict[str, Any]:
+    return {
+        "id": entry_id,
+        "resultType": result_type,
+        "targetId": target_id,
+        "label": label,
+        "description": description,
+        "latitude": round(float(latitude), 6),
+        "longitude": round(float(longitude), 6),
+        "typeRank": type_rank,
+        "haystack": to_search_haystack(fields),
+        "sortName": label,
+    }
+
+
+def to_search_haystack(fields: list[str]) -> str:
+    return " ".join(normalize_search_text(field) for field in fields if field)
+
+
+def normalize_search_text(value: Any) -> str:
+    return str(value).strip().lower()
+
+
+def is_redundant_municipality(district_name: str, municipality_name: str) -> bool:
+    district = normalize_region_name(district_name)
+    municipality = normalize_region_name(municipality_name)
+    return bool(district) and district == municipality
+
+
+def normalize_region_name(name: str) -> str:
+    import re
+
+    normalized = str(name).strip().lower()
+    normalized = (
+        normalized.replace("ä", "ae")
+        .replace("ö", "oe")
+        .replace("ü", "ue")
+        .replace("ß", "ss")
+    )
+    normalized = re.sub(r"[^\w\s]", " ", normalized)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    tokens = [
+        "kreisfreie stadt",
+        "kreisangehoerige stadt",
+        "kreisangehörige stadt",
+        "landkreis",
+        "stadtkreis",
+        "staedteregion",
+        "staedte region",
+        "regionalverband",
+        "gemeinde",
+        "stadt",
+        "kreis",
+    ]
+    changed = True
+    while changed:
+        changed = False
+        for token in tokens:
+            if normalized == token:
+                normalized = ""
+                changed = True
+                break
+            if normalized.startswith(f"{token} "):
+                normalized = normalized[len(token) + 1 :].strip()
+                changed = True
+                break
+            if normalized.endswith(f" {token}"):
+                normalized = normalized[: -(len(token) + 1)].strip()
+                changed = True
+                break
+    return normalized
+
+
+def build_national_stats_summary(
+    parks: list[dict[str, Any]],
+    turbines: list[dict[str, Any]],
+    metrics_by_park: dict[str, dict[str, float]],
+) -> dict[str, Any]:
+    metric_sums = aggregate_metric_values(parks, metrics_by_park)
+    capacities = [int(park.get("installedCapacityKw") or 0) for park in parks]
+    active_turbines = [
+        turbine
+        for turbine in turbines
+        if turbine.get("status") is None
+        or "betrieb" in str(turbine.get("status") or "").lower()
+        or "aktiv" in str(turbine.get("status") or "").lower()
+    ]
+    commissioning = commissioning_buckets(turbines)
+    heights = height_buckets(turbines)
+    return {
+        "windParkCount": len(parks),
+        "activeTurbineCount": len(active_turbines),
+        "installedCapacityKw": sum(capacities),
+        "annualProductionKwh": metric_sums["annual_production"],
+        "co2SavingsKg": metric_sums["co2_savings"],
+        "householdEquivalent": metric_sums["household_equivalent"],
+        "municipalBenefitEur": metric_sums["municipal_participation"],
+        "capacityClassLt5Mw": sum(1 for value in capacities if value < 5_000),
+        "capacityClass5To20Mw": sum(1 for value in capacities if 5_000 <= value < 20_000),
+        "capacityClass20To50Mw": sum(1 for value in capacities if 20_000 <= value < 50_000),
+        "capacityClassGte50Mw": sum(1 for value in capacities if value >= 50_000),
+        **commissioning,
+        **heights,
+    }
+
+
+def commissioning_buckets(turbines: list[dict[str, Any]]) -> dict[str, int]:
+    values = {
+        "turbineCommissioningPre2000": 0,
+        "turbineCommissioning2000To2009": 0,
+        "turbineCommissioning2010To2019": 0,
+        "turbineCommissioning2020Plus": 0,
+        "turbineCommissioningUnknown": 0,
+    }
+    for turbine in turbines:
+        year = turbine.get("commissioningYear")
+        if year is None:
+            values["turbineCommissioningUnknown"] += 1
+        elif year < 2000:
+            values["turbineCommissioningPre2000"] += 1
+        elif year <= 2009:
+            values["turbineCommissioning2000To2009"] += 1
+        elif year <= 2019:
+            values["turbineCommissioning2010To2019"] += 1
+        else:
+            values["turbineCommissioning2020Plus"] += 1
+    return values
+
+
+def height_buckets(turbines: list[dict[str, Any]]) -> dict[str, int]:
+    values = {
+        "turbineHeightLt80m": 0,
+        "turbineHeight80To120m": 0,
+        "turbineHeight120To160m": 0,
+        "turbineHeightGte160m": 0,
+        "turbineHeightUnknown": 0,
+    }
+    for turbine in turbines:
+        height = turbine.get("hubHeightM")
+        if height is None:
+            values["turbineHeightUnknown"] += 1
+        elif height < 80.0:
+            values["turbineHeightLt80m"] += 1
+        elif height < 120.0:
+            values["turbineHeight80To120m"] += 1
+        elif height < 160.0:
+            values["turbineHeight120To160m"] += 1
+        else:
+            values["turbineHeightGte160m"] += 1
+    return values
 
 
 def wind_turbine_age_multiplier(commissioning_year: int | None) -> float:
@@ -1506,7 +1864,18 @@ def quality_report_limitations(report: dict[str, Any] | None) -> list[str]:
 
 def validate_snapshot(snapshot: dict[str, Any]) -> list[str]:
     errors: list[str] = []
-    required = ["schemaVersion", "snapshotMetadata", "assumptions", "windTurbines", "windParks", "metrics"]
+    required = [
+        "schemaVersion",
+        "snapshotMetadata",
+        "assumptions",
+        "windTurbines",
+        "windParks",
+        "metrics",
+        "parkOperationalSummaries",
+        "regionSummaries",
+        "mapSearchEntries",
+        "nationalStatsSummary",
+    ]
     for key in required:
         if key not in snapshot:
             errors.append(f"Missing top-level key: {key}")
@@ -1521,12 +1890,24 @@ def validate_snapshot(snapshot: dict[str, Any]) -> list[str]:
     turbines = snapshot["windTurbines"]
     parks = snapshot["windParks"]
     metrics = snapshot["metrics"]
+    park_summaries = snapshot["parkOperationalSummaries"]
+    region_summaries = snapshot["regionSummaries"]
+    search_entries = snapshot["mapSearchEntries"]
+    national_summary = snapshot["nationalStatsSummary"]
     if not turbines:
         errors.append("Snapshot must contain at least one wind turbine")
     if not parks:
         errors.append("Snapshot must contain at least one wind park")
     if not metrics:
         errors.append("Snapshot must contain at least one metric")
+    if not park_summaries:
+        errors.append("Snapshot must contain park operational summaries")
+    if not region_summaries:
+        errors.append("Snapshot must contain region summaries")
+    if not search_entries:
+        errors.append("Snapshot must contain map search entries")
+    if not isinstance(national_summary, dict):
+        errors.append("Snapshot must contain nationalStatsSummary object")
 
     turbine_ids = {item.get("id") for item in turbines}
     park_ids = {item.get("id") for item in parks}
@@ -1551,6 +1932,37 @@ def validate_snapshot(snapshot: dict[str, Any]) -> list[str]:
             errors.append(f"Metric {metric_item.get('id')} references missing wind park {metric_item.get('subjectId')}")
         if metric_item.get("dataQuality") not in {"estimated", "simulated", "measured", "missing"}:
             errors.append(f"Metric {metric_item.get('id')} has invalid metric quality {metric_item.get('dataQuality')}")
+
+    summary_park_ids = {item.get("windParkId") for item in park_summaries if isinstance(item, dict)}
+    if summary_park_ids != park_ids:
+        errors.append("parkOperationalSummaries must contain exactly one row for every wind park")
+    valid_region_types = {"city", "district", "state"}
+    present_region_types = {item.get("regionType") for item in region_summaries if isinstance(item, dict)}
+    missing_region_types = valid_region_types - present_region_types
+    if missing_region_types:
+        errors.append(f"regionSummaries missing region types: {sorted(missing_region_types)}")
+    for item in region_summaries:
+        if item.get("regionType") not in valid_region_types:
+            errors.append(f"Region summary {item.get('regionId')} has invalid regionType {item.get('regionType')}")
+        for key in ("regionId", "name", "latitude", "longitude", "windParkCount", "turbineCount", "installedCapacityKw"):
+            if item.get(key) in (None, ""):
+                errors.append(f"Region summary {item.get('regionId')} missing {key}")
+    present_search_types = {item.get("resultType") for item in search_entries if isinstance(item, dict)}
+    missing_search_types = {"state", "district", "city", "park"} - present_search_types
+    if missing_search_types:
+        errors.append(f"mapSearchEntries missing result types: {sorted(missing_search_types)}")
+    for item in search_entries:
+        if item.get("resultType") == "park" and item.get("targetId") not in park_ids:
+            errors.append(f"Map search entry {item.get('id')} references missing wind park {item.get('targetId')}")
+        for key in ("id", "resultType", "targetId", "label", "haystack", "sortName"):
+            if item.get(key) in (None, ""):
+                errors.append(f"Map search entry {item.get('id')} missing {key}")
+    if isinstance(national_summary, dict):
+        if not isinstance(national_summary.get("windParkCount"), int) or national_summary.get("windParkCount") <= 0:
+            errors.append("nationalStatsSummary.windParkCount must be positive")
+        if national_summary.get("installedCapacityKw") is None:
+            errors.append("nationalStatsSummary.installedCapacityKw is required")
+
     expected_checksum = snapshot_checksum(snapshot)
     if metadata.get("checksumSha256") != expected_checksum:
         errors.append("snapshotMetadata.checksumSha256 does not match snapshot content")

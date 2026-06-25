@@ -7,13 +7,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.core.model.MapMarkerKind
 import app.core.model.MapMarkerUiModel
+import app.core.model.MapSearchEntry
 import app.core.model.WindTurbine
 import app.core.model.WindPark
 
 import app.core.ui.components.EntityType
 import app.core.ui.components.EntityPreviewData
 import app.core.ui.components.PreviewSheetState
-import app.core.util.isRedundantMunicipality
 import app.data.repository.WindParkRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -72,13 +72,14 @@ class MapViewModel(
                 applyFilters()
                 loadRecentParks()
 
-                val searchData = withContext(Dispatchers.Default) {
-                    buildSearchData(allParks)
+                val searchEntries = repository.getMapSearchEntries()
+                val parkById = allParks.associateBy { it.id }
+                searchIndex = withContext(Dispatchers.Default) {
+                    searchEntries.mapNotNull { entry -> entry.toSearchIndexEntry(parkById) }
                 }
-                statesList = searchData.states
-                districtsList = searchData.districts
-                municipalitiesList = searchData.municipalities
-                searchIndex = searchData.searchIndex
+                statesList = searchIndex.mapNotNull { it.result as? MapSearchResult.State }
+                districtsList = searchIndex.mapNotNull { it.result as? MapSearchResult.District }
+                municipalitiesList = searchIndex.mapNotNull { it.result as? MapSearchResult.Municipality }
                 println("MapViewModel: loadMapData finished successfully.")
             } catch (e: Throwable) {
                 println("MapViewModel ERROR: loadMapData failed!")
@@ -150,132 +151,32 @@ class MapViewModel(
         }
     }
 
-    private fun buildSearchIndex(
-        states: List<MapSearchResult.State>,
-        districts: List<MapSearchResult.District>,
-        municipalities: List<MapSearchResult.Municipality>,
-        parks: List<WindPark>,
-    ): List<MapSearchIndexEntry> =
-        buildList {
-            states.forEach { state ->
-                add(
-                    MapSearchIndexEntry(
-                        result = state,
-                        typeRank = 0,
-                        id = state.id.normalizeForSearch(),
-                        name = state.name.normalizeForSearch(),
-                        haystack = listOf(state.id, state.name).toSearchHaystack(),
-                        sortName = state.name,
-                    )
+    private fun MapSearchEntry.toSearchIndexEntry(parkById: Map<String, WindPark>): MapSearchIndexEntry? {
+        val result = when (resultType) {
+            "state" -> MapSearchResult.State(targetId, label, latitude, longitude)
+            "district" -> MapSearchResult.District(targetId, label, description.removePrefix("Landkreis in "), latitude, longitude)
+            "city" -> {
+                val parts = description.removePrefix("Gemeinde in ").split(", ")
+                MapSearchResult.Municipality(
+                    id = targetId,
+                    name = label,
+                    districtName = parts.getOrNull(0).orEmpty(),
+                    stateName = parts.getOrNull(1).orEmpty(),
+                    latitude = latitude,
+                    longitude = longitude,
                 )
             }
-            districts.forEach { district ->
-                add(
-                    MapSearchIndexEntry(
-                        result = district,
-                        typeRank = 1,
-                        id = district.id.normalizeForSearch(),
-                        name = district.name.normalizeForSearch(),
-                        haystack = listOf(district.id, district.name, district.stateName).toSearchHaystack(),
-                        sortName = district.name,
-                    )
-                )
-            }
-            municipalities
-                .filterNot { isRedundantMunicipality(it.districtName, it.name) }
-                .forEach { municipality ->
-                    add(
-                        MapSearchIndexEntry(
-                            result = municipality,
-                            typeRank = 2,
-                            id = municipality.id.normalizeForSearch(),
-                            name = municipality.name.normalizeForSearch(),
-                            haystack = listOf(
-                                municipality.id,
-                                municipality.name,
-                                municipality.districtName,
-                                municipality.stateName,
-                            ).toSearchHaystack(),
-                            sortName = municipality.name,
-                        )
-                    )
-                }
-            parks.forEach { park ->
-                add(
-                    MapSearchIndexEntry(
-                        result = MapSearchResult.Park(park),
-                        typeRank = 3,
-                        id = park.id.normalizeForSearch(),
-                        name = park.name.normalizeForSearch(),
-                        haystack = listOf(
-                            park.id,
-                            park.name,
-                            park.municipalityName,
-                            park.districtName,
-                            park.stateName,
-                        ).toSearchHaystack(),
-                        sortName = park.name,
-                    )
-                )
-            }
-        }
+            "park" -> parkById[targetId]?.let(MapSearchResult::Park)
+            else -> null
+        } ?: return null
 
-    private fun buildSearchData(parks: List<WindPark>): SearchData {
-        val stateMap = mutableMapOf<String, StateAggregate>()
-        val districtMap = mutableMapOf<String, DistrictAggregate>()
-        val municipalityMap = mutableMapOf<String, MunicipalityAggregate>()
-
-        parks.forEach { park ->
-            val sId = park.stateId.trim()
-            val sName = park.stateName.trim()
-            if (sId.isNotEmpty() && sName.isNotEmpty()) {
-                val agg = stateMap.getOrPut(sId) { StateAggregate(sId, sName) }
-                agg.sumLat += park.latitude
-                agg.sumLon += park.longitude
-                agg.count++
-            }
-
-            val dId = park.districtId.trim()
-            val dName = park.districtName.trim()
-            if (dId.isNotEmpty() && dName.isNotEmpty() && sName.isNotEmpty()) {
-                val agg = districtMap.getOrPut(dId) { DistrictAggregate(dId, dName, sName) }
-                agg.sumLat += park.latitude
-                agg.sumLon += park.longitude
-                agg.count++
-            }
-
-            val mId = park.municipalityId.trim()
-            val mName = park.municipalityName.trim()
-            if (mId.isNotEmpty() && mName.isNotEmpty() && dName.isNotEmpty() && sName.isNotEmpty()) {
-                val agg = municipalityMap.getOrPut(mId) { MunicipalityAggregate(mId, mName, dName, sName) }
-                agg.sumLat += park.latitude
-                agg.sumLon += park.longitude
-                agg.count++
-            }
-        }
-
-        val states = stateMap.values.filter { it.count > 0 }.map { agg ->
-            MapSearchResult.State(agg.id, agg.name, agg.sumLat / agg.count, agg.sumLon / agg.count)
-        }.sortedBy { it.name }
-
-        val districts = districtMap.values.filter { it.count > 0 }.map { agg ->
-            MapSearchResult.District(agg.id, agg.name, agg.stateName, agg.sumLat / agg.count, agg.sumLon / agg.count)
-        }.sortedBy { it.name }
-
-        val municipalities = municipalityMap.values.filter { it.count > 0 }.map { agg ->
-            MapSearchResult.Municipality(agg.id, agg.name, agg.districtName, agg.stateName, agg.sumLat / agg.count, agg.sumLon / agg.count)
-        }.sortedBy { it.name }
-
-        return SearchData(
-            states = states,
-            districts = districts,
-            municipalities = municipalities,
-            searchIndex = buildSearchIndex(
-                states = states,
-                districts = districts,
-                municipalities = municipalities,
-                parks = parks,
-            ),
+        return MapSearchIndexEntry(
+            result = result,
+            typeRank = typeRank,
+            id = targetId.normalizeForSearch(),
+            name = label.normalizeForSearch(),
+            haystack = haystack,
+            sortName = sortName,
         )
     }
 
@@ -407,22 +308,11 @@ class MapViewModel(
     private fun loadRegionMetrics(id: String, type: String, name: String, parentContext: String?) {
         viewModelScope.launch {
             try {
-                val allParks = repository.getWindParks()
-                val regionParks = allParks.filter { park ->
-                    when (type.lowercase()) {
-                        "city" -> park.municipalityId == id
-                        "district" -> park.districtId == id
-                        "state" -> park.stateId == id
-                        else -> false
-                    }
-                }
-                
-                val regionParkIds = regionParks.map { it.id }.toSet()
-                val regionMetrics = repository.getMetricsForParks(regionParkIds.toList())
-                
-                val annualProductionKwh = regionMetrics.filter { it.metricType == "annual_production" }.sumOf { it.value ?: 0.0 }
-                val annualProductionGwh = annualProductionKwh / 1_000_000.0
-                val co2SavingsTons = (regionMetrics.filter { it.metricType == "co2_savings" }.sumOf { it.value ?: 0.0 }) / 1000.0
+                val regionSummary = repository
+                    .getRegionSummaries(type)
+                    .firstOrNull { it.regionId == id }
+                val annualProductionGwh = regionSummary?.annualProductionKwh?.let { it / 1_000_000.0 }
+                val co2SavingsTons = regionSummary?.co2SavingsKg?.let { it / 1000.0 }
                 
                 val entityType = when (type.lowercase()) {
                     "city" -> EntityType.CITY
@@ -878,40 +768,6 @@ class MapViewModel(
     }
 }
 
-private data class StateAggregate(
-    val id: String,
-    val name: String,
-    var sumLat: Double = 0.0,
-    var sumLon: Double = 0.0,
-    var count: Int = 0
-)
-
-private data class DistrictAggregate(
-    val id: String,
-    val name: String,
-    val stateName: String,
-    var sumLat: Double = 0.0,
-    var sumLon: Double = 0.0,
-    var count: Int = 0
-)
-
-private data class MunicipalityAggregate(
-    val id: String,
-    val name: String,
-    val districtName: String,
-    val stateName: String,
-    var sumLat: Double = 0.0,
-    var sumLon: Double = 0.0,
-    var count: Int = 0
-)
-
-private data class SearchData(
-    val states: List<MapSearchResult.State>,
-    val districts: List<MapSearchResult.District>,
-    val municipalities: List<MapSearchResult.Municipality>,
-    val searchIndex: List<MapSearchIndexEntry>,
-)
-
 private data class MapSearchIndexEntry(
     val result: MapSearchResult,
     val typeRank: Int,
@@ -936,6 +792,3 @@ private data class SearchMatch(
 
 private fun String.normalizeForSearch(): String =
     trim().lowercase()
-
-private fun List<String>.toSearchHaystack(): String =
-    joinToString(separator = " ") { it.normalizeForSearch() }

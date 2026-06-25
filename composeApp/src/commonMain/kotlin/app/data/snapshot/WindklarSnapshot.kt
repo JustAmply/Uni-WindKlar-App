@@ -10,6 +10,10 @@ data class WindklarSnapshot(
     val windTurbines: List<WindTurbineDto>,
     val windParks: List<WindParkDto>,
     val metrics: List<MetricDto>,
+    val parkOperationalSummaries: List<ParkOperationalSummaryDto> = emptyList(),
+    val regionSummaries: List<RegionSummaryDto> = emptyList(),
+    val mapSearchEntries: List<MapSearchEntryDto> = emptyList(),
+    val nationalStatsSummary: NationalStatsSummaryDto? = null,
 )
 
 @Serializable
@@ -100,4 +104,69 @@ data class MetricDto(
     val sourceUpdatedAt: String,
     val dataQuality: String,
     val calculationNote: String? = null,
+)
+
+@Serializable
+data class ParkOperationalSummaryDto(
+    val windParkId: String,
+    val parkStatus: String,
+    val validTurbineCount: Long,
+    val validCapacityKw: Long,
+)
+
+@Serializable
+data class RegionSummaryDto(
+    val regionType: String,
+    val regionId: String,
+    val name: String,
+    val contextLabel: String? = null,
+    val parentName: String? = null,
+    val latitude: Double,
+    val longitude: Double,
+    val windParkCount: Long,
+    val turbineCount: Long,
+    val installedCapacityKw: Long,
+    val annualProductionKwh: Double,
+    val co2SavingsKg: Double,
+    val householdEquivalent: Double,
+    val municipalBenefitEur: Double,
+)
+
+@Serializable
+data class MapSearchEntryDto(
+    val id: String,
+    val resultType: String,
+    val targetId: String,
+    val label: String,
+    val description: String,
+    val latitude: Double,
+    val longitude: Double,
+    val typeRank: Long,
+    val haystack: String,
+    val sortName: String,
+)
+
+@Serializable
+data class NationalStatsSummaryDto(
+    val windParkCount: Long,
+    val activeTurbineCount: Long,
+    val installedCapacityKw: Long,
+    val annualProductionKwh: Double,
+    val co2SavingsKg: Double,
+    val householdEquivalent: Double,
+    val municipalBenefitEur: Double,
+    val capacityClassLt5Mw: Long,
+    val capacityClass5To20Mw: Long,
+    val capacityClass20To50Mw: Long,
+    val capacityClassGte50Mw: Long,
+    val turbineCommissioningPre2000: Long,
+    val turbineCommissioning2000To2009: Long,
+    val turbineCommissioning2010To2019: Long,
+    val turbineCommissioning2020Plus: Long,
+    val turbineCommissioningUnknown: Long,
+    val turbineHeightLt80m: Long,
+    val turbineHeight80To120m: Long,
+    val turbineHeight120To160m: Long,
+    val turbineHeightGte160m: Long,
+    val turbineHeightUnknown: Long,
 )

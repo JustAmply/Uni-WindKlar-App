@@ -29,7 +29,7 @@ ANDROID_ASSETS_OUTPUT = (
 # Mirrors SnapshotSeedDataImporter companion constants so the importer's
 # fast-path detects the preseeded DB and skips the full JSON import.
 SETTING_SNAPSHOT_IMPORT_VERSION_KEY = "snapshot_source_import_version"
-SETTING_SNAPSHOT_IMPORT_VERSION = "snapshot_source_v2_commissioning_year"
+SETTING_SNAPSHOT_IMPORT_VERSION = "snapshot_source_v3_precomputed_summaries"
 SCHEMA_DIR = (
     REPO_ROOT
     / "composeApp"
@@ -50,6 +50,7 @@ SCHEMA_FILES = (
     "RecentWindPark.sq",
     "DataHint.sq",
     "Setting.sq",
+    "Summary.sq",
 )
 
 
@@ -332,6 +333,170 @@ def insert_metrics(connection: sqlite3.Connection, rows: Iterable[dict[str, Any]
     return len(values)
 
 
+def insert_park_operational_summaries(connection: sqlite3.Connection, rows: Iterable[dict[str, Any]]) -> int:
+    values = [
+        (
+            row["windParkId"],
+            row["parkStatus"],
+            row["validTurbineCount"],
+            row["validCapacityKw"],
+        )
+        for row in rows
+    ]
+    connection.executemany(
+        """
+        INSERT INTO park_operational_summary(
+            wind_park_id,
+            park_status,
+            valid_turbine_count,
+            valid_capacity_kw
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        values,
+    )
+    return len(values)
+
+
+def insert_region_summaries(connection: sqlite3.Connection, rows: Iterable[dict[str, Any]]) -> int:
+    values = [
+        (
+            row["regionType"],
+            row["regionId"],
+            row["name"],
+            row.get("contextLabel"),
+            row.get("parentName"),
+            row["latitude"],
+            row["longitude"],
+            row["windParkCount"],
+            row["turbineCount"],
+            row["installedCapacityKw"],
+            row["annualProductionKwh"],
+            row["co2SavingsKg"],
+            row["householdEquivalent"],
+            row["municipalBenefitEur"],
+        )
+        for row in rows
+    ]
+    connection.executemany(
+        """
+        INSERT INTO region_summary(
+            region_type,
+            region_id,
+            name,
+            context_label,
+            parent_name,
+            latitude,
+            longitude,
+            wind_park_count,
+            turbine_count,
+            installed_capacity_kw,
+            annual_production_kwh,
+            co2_savings_kg,
+            household_equivalent,
+            municipal_benefit_eur
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        values,
+    )
+    return len(values)
+
+
+def insert_map_search_entries(connection: sqlite3.Connection, rows: Iterable[dict[str, Any]]) -> int:
+    values = [
+        (
+            row["id"],
+            row["resultType"],
+            row["targetId"],
+            row["label"],
+            row["description"],
+            row["latitude"],
+            row["longitude"],
+            row["typeRank"],
+            row["haystack"],
+            row["sortName"],
+        )
+        for row in rows
+    ]
+    connection.executemany(
+        """
+        INSERT INTO map_search_entry(
+            id,
+            result_type,
+            target_id,
+            label,
+            description,
+            latitude,
+            longitude,
+            type_rank,
+            haystack,
+            sort_name
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        values,
+    )
+    return len(values)
+
+
+def insert_national_stats_summary(connection: sqlite3.Connection, row: dict[str, Any]) -> int:
+    connection.execute(
+        """
+        INSERT INTO national_stats_summary(
+            id,
+            wind_park_count,
+            active_turbine_count,
+            installed_capacity_kw,
+            annual_production_kwh,
+            co2_savings_kg,
+            household_equivalent,
+            municipal_benefit_eur,
+            capacity_class_lt_5mw,
+            capacity_class_5_20mw,
+            capacity_class_20_50mw,
+            capacity_class_gte_50mw,
+            turbine_commissioning_pre_2000,
+            turbine_commissioning_2000_2009,
+            turbine_commissioning_2010_2019,
+            turbine_commissioning_2020_plus,
+            turbine_commissioning_unknown,
+            turbine_height_lt_80m,
+            turbine_height_80_120m,
+            turbine_height_120_160m,
+            turbine_height_gte_160m,
+            turbine_height_unknown
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "DE",
+            row["windParkCount"],
+            row["activeTurbineCount"],
+            row["installedCapacityKw"],
+            row["annualProductionKwh"],
+            row["co2SavingsKg"],
+            row["householdEquivalent"],
+            row["municipalBenefitEur"],
+            row["capacityClassLt5Mw"],
+            row["capacityClass5To20Mw"],
+            row["capacityClass20To50Mw"],
+            row["capacityClassGte50Mw"],
+            row["turbineCommissioningPre2000"],
+            row["turbineCommissioning2000To2009"],
+            row["turbineCommissioning2010To2019"],
+            row["turbineCommissioning2020Plus"],
+            row["turbineCommissioningUnknown"],
+            row["turbineHeightLt80m"],
+            row["turbineHeight80To120m"],
+            row["turbineHeight120To160m"],
+            row["turbineHeightGte160m"],
+            row["turbineHeightUnknown"],
+        ),
+    )
+    return 1
+
+
 def insert_snapshot_metadata(connection: sqlite3.Connection, snapshot: dict[str, Any]) -> None:
     metadata = require_mapping(snapshot, "snapshotMetadata")
     assumptions = require_list(snapshot, "assumptions")
@@ -378,12 +543,20 @@ def populate_database(connection: sqlite3.Connection, snapshot: dict[str, Any]) 
     wind_parks = require_list(snapshot, "windParks")
     wind_turbines = require_list(snapshot, "windTurbines")
     metrics = require_list(snapshot, "metrics")
+    park_summaries = require_list(snapshot, "parkOperationalSummaries")
+    region_summaries = require_list(snapshot, "regionSummaries")
+    map_search_entries = require_list(snapshot, "mapSearchEntries")
+    national_summary = require_mapping(snapshot, "nationalStatsSummary")
 
     with connection:
         create_schema(connection)
         park_count = insert_wind_parks(connection, wind_parks)
         turbine_count = insert_wind_turbines(connection, wind_turbines)
         metric_count = insert_metrics(connection, metrics)
+        park_summary_count = insert_park_operational_summaries(connection, park_summaries)
+        region_summary_count = insert_region_summaries(connection, region_summaries)
+        map_search_count = insert_map_search_entries(connection, map_search_entries)
+        national_summary_count = insert_national_stats_summary(connection, national_summary)
         insert_snapshot_metadata(connection, snapshot)
         connection.execute(
             """
@@ -398,6 +571,10 @@ def populate_database(connection: sqlite3.Connection, snapshot: dict[str, Any]) 
         "wind_park": park_count,
         "wind_turbine": turbine_count,
         "metric": metric_count,
+        "park_operational_summary": park_summary_count,
+        "region_summary": region_summary_count,
+        "map_search_entry": map_search_count,
+        "national_stats_summary": national_summary_count,
         "snapshot_metadata": 1,
     }
 
@@ -411,6 +588,10 @@ def validate_generated_database(
         "wind_park": len(require_list(snapshot, "windParks")),
         "wind_turbine": len(require_list(snapshot, "windTurbines")),
         "metric": len(require_list(snapshot, "metrics")),
+        "park_operational_summary": len(require_list(snapshot, "parkOperationalSummaries")),
+        "region_summary": len(require_list(snapshot, "regionSummaries")),
+        "map_search_entry": len(require_list(snapshot, "mapSearchEntries")),
+        "national_stats_summary": 1,
         "snapshot_metadata": 1,
     }
     for table, expected in expected_counts.items():

@@ -7,6 +7,9 @@ import app.core.model.SnapshotInfo
 import app.core.model.WindTurbine
 import app.core.model.DataHint
 import app.core.model.FavoriteRegion
+import app.core.model.MapSearchEntry
+import app.core.model.NationalStatsSummary
+import app.core.model.RegionSummary
 
 interface WindParkRepository {
     suspend fun getWindParks(): List<WindPark>
@@ -32,6 +35,9 @@ interface WindParkRepository {
     suspend fun getWindTurbinesInBounds(swLat: Double, swLon: Double, neLat: Double, neLon: Double): List<WindTurbine>
     suspend fun countActiveWindTurbines(): Int
     suspend fun getWindParkStatuses(): Map<String, String>
+    suspend fun getMapSearchEntries(): List<MapSearchEntry>
+    suspend fun getRegionSummaries(type: String): List<RegionSummary>
+    suspend fun getNationalStatsSummary(): NationalStatsSummary?
 
     
     suspend fun submitDataHint(
