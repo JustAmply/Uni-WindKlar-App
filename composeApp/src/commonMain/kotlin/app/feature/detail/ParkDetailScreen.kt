@@ -30,7 +30,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
-import androidx.compose.material.icons.outlined.MonetizationOn
+import androidx.compose.material.icons.outlined.Euro
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -225,7 +225,7 @@ fun ParkDetailScreen(
                     value = muniVal,
                     isMissing = muniMetric?.value == null,
                     note = muniNote,
-                    icon = Icons.Outlined.MonetizationOn
+                    icon = Icons.Outlined.Euro
                 )
             )
 

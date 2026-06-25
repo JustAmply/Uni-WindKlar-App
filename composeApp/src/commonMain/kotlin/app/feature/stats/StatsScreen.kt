@@ -37,7 +37,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.MonetizationOn
+import androidx.compose.material.icons.outlined.Euro
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.WindPower
 import androidx.compose.material3.Button
@@ -1626,7 +1626,7 @@ private fun StatsIcon.imageVector(): ImageVector = when (this) {
     StatsIcon.Capacity -> Icons.Outlined.Bolt
     StatsIcon.Household -> Icons.Outlined.Home
     StatsIcon.Co2 -> Icons.Outlined.Eco
-    StatsIcon.Money -> Icons.Outlined.MonetizationOn
+    StatsIcon.Money -> Icons.Outlined.Euro
     StatsIcon.District -> Icons.Outlined.LocationOn
     StatsIcon.DataQuality -> Icons.Outlined.Info
 }

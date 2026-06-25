@@ -28,7 +28,7 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.MonetizationOn
+import androidx.compose.material.icons.outlined.Euro
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -243,7 +243,7 @@ fun RegionDetailScreen(
                     value = municipalBenefitVal,
                     isMissing = uiState.municipalBenefitEur == null || uiState.municipalBenefitEur == 0.0,
                     note = muniNote,
-                    icon = Icons.Outlined.MonetizationOn
+                    icon = Icons.Outlined.Euro
                 )
             )
 

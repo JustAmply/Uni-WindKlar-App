@@ -22,7 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.MonetizationOn
+import androidx.compose.material.icons.outlined.Euro
 import androidx.compose.material.icons.outlined.WindPower
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -513,7 +513,7 @@ private fun List<StatsImpactFact>.toFactListItems(): List<FactListItem> =
 
 private fun String.impactDetailIcon(): ImageVector = when (this) {
     StatsImpactType.Households.name -> Icons.Outlined.Home
-    StatsImpactType.MunicipalBenefit.name -> Icons.Outlined.MonetizationOn
+    StatsImpactType.MunicipalBenefit.name -> Icons.Outlined.Euro
     StatsImpactType.Turbines.name -> Icons.Outlined.WindPower
     StatsImpactType.Co2.name -> Icons.Outlined.Eco
     else -> Icons.Outlined.WindPower
