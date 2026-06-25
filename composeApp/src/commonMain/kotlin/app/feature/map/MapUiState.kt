@@ -62,7 +62,6 @@ data class MapUiState(
     val placementMarkerLat: Double = 0.0,
     val placementMarkerLon: Double = 0.0,
     val pendingReportPark: WindPark? = null,
-    val isOffshoreEnabled: Boolean = false,
     val recentParks: List<WindPark> = emptyList(),
     val isSearchFocused: Boolean = false,
 )

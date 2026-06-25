@@ -5,6 +5,5 @@ data class ProfileUiState(
     val aboutText: String = "WindKlar macht öffentliche Windenergiedaten verständlich und zeigt Quellen, Berechnungen und Unsicherheiten sichtbar an.",
     val version: String = "Version 1.0.0 (MVP)",
     val attribution: String = "Marktstammdatenregister (MaStR)",
-    val isOffshoreEnabled: Boolean = false,
     val limitations: List<String> = emptyList(),
 )

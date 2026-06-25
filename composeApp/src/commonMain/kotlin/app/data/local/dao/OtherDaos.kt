@@ -14,7 +14,7 @@ interface WindTurbineDao {
     suspend fun getByParkId(parkId: String): List<WindTurbine>
     suspend fun getAll(): List<WindTurbine>
     suspend fun getInBounds(swLat: Double, swLon: Double, neLat: Double, neLon: Double): List<WindTurbine>
-    suspend fun countActive(includeOffshore: Boolean): Int
+    suspend fun countActive(): Int
     suspend fun getParkStatuses(): Map<String, String>
     suspend fun getValidParkStats(): Map<String, ValidParkStats>
     suspend fun insertOrReplace(turbine: WindTurbine)
@@ -46,12 +46,8 @@ class SqlDelightWindTurbineDao(private val database: AppDatabase) : WindTurbineD
             .map { it.toDomain() }
     }
 
-    override suspend fun countActive(includeOffshore: Boolean): Int {
-        return database.windTurbineQueries.countActiveWindTurbines(
-            includeOffshore = includeOffshore.toSqlFlag(),
-            offshoreNorthSeaMunicipalityId = OFFSHORE_NORTH_SEA_MUNICIPALITY_ID,
-            offshoreBalticSeaMunicipalityId = OFFSHORE_BALTIC_SEA_MUNICIPALITY_ID,
-        ).executeAsOne().toInt()
+    override suspend fun countActive(): Int {
+        return database.windTurbineQueries.countActiveWindTurbines().executeAsOne().toInt()
     }
 
     override suspend fun getParkStatuses(): Map<String, String> {
@@ -154,7 +150,7 @@ interface MetricDao {
     suspend fun getForSubject(subjectType: String, subjectId: String): List<Metric>
     suspend fun getForSubjects(subjectType: String, subjectIds: List<String>): List<Metric>
     suspend fun getAll(): List<Metric>
-    suspend fun getNationalAggregates(includeOffshore: Boolean): List<Metric>
+    suspend fun getNationalAggregates(): List<Metric>
     suspend fun insertOrReplace(metric: Metric)
 }
 
@@ -172,12 +168,8 @@ class SqlDelightMetricDao(private val database: AppDatabase) : MetricDao {
         return database.metricQueries.selectAllMetrics().executeAsList().map { it.toDomain() }
     }
 
-    override suspend fun getNationalAggregates(includeOffshore: Boolean): List<Metric> {
-        return database.metricQueries.selectNationalMetricAggregates(
-            includeOffshore = includeOffshore.toSqlFlag(),
-            offshoreNorthSeaMunicipalityId = OFFSHORE_NORTH_SEA_MUNICIPALITY_ID,
-            offshoreBalticSeaMunicipalityId = OFFSHORE_BALTIC_SEA_MUNICIPALITY_ID,
-        ).executeAsList().map { row ->
+    override suspend fun getNationalAggregates(): List<Metric> {
+        return database.metricQueries.selectNationalMetricAggregates().executeAsList().map { row ->
             Metric(
                 id = "national_${row.metric_type}",
                 subjectType = "national",
@@ -454,7 +446,4 @@ class SqlDelightSettingsDao(private val database: AppDatabase) : SettingsDao {
     }
 }
 
-private const val OFFSHORE_NORTH_SEA_MUNICIPALITY_ID = "offshore_north_sea"
-private const val OFFSHORE_BALTIC_SEA_MUNICIPALITY_ID = "offshore_baltic_sea"
 
-private fun Boolean.toSqlFlag(): Long = if (this) 1L else 0L

@@ -88,8 +88,6 @@ fun ProfileScreen(
             DataSourceCard(uiState = uiState)
 
             InfoSettingsCard(
-                isOffshoreEnabled = uiState.isOffshoreEnabled,
-                onOffshoreEnabledChange = viewModel::setOffshoreEnabled,
                 onPrivacyClick = { showPrivacyDialog = true },
                 onClearHistoryClick = { showClearHistoryDialog = true },
                 onReplayOnboardingClick = onReplayOnboarding,
@@ -190,8 +188,6 @@ private fun ProfileHeader() {
 
 @Composable
 private fun InfoSettingsCard(
-    isOffshoreEnabled: Boolean,
-    onOffshoreEnabledChange: (Boolean) -> Unit,
     onPrivacyClick: () -> Unit,
     onClearHistoryClick: () -> Unit,
     onReplayOnboardingClick: () -> Unit,
@@ -219,16 +215,6 @@ private fun InfoSettingsCard(
                 icon = Icons.Outlined.Language,
                 label = "Sprache",
                 trailingText = "Deutsch",
-            )
-
-            SettingsRowDivider()
-
-            SettingsSwitchRow(
-                icon = Icons.Outlined.Air,
-                label = "Offshore-Windparks",
-                supportingText = "In Statistiken, Rankings und Vergleichen berücksichtigen",
-                checked = isOffshoreEnabled,
-                onCheckedChange = onOffshoreEnabledChange,
             )
 
             SettingsRowDivider()

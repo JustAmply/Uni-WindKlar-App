@@ -10,7 +10,7 @@ import app.core.model.SnapshotAssumption
 import app.core.model.WindPark
 import app.core.model.RankingItem
 import app.core.model.RankingDetailLine
-import app.core.model.isOffshore
+
 import app.data.repository.WindParkRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
@@ -139,11 +139,9 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
 
     private fun loadStats() {
         viewModelScope.launch {
-            val includeOffshore = repository.isOffshoreEnabled()
             val parks = repository.getWindParks()
-                .filter { includeOffshore || !it.isOffshore() }
-            val activeTurbineCount = repository.countActiveWindTurbines(includeOffshore)
-            val nationalMetrics = repository.getMetricsForNational(includeOffshore)
+            val activeTurbineCount = repository.countActiveWindTurbines()
+            val nationalMetrics = repository.getMetricsForNational()
             val recentParks = repository.getRecentWindParks(limit = 1)
             val assumptions = repository.getSnapshotAssumptions()
             val attribution = repository.getSnapshotAttribution()
@@ -173,7 +171,7 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
                 val states = buildStateStats(parks, totalCapacityMw, assumptions, loadedMetricsByParkId)
                 loadedStates = states
 
-                val recentPark = recentParks.firstOrNull()?.takeIf { includeOffshore || !it.isOffshore() }
+                val recentPark = recentParks.firstOrNull()
                 val selectedDistrict = selectDistrictComparison(
                     districts = districts,
                     recentPark = recentPark,
@@ -361,8 +359,7 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
             val turbines = cityParks.sumOf { it.turbineCount }
             val firstPark = cityParks.first()
             val stateCapacity = stateCapacityMw[firstPark.stateId] ?: 0.0
-            val onshoreParks = cityParks.filterNot { it.isOffshore() }
-            val municipalBenefitEur = onshoreParks
+            val municipalBenefitEur = cityParks
                 .takeIf { it.isNotEmpty() }
                 ?.sumOf { park ->
                     metricsByParkId[park.id]
@@ -419,8 +416,7 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
                 ?.key
                 ?: firstPark.municipalityName
             val stateCapacity = stateCapacityMw[firstPark.stateId] ?: 0.0
-            val onshoreParks = districtParks.filterNot { it.isOffshore() }
-            val municipalBenefitEur = onshoreParks
+            val municipalBenefitEur = districtParks
                 .takeIf { it.isNotEmpty() }
                 ?.sumOf { park ->
                     metricsByParkId[park.id]
@@ -464,8 +460,7 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
             val capacityMw = stateParks.sumOf { it.installedCapacityKw ?: 0L } / 1_000.0
             val turbines = stateParks.sumOf { it.turbineCount }
             val firstPark = stateParks.first()
-            val onshoreParks = stateParks.filterNot { it.isOffshore() }
-            val municipalBenefitEur = onshoreParks
+            val municipalBenefitEur = stateParks
                 .takeIf { it.isNotEmpty() }
                 ?.sumOf { park ->
                     metricsByParkId[park.id]
@@ -623,16 +618,12 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
                 assumptions,
                 DEFAULT_HOUSEHOLD_CONSUMPTION_KWH,
             )
-        val municipalBenefit = if (isOffshore()) {
-            null
-        } else {
-            metrics.firstValue("municipal_participation")
-                ?: annualProduction * assumptionValue(
-                    "municipal_benefit_eur_per_kwh",
-                    assumptions,
-                    DEFAULT_MUNICIPAL_BENEFIT_EUR_PER_KWH,
-                )
-        }
+        val municipalBenefit = metrics.firstValue("municipal_participation")
+            ?: annualProduction * assumptionValue(
+                "municipal_benefit_eur_per_kwh",
+                assumptions,
+                DEFAULT_MUNICIPAL_BENEFIT_EUR_PER_KWH,
+            )
         return ComparisonMetrics(
             turbines = turbineCount,
             capacityMw = capacityKw / 1_000.0,

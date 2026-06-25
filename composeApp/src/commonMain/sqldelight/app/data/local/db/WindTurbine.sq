@@ -54,10 +54,6 @@ WHERE (
     status IS NULL
     OR LOWER(status) LIKE '%betrieb%'
     OR LOWER(status) LIKE '%aktiv%'
-)
-AND (
-    :includeOffshore != 0
-    OR municipality_id NOT IN (:offshoreNorthSeaMunicipalityId, :offshoreBalticSeaMunicipalityId)
 );
 
 selectParkStatuses:

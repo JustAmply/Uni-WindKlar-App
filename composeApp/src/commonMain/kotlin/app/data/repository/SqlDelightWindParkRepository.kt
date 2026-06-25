@@ -26,7 +26,6 @@ class SqlDelightWindParkRepository(
     },
 ) : WindParkRepository {
     private companion object {
-        const val OFFSHORE_ENABLED_KEY = "offshore_enabled"
         const val ONBOARDING_COMPLETED_KEY = "onboarding_completed"
     }
 
@@ -155,20 +154,8 @@ class SqlDelightWindParkRepository(
         metricDao.getForSubject("wind_park", parkId)
     }
 
-    override suspend fun getMetricsForNational(includeOffshore: Boolean): List<Metric> = withContext(Dispatchers.Default) {
-        metricDao.getNationalAggregates(includeOffshore)
-    }
-
-    override suspend fun isOffshoreEnabled(): Boolean = withContext(Dispatchers.Default) {
-        settingsDao.getValue(OFFSHORE_ENABLED_KEY)
-            ?.trim()
-            ?.lowercase()
-            ?.let { it == "true" }
-            ?: false
-    }
-
-    override suspend fun setOffshoreEnabled(enabled: Boolean): Unit = withContext(Dispatchers.Default) {
-        settingsDao.upsertValue(OFFSHORE_ENABLED_KEY, enabled.toString())
+    override suspend fun getMetricsForNational(): List<Metric> = withContext(Dispatchers.Default) {
+        metricDao.getNationalAggregates()
     }
 
     override suspend fun getWindTurbinesForPark(parkId: String): List<WindTurbine> = withContext(Dispatchers.Default) {
@@ -188,8 +175,8 @@ class SqlDelightWindParkRepository(
         windTurbineDao.getInBounds(swLat, swLon, neLat, neLon)
     }
 
-    override suspend fun countActiveWindTurbines(includeOffshore: Boolean): Int = withContext(Dispatchers.Default) {
-        windTurbineDao.countActive(includeOffshore)
+    override suspend fun countActiveWindTurbines(): Int = withContext(Dispatchers.Default) {
+        windTurbineDao.countActive()
     }
 
     override suspend fun getWindParkStatuses(): Map<String, String> = withContext(Dispatchers.Default) {

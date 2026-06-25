@@ -114,9 +114,6 @@ fun MapScreen(
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     
-    LaunchedEffect(viewModel) {
-        viewModel.refreshOffshoreSetting()
-    }
     val snackbarHostState = remember { SnackbarHostState() }
     
     var showReportDialog by remember { mutableStateOf(false) }

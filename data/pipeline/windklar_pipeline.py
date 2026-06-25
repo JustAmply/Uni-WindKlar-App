@@ -54,7 +54,7 @@ DEFAULT_ASSUMPTIONS = {
         "sourceName": "WindKlar MVP-Annahme mit Quellenabgleich",
         "sourceUrl": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0211028",
         "sourceDate": "2026-06-18",
-        "calculationNote": "Berechnung basiert auf lageabhängigen Volllaststunden der einzelnen Anlagen (Basis: Inland 1.700h, Küste 2.200h, Offshore 4.000h). Wenn das Inbetriebnahmejahr bekannt ist, wird ein kontinuierlicher Alterungsabschlag von 0,63% pro Betriebsjahr angesetzt und bei 80% gedeckelt.",
+        "calculationNote": "Berechnung basiert auf lageabhängigen Volllaststunden der einzelnen Anlagen (Basis: Inland 1.700h, Küste 2.200h). Wenn das Inbetriebnahmejahr bekannt ist, wird ein kontinuierlicher Alterungsabschlag von 0,63% pro Betriebsjahr angesetzt und bei 80% gedeckelt.",
     },
     "emission_factor_kg_per_kwh": {
         "label": "Vermiedenes CO₂ pro kWh",
@@ -102,6 +102,7 @@ FIELD_ALIASES = {
     "hubHeightM": ["hubheightm", "nabenhoehe", "nabenhohe"],
     "rotorDiameterM": ["rotordiameterm", "rotordurchmesser"],
     "commissioningDate": ["commissioningdate", "inbetriebnahmedatum", "inbetriebnahme"],
+    "windAnLandOderAufSee": ["windanlandoderaufsee", "lage", "wind_an_land_oder_auf_see"],
 }
 
 MUNICIPALITY_FIELD_ALIASES = {
@@ -243,6 +244,11 @@ def clean(
     input_count = 0
     for turbine in read_jsonl(input_path):
         input_count += 1
+        is_explicit_offshore = "auf see" in (turbine.get("windAnLandOderAufSee") or "").lower() or "offshore" in (turbine.get("windAnLandOderAufSee") or "").lower()
+        if is_explicit_offshore:
+            excluded.append(exclusion(turbine, "offshore_unit_excluded"))
+            continue
+
         reason = basic_turbine_error(turbine)
         if reason:
             excluded.append(exclusion(turbine, reason))
@@ -367,6 +373,11 @@ def repair(
     input_count = 0
     for turbine in read_jsonl(input_path):
         input_count += 1
+        is_explicit_offshore = "auf see" in (turbine.get("windAnLandOderAufSee") or "").lower() or "offshore" in (turbine.get("windAnLandOderAufSee") or "").lower()
+        if is_explicit_offshore:
+            excluded.append(repair_exclusion(turbine, "offshore_unit_excluded"))
+            continue
+
         reason = coordinate_turbine_error(turbine)
         if reason:
             excluded.append(repair_exclusion(turbine, reason))
@@ -437,18 +448,7 @@ def repair(
                 continue
 
         if not original_municipality_id and is_offshore_coordinate(lat, lon):
-            old_turbine = dict(turbine)
-            offshore = offshore_municipality(lon)
-            apply_municipality_repair(turbine, offshore)
-            kept.append(turbine)
-            repaired.append(
-                repair_action(
-                    "offshore_pseudo_municipality_assigned",
-                    old_turbine,
-                    turbine,
-                    offshore,
-                )
-            )
+            excluded.append(repair_exclusion(turbine, "offshore_coordinate_excluded"))
             continue
 
         if is_placeholder_coordinate(lat, lon):
@@ -693,23 +693,7 @@ def build_snapshot(
     def enrich_entity(item: dict[str, Any]) -> dict[str, Any]:
         enriched = dict(item)
         m_id = str(enriched.get("municipalityId", ""))
-        if m_id == "offshore_north_sea":
-            enriched["districtId"] = "offshore_north_sea"
-            enriched["districtName"] = "Offshore Nordsee"
-            lat = float(enriched.get("latitude", 0.0))
-            lon = float(enriched.get("longitude", 0.0))
-            if lat >= 55.0 or (lon >= 7.6 and lat >= 54.3):
-                enriched["stateId"] = "01"
-                enriched["stateName"] = "Schleswig-Holstein"
-            else:
-                enriched["stateId"] = "03"
-                enriched["stateName"] = "Niedersachsen"
-        elif m_id == "offshore_baltic_sea":
-            enriched["districtId"] = "offshore_baltic_sea"
-            enriched["districtName"] = "Offshore Ostsee"
-            enriched["stateId"] = "13"
-            enriched["stateName"] = "Mecklenburg-Vorpommern"
-        elif m_id.isdigit() and len(m_id) >= 5:
+        if m_id.isdigit() and len(m_id) >= 5:
             dist_id = m_id[:5]
             state_id = m_id[:2]
             enriched["districtId"] = dist_id
@@ -790,11 +774,9 @@ def build_metrics(parks: list[dict[str, Any]], turbines: list[dict[str, Any]]) -
         for t in park_turbines:
             capacity = t.get("installedCapacityKw") or 0
 
-            # Determine base hours from location (municipalityId prefix / offshore ID)
+            # Determine base hours from location (municipalityId prefix)
             muni_id = t.get("municipalityId") or ""
-            if muni_id in ("offshore_north_sea", "offshore_baltic_sea"):
-                base_hours = 4000.0
-            elif muni_id.startswith(("01", "02", "03", "04", "13")):
+            if muni_id.startswith(("01", "02", "03", "04", "13")):
                 base_hours = 2200.0
             else:
                 base_hours = 1700.0
@@ -808,7 +790,7 @@ def build_metrics(parks: list[dict[str, Any]], turbines: list[dict[str, Any]]) -
 
         note_annual = (
             "Geschätzte Jahresproduktion basierend auf lage- und altersabhängigen Volllaststunden der einzelnen Anlagen "
-            "(Basis: Inland 1.700h, Küste 2.200h, Offshore 4.000h; Alterungsabschlag 0,63% pro Betriebsjahr, maximal 20%)."
+            "(Basis: Inland 1.700h, Küste 2.200h; Alterungsabschlag 0,63% pro Betriebsjahr, maximal 20%)."
         )
 
         metrics.extend(
@@ -818,16 +800,15 @@ def build_metrics(parks: list[dict[str, Any]], turbines: list[dict[str, Any]]) -
                 metric(park["id"], "household_equivalent", annual_kwh / household_consumption, "households", "Geschätzte Produktion geteilt durch den angenommenen jährlichen Haushaltsstrombedarf."),
             ]
         )
-        if not any((t.get("municipalityId") or "") in ("offshore_north_sea", "offshore_baltic_sea") for t in park_turbines):
-            metrics.append(
-                metric(
-                    park["id"],
-                    "municipal_participation",
-                    annual_kwh * municipal_rate,
-                    "EUR/a",
-                    "Schätzung nach § 6 EEG für Windenergie an Land mit 0,2 ct/kWh; keine bestätigte Auszahlung.",
-                )
+        metrics.append(
+            metric(
+                park["id"],
+                "municipal_participation",
+                annual_kwh * municipal_rate,
+                "EUR/a",
+                "Schätzung nach § 6 EEG für Windenergie an Land mit 0,2 ct/kWh; keine bestätigte Auszahlung.",
             )
+        )
     return metrics
 
 
@@ -991,6 +972,7 @@ def normalize_row(row: dict[str, Any]) -> dict[str, Any] | None:
         "sourceUrl": SOURCE_URL,
         "sourceUpdatedAt": today(),
         "dataQuality": "official",
+        "windAnLandOderAufSee": as_text(pick(normalized_keys, "windAnLandOderAufSee")),
     }
 
 
@@ -1503,12 +1485,11 @@ def quality_report_limitations(report: dict[str, Any] | None) -> list[str]:
     summary = report.get("summary") or {}
     if "excludedAfterRepairCount" in summary:
         repaired_count = summary.get("repairedCount") or 0
-        offshore_count = summary.get("offshoreAssignedCount") or 0
         excluded_count = summary.get("excludedAfterRepairCount") or 0
         limitations = []
         if repaired_count:
             limitations.append(
-                f"{repaired_count} Windanlagen wurden bei der Vorverarbeitung aus Koordinaten- oder Offshore-Kontext abgeleitet repariert; davon {offshore_count} mit Offshore-Pseudo-Gemeinde."
+                f"{repaired_count} Windanlagen wurden bei der Vorverarbeitung aus Koordinaten-Kontext abgeleitet repariert."
             )
         if excluded_count:
             limitations.append(

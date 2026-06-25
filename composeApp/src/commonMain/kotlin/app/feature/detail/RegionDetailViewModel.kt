@@ -9,7 +9,7 @@ import app.core.model.ProductionContext
 import app.core.model.WindPark
 import app.core.model.RankingItem
 import app.core.model.RankingDetailLine
-import app.core.model.isOffshore
+
 import app.data.repository.WindParkRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +35,6 @@ class RegionDetailViewModel(
             uiState = uiState.copy(isLoading = true)
 
             val allParks = repository.getWindParks()
-            val includeOffshore = repository.isOffshoreEnabled()
             val assumptions = repository.getSnapshotAssumptions()
             val attribution = repository.getSnapshotAttribution()
             val isFav = repository.isRegionFavorite(regionType, regionId)
@@ -49,7 +48,7 @@ class RegionDetailViewModel(
                         "state" -> park.stateId == regionId
                         else -> false
                     }
-                }.filter { includeOffshore || !it.isOffshore() }
+                }
 
                 if (regionParks.isEmpty()) {
                     return@withContext RegionDetailUiState(
@@ -115,12 +114,12 @@ class RegionDetailViewModel(
                 val installedCapacityKw = regionParks.sumOf { it.installedCapacityKw ?: 0L }
                 val installedCapacityMw = installedCapacityKw / 1000.0
 
-                val totalCapacityKw = allParks.filter { includeOffshore || !it.isOffshore() }.sumOf { it.installedCapacityKw ?: 0L }
+                val totalCapacityKw = allParks.sumOf { it.installedCapacityKw ?: 0L }
                 val totalCapacityMw = totalCapacityKw / 1000.0
                 val shareOfNationalCapacity = if (totalCapacityKw > 0) (installedCapacityKw.toDouble() / totalCapacityKw).toFloat() else 0f
 
                 val (shareOfStateCapacity, stateCapacityMw) = if (regionType.lowercase() == "city" || regionType.lowercase() == "district") {
-                    val stateParks = allParks.filter { it.stateId == firstPark.stateId }.filter { includeOffshore || !it.isOffshore() }
+                    val stateParks = allParks.filter { it.stateId == firstPark.stateId }
                     val stateCapKw = stateParks.sumOf { it.installedCapacityKw ?: 0L }
                     val stateCapMw = stateCapKw / 1000.0
                     val share = if (stateCapKw > 0) (installedCapacityKw.toDouble() / stateCapKw).toFloat() else 0f
@@ -137,10 +136,8 @@ class RegionDetailViewModel(
                 val annualProductionGwh = annualProductionKwh / 1_000_000.0
                 val co2SavingsTons = (regionMetrics.filter { it.metricType == "co2_savings" }.sumOf { it.value ?: 0.0 }) / 1000.0
                 val householdsSupplied = regionMetrics.filter { it.metricType == "household_equivalent" || it.metricType == "households_supplied" }.sumOf { it.value ?: 0.0 }.toInt()
-                val onshoreParks = regionParks.filterNot { it.isOffshore() }
-                val onshoreParkIds = onshoreParks.map { it.id }.toSet()
-                val municipalBenefitEur = if (onshoreParks.isNotEmpty()) {
-                    regionMetrics.filter { it.subjectId in onshoreParkIds && it.metricType == "municipal_participation" }.sumOf { it.value ?: 0.0 }
+                val municipalBenefitEur = if (regionParks.isNotEmpty()) {
+                    regionMetrics.filter { it.metricType == "municipal_participation" }.sumOf { it.value ?: 0.0 }
                 } else {
                     null
                 }

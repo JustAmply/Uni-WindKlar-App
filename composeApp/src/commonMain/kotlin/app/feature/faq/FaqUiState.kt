@@ -66,14 +66,14 @@ private val defaultFaqQuestions = listOf(
     FaqQuestionUiModel(
         id = "municipal-benefit",
         question = "Was bringt ein Windpark meiner Gemeinde?",
-        answer = "Ein Windpark kann vor Ort auf mehreren Wegen Nutzen stiften: durch mögliche kommunale Beteiligung bei Windenergie an Land, Gewerbesteuer, Pachten, Aufträge für lokale Betriebe oder konkrete Projekte in der Gemeinde. Offshore ist diese kommunale Beteiligung nach der im MVP verwendeten Regel nicht anwendbar. WindKlar zeigt solche Angaben vorsichtig und unterscheidet zwischen belegten Daten, abgeleiteten Werten und Schätzungen.",
+        answer = "Ein Windpark kann vor Ort auf mehreren Wegen Nutzen stiften: durch mögliche kommunale Beteiligung bei Windenergie an Land, Gewerbesteuer, Pachten, Aufträge für lokale Betriebe oder konkrete Projekte in der Gemeinde. WindKlar zeigt solche Angaben vorsichtig und unterscheidet zwischen belegten Daten, abgeleiteten Werten und Schätzungen.",
         icon = FaqQuestionIcon.Money,
         category = FaqCategory.LocalBenefit,
     ),
     FaqQuestionUiModel(
         id = "municipal-participation-calculation",
         question = "Wie wird der kommunale Nutzen berechnet?",
-        answer = "Im MVP wird der kommunale Nutzen als mögliche Beteiligung für Windenergie an Land nach § 6 EEG eingeordnet. Dafür kann die geschätzte Jahresproduktion mit einer möglichen Beteiligung von bis zu 0,2 Cent pro Kilowattstunde verknüpft werden. Offshore wird dieser Wert nicht angezeigt. Das ist keine bestätigte Auszahlung, sondern ein transparenter Orientierungswert.",
+        answer = "Im MVP wird der kommunale Nutzen als mögliche Beteiligung für Windenergie an Land nach § 6 EEG eingeordnet. Dafür kann die geschätzte Jahresproduktion mit einer möglichen Beteiligung von bis zu 0,2 Cent pro Kilowattstunde verknüpft werden. Das ist keine bestätigte Auszahlung, sondern ein transparenter Orientierungswert.",
         icon = FaqQuestionIcon.Participation,
         category = FaqCategory.LocalBenefit,
     ),

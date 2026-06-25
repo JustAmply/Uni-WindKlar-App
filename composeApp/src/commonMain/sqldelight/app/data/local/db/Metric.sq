@@ -56,14 +56,6 @@ SELECT
 FROM metric
 JOIN wind_park ON wind_park.id = metric.subject_id
 WHERE metric.subject_type = 'wind_park'
-  AND (
-      metric.metric_type != 'municipal_participation'
-      OR wind_park.municipality_id NOT IN (:offshoreNorthSeaMunicipalityId, :offshoreBalticSeaMunicipalityId)
-  )
-  AND (
-      :includeOffshore != 0
-      OR wind_park.municipality_id NOT IN (:offshoreNorthSeaMunicipalityId, :offshoreBalticSeaMunicipalityId)
-  )
   AND wind_park.id NOT IN (
       SELECT wind_park_id
       FROM wind_turbine

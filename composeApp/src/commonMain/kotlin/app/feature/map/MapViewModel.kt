@@ -9,8 +9,7 @@ import app.core.model.MapMarkerKind
 import app.core.model.MapMarkerUiModel
 import app.core.model.WindTurbine
 import app.core.model.WindPark
-import app.core.model.isOffshore
-import app.core.model.isOffshoreMunicipalityId
+
 import app.core.ui.components.EntityType
 import app.core.ui.components.EntityPreviewData
 import app.core.ui.components.PreviewSheetState
@@ -59,7 +58,6 @@ class MapViewModel(
                 uiState = uiState.copy(isLoading = true)
                 
                 val allParks = repository.getWindParks()
-                val isOffshoreEnabled = repository.isOffshoreEnabled()
                 println("MapViewModel: Loaded ${allParks.size} wind parks from repository.")
                 
                 val statusMap = repository.getWindParkStatuses()
@@ -123,7 +121,6 @@ class MapViewModel(
                 uiState = uiState.copy(
                     isLoading = false,
                     parks = allParks,
-                    isOffshoreEnabled = isOffshoreEnabled,
                 )
                 applyFilters()
                 loadRecentParks()
@@ -140,23 +137,10 @@ class MapViewModel(
         }
     }
 
-    fun refreshOffshoreSetting() {
-        viewModelScope.launch {
-            val enabled = repository.isOffshoreEnabled()
-            if (uiState.isOffshoreEnabled != enabled) {
-                uiState = uiState.copy(isOffshoreEnabled = enabled)
-                applyFilters()
-            }
-            loadRecentParks()
-        }
-    }
-
     fun loadRecentParks() {
         viewModelScope.launch {
             try {
-                val includeOffshore = repository.isOffshoreEnabled()
                 val recents = repository.getRecentWindParks(5)
-                    .filter { includeOffshore || !it.isOffshore() }
                 uiState = uiState.copy(recentParks = recents)
             } catch (e: Throwable) {
                 e.printStackTrace()
@@ -192,9 +176,8 @@ class MapViewModel(
         if (normalizedQuery.length >= 2) {
             searchJob = viewModelScope.launch {
                 delay(SearchDebounceMillis)
-                val isOffshoreEnabled = uiState.isOffshoreEnabled
                 val combinedResults = withContext(Dispatchers.Default) {
-                    searchMapIndex(normalizedQuery, isOffshoreEnabled)
+                    searchMapIndex(normalizedQuery)
                 }
 
                 if (uiState.searchQuery == newQuery) {
@@ -228,7 +211,6 @@ class MapViewModel(
                         name = state.name.normalizeForSearch(),
                         haystack = listOf(state.id, state.name).toSearchHaystack(),
                         sortName = state.name,
-                        isOffshoreOnly = state.id.isOffshoreMunicipalityId(),
                     )
                 )
             }
@@ -241,7 +223,6 @@ class MapViewModel(
                         name = district.name.normalizeForSearch(),
                         haystack = listOf(district.id, district.name, district.stateName).toSearchHaystack(),
                         sortName = district.name,
-                        isOffshoreOnly = district.id.isOffshoreMunicipalityId(),
                     )
                 )
             }
@@ -261,7 +242,6 @@ class MapViewModel(
                                 municipality.stateName,
                             ).toSearchHaystack(),
                             sortName = municipality.name,
-                            isOffshoreOnly = municipality.id.isOffshoreMunicipalityId(),
                         )
                     )
                 }
@@ -280,7 +260,6 @@ class MapViewModel(
                             park.stateName,
                         ).toSearchHaystack(),
                         sortName = park.name,
-                        isOffshoreOnly = park.isOffshore(),
                     )
                 )
             }
@@ -288,11 +267,9 @@ class MapViewModel(
 
     private fun searchMapIndex(
         normalizedQuery: String,
-        isOffshoreEnabled: Boolean,
     ): List<MapSearchResult> =
         searchIndex
             .asSequence()
-            .filter { isOffshoreEnabled || !it.isOffshoreOnly }
             .mapNotNull { entry ->
                 entry.matchRank(normalizedQuery)?.let { matchRank ->
                     SearchMatch(entry, matchRank)
@@ -724,13 +701,8 @@ class MapViewModel(
                 delay(150)
                 val filteredParks = withContext(Dispatchers.Default) {
                     val rawParks = parksForStatus(snapshot.parks, currentStatuses, currentStatus)
-                    val afterOffshore = if (snapshot.isOffshoreEnabled) {
-                        rawParks
-                    } else {
-                        rawParks.filterNot { it.isOffshore() }
-                    }
                     filterParksInBounds(
-                        afterOffshore,
+                        rawParks,
                         bounds,
                     )
                 }
@@ -744,12 +716,7 @@ class MapViewModel(
                     )
                     withContext(Dispatchers.Default) {
                         val filteredTurbines = filterTurbines(turbines, currentStatus)
-                        val afterOffshoreTurbines = if (snapshot.isOffshoreEnabled) {
-                            filteredTurbines
-                        } else {
-                            filteredTurbines.filterNot { it.isOffshore() }
-                        }
-                        turbinesToMarkers(afterOffshoreTurbines)
+                        turbinesToMarkers(filteredTurbines)
                     }
                 } else {
                     withContext(Dispatchers.Default) {
@@ -931,7 +898,6 @@ private data class MapSearchIndexEntry(
     val name: String,
     val haystack: String,
     val sortName: String,
-    val isOffshoreOnly: Boolean,
 ) {
     fun matchRank(query: String): Int? =
         when {
