@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -42,7 +43,7 @@ data class ImpactMetric(
     val value: String,
     val isMissing: Boolean,
     val note: String?,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector
+    val icon: ImageVector
 )
 
 @Composable
@@ -70,7 +71,7 @@ fun CitizenImpactDashboard(
             )
 
             metrics.forEach { metric ->
-                ImpactRow(
+                ImpactMetricRow(
                     icon = metric.icon,
                     label = metric.label,
                     value = metric.value,
@@ -108,16 +109,17 @@ fun CitizenImpactDashboard(
 }
 
 @Composable
-private fun ImpactRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+fun ImpactMetricRow(
+    icon: ImageVector,
     label: String,
     value: String,
     isMissing: Boolean,
     note: String?,
-    showNote: Boolean
+    showNote: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Top
     ) {

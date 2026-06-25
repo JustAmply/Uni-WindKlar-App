@@ -20,6 +20,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Eco
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.MonetizationOn
+import androidx.compose.material.icons.outlined.WindPower
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -31,6 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -40,6 +45,7 @@ import app.core.model.RankingItem
 import app.core.ui.components.BreadcrumbSegment
 import app.core.ui.components.FactList
 import app.core.ui.components.FactListItem
+import app.core.ui.components.ImpactMetricRow
 import app.core.ui.components.RankingList
 import app.core.ui.components.WindklarHeader
 import app.core.ui.theme.WindklarTheme
@@ -70,6 +76,7 @@ fun ImpactDetailScreen(
         "Co2" -> "CO2 gespart"
         else -> "Auswertung"
     }
+    val metricIcon = uiState.metricType.impactDetailIcon()
 
     Column(
         modifier = Modifier
@@ -97,6 +104,19 @@ fun ImpactDetailScreen(
                     )
                 }
             },
+            actionIcon = {
+                Box(
+                    modifier = Modifier.size(40.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = metricIcon,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.68f),
+                        modifier = Modifier.size(30.dp),
+                    )
+                }
+            },
             breadcrumbs = {
                 BreadcrumbSegment(name = "Statistik")
             },
@@ -110,10 +130,10 @@ fun ImpactDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             when (uiState.metricType) {
-                "Households" -> uiState.householdsDetail?.let { HouseholdsDetailContent(it, onNavigateToParkDetail, onNavigateToRegionDetail) }
-                "MunicipalBenefit" -> uiState.municipalBenefitDetail?.let { MunicipalBenefitDetailContent(it, onNavigateToRegionDetail) }
-                "Turbines" -> uiState.turbinesDetail?.let { TurbinesDetailContent(it, onNavigateToParkDetail, onNavigateToRegionDetail) }
-                "Co2" -> uiState.co2Detail?.let { Co2DetailContent(it, onNavigateToParkDetail, onNavigateToRegionDetail) }
+                "Households" -> uiState.householdsDetail?.let { HouseholdsDetailContent(it, metricIcon, onNavigateToParkDetail, onNavigateToRegionDetail) }
+                "MunicipalBenefit" -> uiState.municipalBenefitDetail?.let { MunicipalBenefitDetailContent(it, metricIcon, onNavigateToRegionDetail) }
+                "Turbines" -> uiState.turbinesDetail?.let { TurbinesDetailContent(it, metricIcon, onNavigateToParkDetail, onNavigateToRegionDetail) }
+                "Co2" -> uiState.co2Detail?.let { Co2DetailContent(it, metricIcon, onNavigateToParkDetail, onNavigateToRegionDetail) }
             }
             Spacer(modifier = Modifier.height(4.dp))
         }
@@ -153,30 +173,28 @@ private fun SectionTitle(title: String) {
 }
 
 @Composable
-private fun ImpactSummaryBlock(value: String, subtitle: String) {
+private fun ImpactSummaryBlock(
+    label: String,
+    value: String,
+    subtitle: String,
+    icon: ImageVector,
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
-        color = SoftGreen,
+        shape = RoundedCornerShape(16.dp),
+        color = WindklarTheme.colors.cardBackground,
+        shadowElevation = 8.dp,
+        tonalElevation = 0.dp,
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = value,
-                color = DarkText,
-                fontSize = 28.sp,
-                lineHeight = 34.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = subtitle,
-                color = MutedText,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-            )
-        }
+        ImpactMetricRow(
+            icon = icon,
+            label = label,
+            value = value,
+            isMissing = false,
+            note = subtitle,
+            showNote = true,
+            modifier = Modifier.padding(16.dp),
+        )
     }
 }
 
@@ -297,10 +315,16 @@ private fun HistogramChart(entries: List<ImpactBarEntry>, accentLast: Boolean = 
 @Composable
 private fun HouseholdsDetailContent(
     detail: HouseholdsImpactDetail,
+    icon: ImageVector,
     onNavigateToParkDetail: (String) -> Unit,
     onNavigateToRegionDetail: (String, String) -> Unit,
 ) {
-    ImpactSummaryBlock(value = detail.summaryValue, subtitle = detail.summarySubtitle)
+    ImpactSummaryBlock(
+        label = "Versorgte Haushalte",
+        value = detail.summaryValue,
+        subtitle = detail.summarySubtitle,
+        icon = icon,
+    )
     ImpactSectionCard {
         SectionTitle(title = "Einordnung")
         Spacer(modifier = Modifier.height(12.dp))
@@ -333,9 +357,15 @@ private fun HouseholdsDetailContent(
 @Composable
 private fun MunicipalBenefitDetailContent(
     detail: MunicipalBenefitImpactDetail,
+    icon: ImageVector,
     onNavigateToRegionDetail: (String, String) -> Unit,
 ) {
-    ImpactSummaryBlock(value = detail.summaryValue, subtitle = detail.summarySubtitle)
+    ImpactSummaryBlock(
+        label = "Kommunale Beteiligung an Land (§6 EEG)",
+        value = detail.summaryValue,
+        subtitle = detail.summarySubtitle,
+        icon = icon,
+    )
     ImpactSectionCard {
         Text(
             text = "Der Wert ordnet ein, welche Beteiligung für Gemeinden nach § 6 EEG rechnerisch möglich wäre. Er ist keine bestätigte Auszahlung und ersetzt keine lokalen Verträge oder Haushaltsdaten.",
@@ -369,10 +399,16 @@ private fun MunicipalBenefitDetailContent(
 @Composable
 private fun TurbinesDetailContent(
     detail: TurbinesImpactDetail,
+    icon: ImageVector,
     onNavigateToParkDetail: (String) -> Unit,
     onNavigateToRegionDetail: (String, String) -> Unit,
 ) {
-    ImpactSummaryBlock(value = detail.summaryValue, subtitle = detail.summarySubtitle)
+    ImpactSummaryBlock(
+        label = "Windenergieanlagen",
+        value = detail.summaryValue,
+        subtitle = detail.summarySubtitle,
+        icon = icon,
+    )
     ImpactSectionCard {
         Text(
             text = "Gezählt werden Windanlagen aus MaStR/Open-MaStR-Stammdaten. Eine Windanlage ist die technische Quellen- und Koordinateneinheit; Windparks sind die bürgernahe Gruppierung für Karte, Suche und Details.",
@@ -408,10 +444,16 @@ private fun TurbinesDetailContent(
 @Composable
 private fun Co2DetailContent(
     detail: Co2ImpactDetail,
+    icon: ImageVector,
     onNavigateToParkDetail: (String) -> Unit,
     onNavigateToRegionDetail: (String, String) -> Unit,
 ) {
-    ImpactSummaryBlock(value = detail.summaryValue, subtitle = detail.summarySubtitle)
+    ImpactSummaryBlock(
+        label = "Vermiedene CO2-Emissionen",
+        value = detail.summaryValue,
+        subtitle = detail.summarySubtitle,
+        icon = icon,
+    )
     ImpactSectionCard {
         Text(
             text = "WindKlar berechnet die Einordnung aus geschätzter Jahresproduktion und einem Emissionsfaktor für den deutschen Strommix. Der Wert ist eine transparente Schätzung, keine gemessene Einsparung.",
@@ -468,3 +510,11 @@ private fun ImpactNavigateTarget?.subtitleLabel(): String = when (this) {
 
 private fun List<StatsImpactFact>.toFactListItems(): List<FactListItem> =
     map { fact -> FactListItem(fact.label, fact.value) }
+
+private fun String.impactDetailIcon(): ImageVector = when (this) {
+    StatsImpactType.Households.name -> Icons.Outlined.Home
+    StatsImpactType.MunicipalBenefit.name -> Icons.Outlined.MonetizationOn
+    StatsImpactType.Turbines.name -> Icons.Outlined.WindPower
+    StatsImpactType.Co2.name -> Icons.Outlined.Eco
+    else -> Icons.Outlined.WindPower
+}
