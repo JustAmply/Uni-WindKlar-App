@@ -6,7 +6,7 @@
 - Keep this file small: durable repo rules only. Do not duplicate the PRD here.
 
 ## Project
-`windklar` is a Kotlin Multiplatform app for Android and iOS. It helps people in Germany understand nearby wind parks, production context, municipal benefit, data quality and local data hints.
+`windklar` is a Kotlin Multiplatform app for Android and iOS. It helps people in Germany understand nearby onshore wind parks, production context, municipal benefit, data quality and local data hints. Offshore wind energy is excluded.
 
 Seminar context: the app is built for a university course with the Umweltbundesamt as seminar customer. Prefer a coherent, demonstrable MVP over broad speculative features.
 

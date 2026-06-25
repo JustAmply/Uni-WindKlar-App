@@ -1,8 +1,8 @@
 # windklar
 
-`windklar` is a Kotlin Multiplatform app for Android and iOS that makes local wind energy easier to understand for people in Germany.
+`windklar` is a Kotlin Multiplatform app for Android and iOS that makes local onshore wind energy easier to understand for people in Germany.
 
-WindKlar helps users discover wind parks, inspect source-backed wind installation data, understand production and municipality context, revisit parks, and create local data-quality hints when public data appears incomplete or incorrect.
+WindKlar helps users discover onshore wind parks, inspect source-backed wind installation data, understand production and municipality context, revisit parks, and create local data-quality hints when public data appears incomplete or incorrect.
 
 The app is built for a university seminar with the Umweltbundesamt as seminar customer. The MVP should be coherent, demonstrable, factual and clear about uncertainty.
 
@@ -13,8 +13,9 @@ The app is built for a university seminar with the Umweltbundesamt as seminar cu
 - [Agent Instructions](AGENTS.md): concise implementation rules for coding agents.
 
 ## Product Snapshot
-- `Windanlage` is the atomic MaStR/Open-MaStR-backed source-data and coordinate unit.
+- `Windanlage` is the atomic MaStR/Open-MaStR-backed onshore source-data and coordinate unit.
 - `Windpark` is the primary citizen-facing unit for map, search, favorites, detail and municipality context.
+- Excludes offshore wind parks entirely, focusing strictly on wind energy installations on land (onshore).
 - MVP runtime data is local-first via SQLDelight.
 - Baseline data should come from a Germany-wide preprocessed JSON snapshot, not live API calls.
 - Production, CO2 savings, household equivalents and municipal participation need source, timestamp, data-quality and calculation metadata.

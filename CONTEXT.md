@@ -1,16 +1,16 @@
 # WindKlar
 
-WindKlar is the product context for making local wind energy understandable to citizens in Germany. The language centers on wind parks, their municipalities, local production context, and citizen-facing trust signals.
+WindKlar is the product context for making local onshore wind energy understandable to citizens in Germany. The language centers on onshore wind parks, their municipalities, local production context, and citizen-facing trust signals. Offshore wind installations and offshore wind parks are completely excluded from the app's scope.
 
 ## Language
 
 **Windpark**:
-A local grouping of one or more wind energy installations that users discover, save, and inspect as the primary UX object in the app.
-_Avoid_: Anlage as the primary discovery object, turbine as the primary discovery object
+A local grouping of one or more onshore wind energy installations that users discover, save, and inspect as the primary UX object in the app.
+_Avoid_: Anlage as the primary discovery object, turbine as the primary discovery object, offshore wind parks
 
 **Windanlage**:
-An individual wind energy installation that can belong to a wind park and is the atomic unit for master data, coordinates, and data hints.
-_Avoid_: Windpark when referring to a single installation
+An individual onshore wind energy installation that can belong to a wind park and is the atomic unit for master data, coordinates, and data hints.
+_Avoid_: Windpark when referring to a single installation, offshore wind turbines
 
 **Gemeinde**:
 The municipality connected to a wind park and used to frame local production, benefit, and context.

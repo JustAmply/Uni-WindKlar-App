@@ -98,8 +98,8 @@ Runtime behavior:
   also writes compact metrics automatically next to the report, or to
   `--metrics-output` when that path is provided. The repair command is the
   preferred snapshot path because it keeps auditable coordinate-based
-  municipality repairs and offshore pseudo-municipalities instead of filtering
-  them out.
+  municipality repairs. Offshore wind turbines and pseudo-municipalities are
+  filtered out entirely, as the app strictly targets onshore wind energy.
 - Impact metrics are MVP estimates based on documented assumptions.
 - Raw MaStR files are intentionally ignored because they are large and updated
   frequently.

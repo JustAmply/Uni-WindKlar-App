@@ -28,7 +28,7 @@ Die App beantwortet vier Kernfragen:
 
 ## 3. Ziele
 
-- Windenergieanlagen und Windparks in der Umgebung auffindbar und verständlich machen.
+- Windenergieanlagen und Windparks an Land (onshore) in der Umgebung auffindbar und verständlich machen.
 - Öffentliche Windenergiedaten in eine bürgernahe Darstellung übersetzen.
 - Vertrauen durch klare Quellen, Datenqualität und Zeitstempel fördern.
 - Akzeptanzrelevante Informationen sichtbar machen, insbesondere CO2-Einsparung, Haushaltsäquivalente und kommunale Beteiligung.
@@ -42,6 +42,7 @@ Die App beantwortet vier Kernfragen:
 - WindKlar ist im MVP keine Social-Media-Plattform.
 - WindKlar ist im MVP keine vollständig automatisierte Echtzeit-Leitwarte für Windparkbetrieb.
 - WindKlar soll keine politischen Bewertungen erzwingen; die App soll transparent informieren und Zielkonflikte sichtbar machen.
+- Offshore-Windparks im Meer sind nicht Teil des MVP-Umfangs; die App konzentriert sich rein auf Windenergie an Land (onshore).
 
 ## 5. Zielgruppen und Stakeholder
 
