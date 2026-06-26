@@ -1,126 +1,74 @@
-# windklar
+# WindKlar
 
-`windklar` is a Kotlin Multiplatform app for Android and iOS that makes local onshore wind energy easier to understand for people in Germany.
+WindKlar is a Kotlin Multiplatform app for Android and iOS that helps people in Germany understand local onshore wind energy. It turns public, source-backed wind park data into a calm map-first experience with local context, impact metrics, favorites, FAQ content and data-quality hints.
 
-WindKlar helps users discover onshore wind parks, inspect source-backed wind installation data, understand production and municipality context, revisit parks, and create local data-quality hints when public data appears incomplete or incorrect.
+The project is built for a university seminar with the Umweltbundesamt as seminar customer. The README is intentionally short; durable product, domain and implementation rules live in the documents linked below.
 
-The app is built for a university seminar with the Umweltbundesamt as seminar customer. The MVP should be coherent, demonstrable, factual and clear about uncertainty.
+## Source Of Truth
+- [Product PRD](docs/product/WindKlar_PRD.md): scope, roadmap, acceptance criteria and manual QA expectations.
+- [Domain Context](CONTEXT.md): glossary and preferred product language.
+- [Architecture Decisions](docs/adr): accepted technical and product decisions.
+- [Agent Instructions](AGENTS.md): implementation rules for coding agents.
 
-## Documentation
-- [WindKlar PRD](docs/product/WindKlar_PRD.md): product scope, MVP decisions, roadmap and definition of done.
-- [Domain Context](CONTEXT.md): project language and glossary.
-- [Architecture Decisions](docs/adr): recorded product and technical decisions.
-- [Agent Instructions](AGENTS.md): concise implementation rules for coding agents.
+## Core Features
+- Map-first discovery of onshore wind parks and regional wind energy context.
+- Integrated map search for wind parks, municipalities, districts and states.
+- Wind park and region detail views with metrics, source context and data-quality labels.
+- Favorites and recently viewed wind parks stored locally without an account.
+- Statistics view for national context, rankings, comparisons and impact drilldowns.
+- FAQ and info/settings areas for explanations, assumptions and app transparency.
+- Local data hints for reporting missing, incorrect or outdated wind installation data.
 
-## Product Snapshot
-- `Windanlage` is the atomic MaStR-backed onshore source-data and coordinate unit.
-- `Windpark` is the primary citizen-facing unit for map, search, favorites, detail and municipality context.
-- Excludes offshore wind parks entirely, focusing strictly on wind energy installations on land (onshore).
-- MVP runtime data is local-first via SQLDelight.
-- Baseline source data ships as a Germany-wide preprocessed SQLite seed database, not runtime JSON or live API calls.
-- Production, CO2 savings, household equivalents and municipal participation need source, timestamp, data-quality and calculation metadata.
-- Search is part of the map flow, not bottom navigation.
-- Favorites and recently viewed wind parks are local state.
-- `Profile` is `Info & Einstellungen`, not an account area.
-- `ReportWindTurbine` is a local `Datenhinweis` flow, not an official correction channel.
+## App Flow
+WindKlar is map-first. Users start on the map, discover a wind park or region, then decide whether they want details, saved places, statistics, help content or a local data hint.
 
-## Main Flows
-- `Start` -> `Map`.
-- Browse wind parks or clusters on the map.
-- Search by park, place, municipality or available identifiers inside the map flow.
-- Open a park preview and continue to `Detail(parkId)`.
-- View impact metrics and data-quality labels.
-- Save and revisit wind parks.
-- Read FAQ content about wind energy, sources, assumptions and limits.
-- Use the app without granting location permission.
+```mermaid
+flowchart LR
+    Start["Start<br/>first run"] --> Map["Map<br/>browse, search, locate"]
+    Map --> Preview["Preview<br/>park or region"]
+    Preview --> Detail["Detail<br/>metrics, sources, quality"]
 
-## Navigation
-Current routes:
-- `Start`
-- `Map`
-- `Stats`
-- `Favorites`
-- `Faq`
-- `Profile`
-- `Detail(parkId)`
+    Detail --> Saved["Favorites<br/>saved + recent places"]
+    Saved --> Detail
 
-Bottom navigation is owned by `AppNavHost` and contains:
-- `Map`
-- `Stats`
-- `Favorites`
-- `Faq`
-- `Profile` / `Info & Einstellungen`
+    Map --> Stats["Stats<br/>context + rankings"]
+    Stats --> Detail
 
-Top-level screens should not include their own back button to `Map`. Back affordances belong to subflows such as detail, search overlay/sheet, data hint form and turbine subdetail.
+    Map --> Hint["Data hint<br/>pin + dialog"]
+    Map --> Faq["FAQ"]
+    Map --> Profile["Info & Settings"]
+```
 
-## Data
-Runtime access should follow:
+The detailed route model is implemented in `composeApp/src/commonMain/kotlin/app/navigation`.
+
+## Repository Map
+- `composeApp`: shared Kotlin and Compose Multiplatform app code.
+- `androidApp`: Android launcher and platform packaging.
+- `iosApp`: native iOS launcher.
+- `data`: preprocessing pipeline and generated app-ready source data.
+- `docs/product`: product requirements and acceptance criteria.
+- `docs/adr`: architecture decision records.
+- `scripts`: local helper scripts, including screenshot capture.
+
+Shared UI, state and repository contracts should live in `composeApp/src/commonMain`. Platform folders should stay limited to platform-specific integrations.
+
+## Runtime Data
+WindKlar runs local-first. The app opens a bundled, preprocessed source SQLite database and a separate persistent user database. Public source data can be replaced with a newer bundled snapshot without replacing local user state such as favorites, recents and data hints.
+
+Runtime code should follow the boundary documented in [AGENTS.md](AGENTS.md):
 
 ```text
 UI -> ViewModel/UseCase -> Repository -> Local DB/DAO
 ```
 
-UI code must not call SQLite, SQLDelight query APIs or SQL directly.
-
-Target local model:
-- `wind_turbine`
-- `wind_park`
-- `metric`
-- `favorite_wind_park`
-- `recent_wind_park`
-- `data_hint`
-- optional `snapshot_metadata`
-
-Current SQLDelight files are split by persistence boundary:
-- `composeApp/src/commonMain/sqldelightSource`: read-only source data (`wind_park`, `wind_turbine`, `metric`, summaries, search entries, `snapshot_metadata`).
-- `composeApp/src/commonMain/sqldelightUser`: persistent local user data (`favorite_*`, `recent_wind_park`, `data_hint`, `app_setting`).
-
-MaStR preprocessing lives outside the app in `data/`. The app runtime does not bundle or import snapshot JSON; it opens a preseeded source SQLite database plus a separate user SQLite database.
-
-Data-quality labels: `official`, `measured`, `derived`, `estimated`, `simulated`, `missing`.
-
-## Project Structure
-- `composeApp`: shared Kotlin and Compose Multiplatform app code.
-- `iosApp`: native iOS launcher.
-- `composeApp/src/commonMain/kotlin/app/navigation`: routes and app nav host.
-- `composeApp/src/commonMain/kotlin/app/feature/*`: feature UI, state and viewmodels.
-- `composeApp/src/commonMain/kotlin/app/core`: shared UI, models, theme and utilities.
-- `composeApp/src/commonMain/kotlin/app/data`: repositories, DAO contracts and entities.
-- `data`: source-data pipeline, ignored raw/intermediate MaStR files and generated snapshot releases.
-
-Platform-specific code should stay thin. Prefer shared code in `commonMain` unless a platform API requires otherwise.
-
-## Development Notes
-- Use `FeatureScreen`, `FeatureViewModel` and `FeatureUiState` naming.
-- Keep one package per feature.
-- Add or adjust repository contracts when data behavior changes.
-- Preserve source, timestamp, data-quality and missing-state behavior when displaying metrics.
-- Build charts as Compose UI/Canvas, not static images.
-- Treat Figma as a functional/visual reference, not a pixel-perfect contract.
-- Do not import Figma-generated React/Tailwind code.
-- Do not add automated tests for the seminar MVP unless the project direction changes.
-
-## Current Baseline
-- App root: `app.App`, wrapping `AppNavHost` in `WindklarTheme`.
-- All screens implemented and wired to repository: `StartScreen`, `MapScreen`, `StatsScreen`, `FavoritesScreen`, `FaqScreen`, `ProfileScreen`, `ParkDetailScreen`, `RegionDetailScreen`.
-- Search is implemented inside the `Map` flow as an overlay/sheet; the separate `SearchScreen`/`SearchViewModel`/`SearchUiState` placeholder has been removed.
-- `ReportWindTurbine` is implemented as a dialog composable (`ReportWindTurbineDialog`) triggered from the `MapScreen` pin-placement FAB.
-- All repositories/DAO contracts are wired through generated SQLDelight APIs.
-- Android and iOS copy/replace the bundled source SQLite database (`windklar_source_seed.db`) before driver creation when the bundled snapshot checksum changes.
-- User data lives in a separate `windklar_user.db` and is not replaced by source-data updates.
-- Data wireframe: `UI -> ViewModel -> Repository -> SQLDelight DAOs -> SourceDatabase/UserDatabase -> SQLite`.
-- `Favorites` supports both parks and regions; `Recents` records every opened park.
-- `FaqScreen` renders static content from `FaqUiState.defaultFaqQuestions` (no ViewModel).
-- AGP 9.x/KMP compatibility warning is accepted for the seminar MVP unless the build breaks.
-
-## Build And Run
+## Build
 Android:
 
-```shell
+```powershell
 .\gradlew.bat :androidApp:assembleDebug
 ```
 
-On Unix-like shells:
+Unix-like shells:
 
 ```shell
 ./gradlew :androidApp:assembleDebug
@@ -128,33 +76,23 @@ On Unix-like shells:
 
 iOS: open `iosApp` in Xcode and run from there.
 
-## Manual QA
-Automated tests are not part of the stated seminar MVP delivery goal. Focus on acceptance criteria, manual QA, build verification and presentation-ready flows.
+For docs-only changes:
 
-Recommended demo path:
-- Start to Map.
-- Search overlay.
-- Park preview to Detail.
-- Favorite add/remove.
-- Recently viewed wind parks.
-- FAQ.
-- Stats.
-- Info & Einstellungen.
-- Denied/no-location path.
+```powershell
+git diff --check
+```
 
-Android manual QA is required before the demo. An iOS simulator/device smoke test is desirable where available, but not a demo blocker if the shared KMP entry point remains intact.
-
-## Android Screenshots For AI Review
-Use the screenshot helper to capture full-device PNGs from the Android app. It can build, install, launch and navigate through the MVP top-level screens via `adb`.
+## Screenshots
+The Android screenshot helper can build, install, launch and capture the MVP screens via `adb`:
 
 ```powershell
 .\scripts\capture_android_screenshots.ps1 -Build -Install -CleanAppData
 ```
 
-For stitched long screenshots of scrollable screens:
+For stitched long screenshots:
 
 ```powershell
 .\scripts\capture_android_screenshots.ps1 -Build -Install -CleanAppData -FullPage -InitialWaitSeconds 25
 ```
 
-By default, the run writes ignored analysis artifacts to `screenshots/android-ai/<timestamp>/`, including a small `manifest.txt`. Full-page runs also keep the intermediate scroll parts in `parts/` and scroll until the end is detected, up to `-FullPageScrolls 14` by default. If multiple devices are connected, pass `-Serial <adb-device-id>`.
+Screenshots are written to ignored analysis folders under `screenshots/android-ai/<timestamp>/`.
