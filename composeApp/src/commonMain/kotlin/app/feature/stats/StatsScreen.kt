@@ -621,7 +621,7 @@ private fun RankingTypeSwitch(
             onClick = { onSelected(RankingType.CITIES) },
         )
         RankingTypeSegment(
-            label = "Kreise",
+            label = "Landkreise",
             selected = selectedType == RankingType.DISTRICTS,
             modifier = Modifier.weight(1f),
             onClick = { onSelected(RankingType.DISTRICTS) },
