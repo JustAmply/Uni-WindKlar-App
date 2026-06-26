@@ -46,6 +46,64 @@ class SqlDelightWindParkRepository(
     private val snapshotMetadataDao: SnapshotMetadataDao = SqlDelightSnapshotMetadataDao(sourceDatabase)
     private val settingsDao: SettingsDao = SqlDelightSettingsDao(userDatabase)
 
+    override suspend fun getMapStartupSnapshot(): MapStartupSnapshot = withContext(Dispatchers.Default) {
+        val favorites = favoriteDao.getFavoriteIds().toSet()
+        val statuses = mutableMapOf<String, String>()
+        val parks = sourceDatabase.summaryQueries.selectMapStartupParks(
+            mapper = {
+                id,
+                name,
+                municipality_id,
+                municipality_name,
+                district_id,
+                district_name,
+                state_id,
+                state_name,
+                latitude,
+                longitude,
+                grouping_method,
+                source_name,
+                source_url,
+                source_updated_at,
+                data_quality,
+                park_status,
+                valid_turbine_count,
+                valid_capacity_kw,
+                ->
+                statuses[id] = park_status
+                WindPark(
+                    id = id,
+                    name = name,
+                    municipalityId = municipality_id,
+                    municipalityName = municipality_name,
+                    districtId = district_id,
+                    districtName = district_name,
+                    stateId = state_id,
+                    stateName = state_name,
+                    latitude = latitude,
+                    longitude = longitude,
+                    turbineCount = valid_turbine_count.toInt(),
+                    installedCapacityKw = valid_capacity_kw,
+                    isFavorite = favorites.contains(id),
+                    sourceName = source_name,
+                    sourceUrl = source_url,
+                    sourceUpdatedAt = source_updated_at,
+                    dataQuality = data_quality,
+                )
+            },
+        ).executeAsList()
+        val searchEntries = sourceDatabase.summaryQueries
+            .selectAllMapSearchEntries()
+            .executeAsList()
+            .map { it.toDomain() }
+
+        MapStartupSnapshot(
+            parks = parks,
+            parkStatuses = statuses,
+            searchEntries = searchEntries,
+        )
+    }
+
     override suspend fun getWindParks(): List<WindPark> = withContext(Dispatchers.Default) {
         val favorites = favoriteDao.getFavoriteIds().toSet()
         val summaries = getOperationalSummaryMap()

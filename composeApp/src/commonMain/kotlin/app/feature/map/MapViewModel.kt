@@ -29,7 +29,6 @@ import app.core.location.LocationProvider
 private const val SearchDebounceMillis = 80L
 private const val SearchResultLimit = 50
 
-
 class MapViewModel(
     private val repository: WindParkRepository,
     private val locationProvider: LocationProvider
@@ -42,9 +41,6 @@ class MapViewModel(
     private var filterJob: Job? = null
     private var searchJob: Job? = null
 
-    private var statesList: List<MapSearchResult.State> = emptyList()
-    private var districtsList: List<MapSearchResult.District> = emptyList()
-    private var municipalitiesList: List<MapSearchResult.Municipality> = emptyList()
     private var searchIndex: List<MapSearchIndexEntry> = emptyList()
 
     init {
@@ -54,36 +50,38 @@ class MapViewModel(
     fun loadMapData() {
         viewModelScope.launch {
             try {
-                println("MapViewModel: Starting loadMapData...")
                 uiState = uiState.copy(isLoading = true)
-                
-                val allParks = repository.getWindParks()
-                println("MapViewModel: Loaded ${allParks.size} wind parks from repository.")
-                
-                val statusMap = repository.getWindParkStatuses()
-                println("MapViewModel: Loaded ${statusMap.size} park statuses from repository.")
-                
-                parkStatuses = statusMap
 
+                val snapshot = repository.getMapStartupSnapshot()
+                val filters = uiState.filters
+                val zoom = uiState.zoomLevel
+                val startupData = withContext(Dispatchers.Default) {
+                    val parkById = snapshot.parks.associateBy { it.id }
+                    val index = snapshot.searchEntries.mapNotNull { entry ->
+                        entry.toSearchIndexEntry(parkById)
+                    }
+                    val filteredParks = applyMapFilters(
+                        parks = snapshot.parks,
+                        statuses = snapshot.parkStatuses,
+                        filters = filters,
+                    )
+                    InitialMapData(
+                        searchIndex = index,
+                        filteredParks = filteredParks,
+                        mapMarkers = markersForZoom(filteredParks, zoom),
+                    )
+                }
+
+                parkStatuses = snapshot.parkStatuses
+                searchIndex = startupData.searchIndex
                 uiState = uiState.copy(
                     isLoading = false,
-                    parks = allParks,
+                    parks = snapshot.parks,
+                    filteredParks = startupData.filteredParks,
+                    mapMarkers = startupData.mapMarkers,
                 )
-                applyFilters()
                 loadRecentParks()
-
-                val searchEntries = repository.getMapSearchEntries()
-                val parkById = allParks.associateBy { it.id }
-                searchIndex = withContext(Dispatchers.Default) {
-                    searchEntries.mapNotNull { entry -> entry.toSearchIndexEntry(parkById) }
-                }
-                statesList = searchIndex.mapNotNull { it.result as? MapSearchResult.State }
-                districtsList = searchIndex.mapNotNull { it.result as? MapSearchResult.District }
-                municipalitiesList = searchIndex.mapNotNull { it.result as? MapSearchResult.Municipality }
-                println("MapViewModel: loadMapData finished successfully.")
             } catch (e: Throwable) {
-                println("MapViewModel ERROR: loadMapData failed!")
-                e.printStackTrace()
                 uiState = uiState.copy(
                     isLoading = false,
                     parks = emptyList(),
@@ -99,7 +97,7 @@ class MapViewModel(
                 val recents = repository.getRecentWindParks(5)
                 uiState = uiState.copy(recentParks = recents)
             } catch (e: Throwable) {
-                e.printStackTrace()
+                // Recents are optional; keep the map usable if the user database is unavailable.
             }
         }
     }
@@ -321,7 +319,7 @@ class MapViewModel(
                     )
                 )
             } catch (e: Throwable) {
-                e.printStackTrace()
+                // Preview data is supplemental; selection itself should remain responsive.
             }
         }
     }
@@ -368,7 +366,7 @@ class MapViewModel(
                     )
                 )
             } catch (e: Throwable) {
-                e.printStackTrace()
+                // Region preview metrics are supplemental.
             }
         }
     }
@@ -650,7 +648,6 @@ class MapViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
-                e.printStackTrace()
                 uiState = uiState.copy(
                     filteredParks = emptyList(),
                     mapMarkers = emptyList()
@@ -810,6 +807,12 @@ private data class MapSearchIndexEntry(
 private data class SearchMatch(
     val entry: MapSearchIndexEntry,
     val matchRank: Int,
+)
+
+private data class InitialMapData(
+    val searchIndex: List<MapSearchIndexEntry>,
+    val filteredParks: List<WindPark>,
+    val mapMarkers: List<MapMarkerUiModel>,
 )
 
 private fun String.normalizeForSearch(): String =

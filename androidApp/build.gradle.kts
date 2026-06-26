@@ -30,7 +30,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":composeApp"))
+    implementation(dependencies.project(mapOf("path" to ":composeApp")))
     implementation(libs.androidx.activity.compose)
     implementation(libs.sqldelight.android.driver)
 }

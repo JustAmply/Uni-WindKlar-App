@@ -4,8 +4,6 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.webkit.WebChromeClient
-import android.webkit.ConsoleMessage
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
@@ -21,6 +19,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import app.core.model.MapMarkerUiModel
 import app.core.ui.theme.WindklarTheme
 import app.core.ui.theme.toHexRgb
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -63,14 +63,15 @@ actual fun PlatformMapView(
 
     LaunchedEffect(Unit) {
         try {
-            val css = Res.readBytes("files/leaflet/leaflet.css").decodeToString()
-            val js = Res.readBytes("files/leaflet/leaflet.js").decodeToString()
-            println("PlatformMapView: Loaded Leaflet CSS (${css.length} chars) and JS (${js.length} chars)")
+            val (css, js) = withContext(Dispatchers.IO) {
+                Res.readBytes("files/leaflet/leaflet.css").decodeToString() to
+                    Res.readBytes("files/leaflet/leaflet.js").decodeToString()
+            }
             leafletCss = css
             leafletJs = js
         } catch (e: Exception) {
-            println("PlatformMapView ERROR: Failed to load local Leaflet assets!")
-            e.printStackTrace()
+            leafletCss = ""
+            leafletJs = ""
         }
     }
 
@@ -383,20 +384,23 @@ actual fun PlatformMapView(
         """.trimIndent()
     }
 
-    val jsonString = remember(markers) {
-        val arr = buildJsonArray {
-            markers.forEach { marker ->
-                add(buildJsonObject {
-                    put("id", marker.id)
-                    put("latitude", marker.latitude)
-                    put("longitude", marker.longitude)
-                    put("kind", marker.kind.name)
-                    put("count", marker.count)
-                    put("parkId", marker.parkId ?: "")
-                })
+    var jsonString by remember { mutableStateOf("[]") }
+    LaunchedEffect(markers) {
+        jsonString = withContext(Dispatchers.Default) {
+            val arr = buildJsonArray {
+                markers.forEach { marker ->
+                    add(buildJsonObject {
+                        put("id", marker.id)
+                        put("latitude", marker.latitude)
+                        put("longitude", marker.longitude)
+                        put("kind", marker.kind.name)
+                        put("count", marker.count)
+                        put("parkId", marker.parkId ?: "")
+                    })
+                }
             }
+            arr.toString()
         }
-        arr.toString()
     }
 
     val currentParksJson = rememberUpdatedState(jsonString)
@@ -438,16 +442,6 @@ actual fun PlatformMapView(
                             mainHandler.postDelayed({
                                 isPageLoaded = true
                             }, 500)
-                        }
-                    }
-
-                    webChromeClient = object : WebChromeClient() {
-                        override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
-                            val msg = consoleMessage?.message() ?: ""
-                            val line = consoleMessage?.lineNumber() ?: 0
-                            val source = consoleMessage?.sourceId() ?: ""
-                            println("WebView Console: $msg (at $source:$line)")
-                            return true
                         }
                     }
 

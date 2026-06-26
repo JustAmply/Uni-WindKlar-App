@@ -11,7 +11,14 @@ import app.core.model.MapSearchEntry
 import app.core.model.NationalStatsSummary
 import app.core.model.RegionSummary
 
+data class MapStartupSnapshot(
+    val parks: List<WindPark>,
+    val parkStatuses: Map<String, String>,
+    val searchEntries: List<MapSearchEntry>,
+)
+
 interface WindParkRepository {
+    suspend fun getMapStartupSnapshot(): MapStartupSnapshot
     suspend fun getWindParks(): List<WindPark>
     suspend fun getWindPark(id: String): WindPark?
     suspend fun searchWindParks(query: String): List<WindPark>

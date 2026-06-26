@@ -71,6 +71,32 @@ selectAllParkOperationalSummaries:
 SELECT *
 FROM park_operational_summary;
 
+selectMapStartupParks:
+SELECT
+    wind_park.id,
+    wind_park.name,
+    wind_park.municipality_id,
+    wind_park.municipality_name,
+    wind_park.district_id,
+    wind_park.district_name,
+    wind_park.state_id,
+    wind_park.state_name,
+    wind_park.latitude,
+    wind_park.longitude,
+    wind_park.grouping_method,
+    wind_park.source_name,
+    wind_park.source_url,
+    wind_park.source_updated_at,
+    wind_park.data_quality,
+    park_operational_summary.park_status,
+    park_operational_summary.valid_turbine_count,
+    park_operational_summary.valid_capacity_kw
+FROM wind_park
+JOIN park_operational_summary
+    ON park_operational_summary.wind_park_id = wind_park.id
+WHERE park_operational_summary.park_status != 'Stillgelegt'
+ORDER BY wind_park.name;
+
 selectParkOperationalSummary:
 SELECT *
 FROM park_operational_summary

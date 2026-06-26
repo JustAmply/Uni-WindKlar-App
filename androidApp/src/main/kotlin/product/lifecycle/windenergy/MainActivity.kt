@@ -13,7 +13,6 @@ import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import app.data.local.source.SourceDatabase
 import app.data.local.user.UserDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
-import java.io.File
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,8 +41,6 @@ class MainActivity : ComponentActivity() {
                         db.execSQL("PRAGMA synchronous = NORMAL")
                         db.execSQL("PRAGMA temp_store = MEMORY")
                         db.execSQL("PRAGMA cache_size = -64000")
-                    }.onFailure { error ->
-                        println("MainActivity: Failed to apply performance PRAGMAs: ${error.message}")
                     }
                 }
             }
@@ -58,8 +55,6 @@ class MainActivity : ComponentActivity() {
                     runCatching {
                         db.execSQL("PRAGMA synchronous = NORMAL")
                         db.execSQL("PRAGMA temp_store = MEMORY")
-                    }.onFailure { error ->
-                        println("MainActivity: Failed to apply user DB PRAGMAs: ${error.message}")
                     }
                 }
             }
@@ -81,12 +76,10 @@ class MainActivity : ComponentActivity() {
 
         val installedChecksum = targetFile.takeIf { it.exists() }?.let { readSnapshotChecksum(it.path) }
         if (installedChecksum == bundledChecksum) {
-            println("MainActivity: Source database is current ($installedChecksum).")
             return
         }
 
         if (targetFile.exists()) {
-            println("MainActivity: Replacing source database ($installedChecksum -> $bundledChecksum).")
             context.deleteDatabase(databaseName)
         }
 
@@ -97,7 +90,6 @@ class MainActivity : ComponentActivity() {
                     input.copyTo(output)
                 }
             }
-            println("MainActivity: Copied preseed database to ${targetFile.absolutePath}")
         }.onFailure { error ->
             throw IllegalStateException("Stammdatenbank konnte nicht aus dem App-Bundle kopiert werden.", error)
         }
@@ -109,15 +101,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun readBundledSnapshotChecksum(context: Context): String? {
-        val tempFile = File(context.cacheDir, SOURCE_SEED_ASSET)
-        return try {
-            context.assets.open(SOURCE_SEED_ASSET).use { input ->
-                tempFile.outputStream().use { output -> input.copyTo(output) }
-            }
-            readSnapshotChecksum(tempFile.path)
-        } finally {
-            tempFile.delete()
-        }
+        return context.assets.open(SOURCE_SEED_CHECKSUM_ASSET)
+            .bufferedReader()
+            .use { it.readText().trim() }
+            .takeIf { it.isNotBlank() }
     }
 
     private fun readSnapshotChecksum(path: String): String? = runCatching {
@@ -136,12 +123,6 @@ class MainActivity : ComponentActivity() {
         }
     }.getOrNull()
 
-    private fun SQLiteDatabase.hasTable(tableName: String): Boolean =
-        rawQuery(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
-            arrayOf(tableName)
-        ).use { cursor -> cursor.moveToFirst() }
-
     private fun fatalStartupView(message: String): TextView =
         TextView(this).apply {
             text = "WindKlar konnte die lokalen Stammdaten nicht laden.\n\n$message"
@@ -151,5 +132,6 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val SOURCE_SEED_ASSET = "windklar_source_seed.db"
+        const val SOURCE_SEED_CHECKSUM_ASSET = "windklar_source_seed.sha256"
     }
 }

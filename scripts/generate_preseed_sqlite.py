@@ -22,9 +22,11 @@ LEGACY_PRESEED = REPO_ROOT / "data" / "snapshots" / "windklar_seed.db"
 ANDROID_ASSETS_OUTPUT = (
     REPO_ROOT / "androidApp" / "src" / "main" / "assets" / "windklar_source_seed.db"
 )
+ANDROID_CHECKSUM_OUTPUT = ANDROID_ASSETS_OUTPUT.with_suffix(".sha256")
 IOS_RESOURCE_OUTPUT = (
     REPO_ROOT / "iosApp" / "iosApp" / "Resources" / "windklar_source_seed.db"
 )
+IOS_CHECKSUM_OUTPUT = IOS_RESOURCE_OUTPUT.with_suffix(".sha256")
 SCHEMA_DIR = (
     REPO_ROOT
     / "composeApp"
@@ -640,14 +642,41 @@ def validate_generated_database(
         )
 
 
+def read_seed_snapshot_checksum(database_path: Path) -> str:
+    with sqlite3.connect(database_path) as connection:
+        row = connection.execute(
+            """
+            SELECT checksum_sha256
+            FROM snapshot_metadata
+            ORDER BY imported_at DESC
+            LIMIT 1
+            """
+        ).fetchone()
+    if row is None or not row[0]:
+        raise ValueError(f"{database_path} does not contain a snapshot checksum.")
+    return str(row[0])
+
+
+def write_checksum_sidecar(path: Path, checksum: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"{checksum}\n", encoding="utf-8")
+    print(f"Wrote source preseed checksum: {path}")
+
+
 def package_seed_database(output_path: Path) -> None:
     import shutil
+    checksum = read_seed_snapshot_checksum(output_path)
+
+    write_checksum_sidecar(output_path.with_suffix(".sha256"), checksum)
+
     ANDROID_ASSETS_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(output_path, ANDROID_ASSETS_OUTPUT)
+    write_checksum_sidecar(ANDROID_CHECKSUM_OUTPUT, checksum)
     print(f"Copied source preseed DB to Android assets: {ANDROID_ASSETS_OUTPUT}")
 
     IOS_RESOURCE_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(output_path, IOS_RESOURCE_OUTPUT)
+    write_checksum_sidecar(IOS_CHECKSUM_OUTPUT, checksum)
     print(f"Copied source preseed DB to iOS resources: {IOS_RESOURCE_OUTPUT}")
 
 
