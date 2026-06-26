@@ -319,7 +319,7 @@ private fun StatsTabSwitch(
                 val selected = tab == selectedTab
                 val label = when (tab) {
                     StatsTab.OVERVIEW -> "Überblick"
-                    StatsTab.RANKINGS -> "Rankings"
+                    StatsTab.RANKINGS -> "Ranglisten"
                     StatsTab.COMPARISON -> "Vergleich"
                 }
                 Surface(
