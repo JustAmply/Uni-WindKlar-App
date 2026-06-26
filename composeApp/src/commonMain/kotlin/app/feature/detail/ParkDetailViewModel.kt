@@ -6,12 +6,14 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.core.model.ProductionContext
-import app.data.repository.WindParkRepository
+import app.data.repository.DataHintRepository
+import app.data.repository.ParkDetailRepository
 import kotlinx.coroutines.launch
 
 class ParkDetailViewModel(
     val parkId: String,
-    private val repository: WindParkRepository,
+    private val repository: ParkDetailRepository,
+    private val dataHintRepository: DataHintRepository,
 ) : ViewModel() {
     var uiState by mutableStateOf(ParkDetailUiState(parkId = parkId))
         private set
@@ -74,7 +76,7 @@ class ParkDetailViewModel(
     ) {
         val park = uiState.park ?: return
         viewModelScope.launch {
-            repository.submitDataHint(
+            dataHintRepository.submitDataHint(
                 category = category,
                 confidence = confidence,
                 description = description,

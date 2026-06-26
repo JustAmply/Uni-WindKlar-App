@@ -28,42 +28,27 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.ui.graphics.vector.ImageVector
+import app.AppGraph
 import app.core.ui.components.WindKlarBottomNav
 import app.core.ui.components.WindKlarBottomNavItem
 import app.core.ui.theme.WindklarTheme
-import app.data.local.source.SourceDatabase
-import app.data.local.user.UserDatabase
-import app.data.repository.SqlDelightWindParkRepository
 import app.feature.detail.ParkDetailScreen
-import app.feature.detail.ParkDetailViewModel
 import app.feature.detail.RegionDetailScreen
-import app.feature.detail.RegionDetailViewModel
 import app.feature.favorites.FavoritesScreen
-import app.feature.favorites.FavoritesViewModel
 import app.feature.faq.FaqScreen
 import app.feature.map.MapScreen
-import app.feature.map.MapViewModel
 import app.feature.profile.ProfileScreen
-import app.feature.profile.ProfileViewModel
 import app.feature.start.StartScreen
 import app.feature.stats.ImpactDetailScreen
 import app.feature.stats.StatsScreen
-import app.feature.stats.StatsViewModel
 import app.feature.stats.toImpactDetailUiState
 
-import app.core.location.LocationProvider
-
 @Composable
-fun AppNavHost(
-    sourceDatabase: SourceDatabase,
-    userDatabase: UserDatabase,
-    locationProvider: LocationProvider,
-) {
+fun AppNavHost(appGraph: AppGraph) {
     var startRoute by remember { mutableStateOf<Route?>(null) }
 
-    LaunchedEffect(sourceDatabase, userDatabase) {
-        val repositoryTemp = SqlDelightWindParkRepository(sourceDatabase, userDatabase)
-        val completed = repositoryTemp.isOnboardingCompleted()
+    LaunchedEffect(appGraph) {
+        val completed = appGraph.repository.isOnboardingCompleted()
         startRoute = if (completed) Route.Map else Route.Start
     }
 
@@ -80,9 +65,6 @@ fun AppNavHost(
         return
     }
 
-    val repository = remember(sourceDatabase, userDatabase) {
-        SqlDelightWindParkRepository(sourceDatabase, userDatabase)
-    }
     var currentRoute: Route by remember(resolvedStartRoute) { mutableStateOf(resolvedStartRoute) }
     var routeHistory by remember { mutableStateOf(listOf<Route>()) }
     val coroutineScope = rememberCoroutineScope()
@@ -107,10 +89,10 @@ fun AppNavHost(
         currentRoute = topLevelRoute
     }
 
-    val mapViewModel = remember(repository, locationProvider) { MapViewModel(repository, locationProvider) }
-    val favoritesViewModel = remember(repository) { FavoritesViewModel(repository) }
-    val statsViewModel = remember(repository) { StatsViewModel(repository) }
-    val profileViewModel = remember(repository) { ProfileViewModel(repository) }
+    val mapViewModel = remember(appGraph) { appGraph.mapViewModel() }
+    val favoritesViewModel = remember(appGraph) { appGraph.favoritesViewModel() }
+    val statsViewModel = remember(appGraph) { appGraph.statsViewModel() }
+    val profileViewModel = remember(appGraph) { appGraph.profileViewModel() }
 
     Scaffold(
         bottomBar = {
@@ -144,7 +126,7 @@ fun AppNavHost(
                 Route.Start -> StartScreen(
                     onGetStartedClick = {
                         coroutineScope.launch {
-                            repository.setOnboardingCompleted(true)
+                            appGraph.repository.setOnboardingCompleted(true)
                         }
                         currentRoute = Route.Map
                     },
@@ -198,7 +180,9 @@ fun AppNavHost(
                 )
                 
                 is Route.Detail -> {
-                    val detailViewModel = remember(route.parkId) { ParkDetailViewModel(route.parkId, repository) }
+                    val detailViewModel = remember(appGraph, route.parkId) {
+                        appGraph.parkDetailViewModel(route.parkId)
+                    }
                     ParkDetailScreen(
                         viewModel = detailViewModel,
                         onBack = { navigateBack() },
@@ -210,8 +194,8 @@ fun AppNavHost(
                 }
 
                 is Route.RegionDetail -> {
-                    val regionViewModel = remember(route.type, route.id) {
-                        RegionDetailViewModel(route.type, route.id, repository)
+                    val regionViewModel = remember(appGraph, route.type, route.id) {
+                        appGraph.regionDetailViewModel(route.type, route.id)
                     }
                     RegionDetailScreen(
                         viewModel = regionViewModel,

@@ -1,6 +1,8 @@
 package app.feature.stats
 
 import app.core.model.Metric
+import app.core.model.NationalStatsSummary
+import app.core.model.RegionSummary
 import app.core.model.SnapshotAssumption
 import app.core.model.WindPark
 import app.core.model.WindTurbine
@@ -235,6 +237,259 @@ internal fun buildCo2Comparisons(totalCo2Kg: Double): List<Co2Comparison> {
         )
     }
 }
+
+internal fun buildCityStatsFromSummaries(
+    citySummaries: List<RegionSummary>,
+    stateSummaries: List<RegionSummary>,
+    totalCapacityMw: Double,
+): List<CityStat> {
+    val stateCapacityByName = stateSummaries.associate { it.name to it.installedCapacityKw / 1_000.0 }
+
+    return citySummaries.map { summary ->
+        val capacityMw = summary.installedCapacityKw / 1_000.0
+        val parentParts = summary.parentName.orEmpty().split(",").map { it.trim() }
+        val districtName = parentParts.getOrNull(0).orEmpty()
+        val stateName = parentParts.getOrNull(1).orEmpty()
+        val stateCapacity = stateCapacityByName[stateName] ?: 0.0
+        CityStat(
+            cityId = summary.regionId,
+            label = summary.name,
+            districtName = districtName,
+            stateName = stateName,
+            windParkCount = summary.windParkCount,
+            turbineCount = summary.turbineCount,
+            installedCapacityMw = capacityMw,
+            shareOfNationalCapacity = if (totalCapacityMw > 0.0) {
+                (capacityMw / totalCapacityMw).toFloat().coerceIn(0f, 1f)
+            } else {
+                0f
+            },
+            shareOfStateCapacity = if (stateCapacity > 0.0) {
+                (capacityMw / stateCapacity).toFloat().coerceIn(0f, 1f)
+            } else {
+                0f
+            },
+            municipalBenefitEur = summary.municipalBenefitEur,
+        )
+    }.sortedByDescending { it.installedCapacityMw }
+}
+
+internal fun buildDistrictStatsFromSummaries(
+    districtSummaries: List<RegionSummary>,
+    stateSummaries: List<RegionSummary>,
+    totalCapacityMw: Double,
+): List<DistrictStat> {
+    val stateCapacityByName = stateSummaries.associate { it.name to it.installedCapacityKw / 1_000.0 }
+
+    return districtSummaries.map { summary ->
+        val capacityMw = summary.installedCapacityKw / 1_000.0
+        val stateName = summary.parentName.orEmpty()
+        val stateCapacity = stateCapacityByName[stateName] ?: 0.0
+        DistrictStat(
+            districtId = summary.regionId,
+            label = summary.name,
+            contextLabel = summary.contextLabel.orEmpty(),
+            stateName = stateName,
+            windParkCount = summary.windParkCount,
+            turbineCount = summary.turbineCount,
+            installedCapacityMw = capacityMw,
+            shareOfNationalCapacity = if (totalCapacityMw > 0.0) {
+                (capacityMw / totalCapacityMw).toFloat().coerceIn(0f, 1f)
+            } else {
+                0f
+            },
+            shareOfStateCapacity = if (stateCapacity > 0.0) {
+                (capacityMw / stateCapacity).toFloat().coerceIn(0f, 1f)
+            } else {
+                0f
+            },
+            municipalBenefitEur = summary.municipalBenefitEur,
+        )
+    }.sortedByDescending { it.installedCapacityMw }
+}
+
+internal fun buildStateStatsFromSummaries(
+    stateSummaries: List<RegionSummary>,
+    totalCapacityMw: Double,
+): List<StateStat> =
+    stateSummaries.map { summary ->
+        val capacityMw = summary.installedCapacityKw / 1_000.0
+        StateStat(
+            stateId = summary.regionId,
+            label = summary.name,
+            windParkCount = summary.windParkCount,
+            turbineCount = summary.turbineCount,
+            installedCapacityMw = capacityMw,
+            shareOfNationalCapacity = if (totalCapacityMw > 0.0) {
+                (capacityMw / totalCapacityMw).toFloat().coerceIn(0f, 1f)
+            } else {
+                0f
+            },
+            municipalBenefitEur = summary.municipalBenefitEur,
+        )
+    }.sortedByDescending { it.installedCapacityMw }
+
+internal fun buildHouseholdsImpactDetailFromSummary(
+    parks: List<WindPark>,
+    nationalSummary: NationalStatsSummary?,
+    assumptions: List<SnapshotAssumption>,
+): HouseholdsImpactDetail {
+    val totalHouseholds = nationalSummary?.householdEquivalent ?: 0.0
+    val topParks = buildParkImpactBars(
+        parks = parks,
+        assumptions = assumptions,
+        selector = { it.households },
+        formatter = ::formatCompact,
+    )
+    val avgPerPark = if ((nationalSummary?.windParkCount ?: parks.size) > 0) {
+        totalHouseholds / (nationalSummary?.windParkCount ?: parks.size)
+    } else {
+        0.0
+    }
+    val nationalShare = totalHouseholds / GERMAN_HOUSEHOLDS_TOTAL
+    return HouseholdsImpactDetail(
+        summaryValue = formatCompact(totalHouseholds),
+        summarySubtitle = "Haushalte mit durchschnittlichem Jahresverbrauch",
+        topParks = topParks,
+        nationalSharePercent = "${formatGermanNumber(nationalShare * 100.0, 2)} %",
+        avgPerPark = formatCompact(avgPerPark),
+        assumptions = listOf(
+            StatsImpactFact("Annahme", "3.500 kWh/Jahr je Haushalt"),
+            StatsImpactFact("Basis", "vorberechnete Jahresproduktion"),
+            StatsImpactFact("Bezug", "ca. ${formatGermanNumber(GERMAN_HOUSEHOLDS_TOTAL / 1_000_000.0, 1)} Mio. Haushalte in Deutschland"),
+            StatsImpactFact("Einordnung", "Orientierungswert, kein Liefervertrag"),
+        ),
+        qualityLabel = formatDataQuality("estimated"),
+    )
+}
+
+internal fun buildMunicipalBenefitImpactDetailFromSummary(
+    parks: List<WindPark>,
+    districts: List<DistrictStat>,
+    states: List<StateStat>,
+    nationalSummary: NationalStatsSummary?,
+    assumptions: List<SnapshotAssumption>,
+): MunicipalBenefitImpactDetail {
+    val benefitByPark = parks
+        .map { it.comparisonMetrics(emptyList(), assumptions).municipalBenefit ?: 0.0 }
+        .filter { it > 0.0 }
+        .sorted()
+    val topDistricts = topBars(
+        districts.mapNotNull { district ->
+            district.municipalBenefitEur?.let {
+                ImpactBarInput(district.label, it, ImpactNavigateTarget.Region("district", district.districtId))
+            }
+        },
+        formatter = ::formatCurrency,
+    )
+    return MunicipalBenefitImpactDetail(
+        summaryValue = formatCurrency(nationalSummary?.municipalBenefitEur ?: states.sumOf { it.municipalBenefitEur ?: 0.0 }),
+        summarySubtitle = "pro Jahr nach § 6 EEG orientiert",
+        topDistricts = topDistricts,
+        minPerPark = formatCurrency(benefitByPark.firstOrNull() ?: 0.0),
+        medianPerPark = formatCurrency(benefitByPark.medianOrNull() ?: 0.0),
+        maxPerPark = formatCurrency(benefitByPark.lastOrNull() ?: 0.0),
+        assumptions = listOf(
+            StatsImpactFact("Regel", "§ 6 EEG"),
+            StatsImpactFact("Richtwert", "bis zu 0,2 ct/kWh"),
+            StatsImpactFact("Gilt für", "Windenergie an Land"),
+            StatsImpactFact("Einordnung", "Orientierungswert für mögliche Beteiligung"),
+        ),
+        qualityLabel = formatDataQuality("estimated"),
+    )
+}
+
+internal fun buildTurbinesImpactDetailFromSummary(
+    parks: List<WindPark>,
+    nationalSummary: NationalStatsSummary?,
+): TurbinesImpactDetail {
+    val totalTurbines = nationalSummary?.activeTurbineCount ?: parks.sumOf { it.turbineCount }
+    val byDecade = nationalSummary?.let {
+        bucketBars(
+            listOf(
+                "Vor 2000" to it.turbineCommissioningPre2000.toDouble(),
+                "2000-2009" to it.turbineCommissioning2000To2009.toDouble(),
+                "2010-2019" to it.turbineCommissioning2010To2019.toDouble(),
+                "2020+" to it.turbineCommissioning2020Plus.toDouble(),
+                "Unbekannt" to it.turbineCommissioningUnknown.toDouble(),
+            )
+        )
+    } ?: emptyList()
+    val heightBuckets = nationalSummary?.let {
+        bucketBars(
+            listOf(
+                "< 80 m" to it.turbineHeightLt80m.toDouble(),
+                "80-120 m" to it.turbineHeight80To120m.toDouble(),
+                "120-160 m" to it.turbineHeight120To160m.toDouble(),
+                "> 160 m" to it.turbineHeightGte160m.toDouble(),
+                "Unbekannt" to it.turbineHeightUnknown.toDouble(),
+            )
+        )
+    } ?: emptyList()
+    val topParks = topBars(
+        parks.map { ImpactBarInput(it.name, it.turbineCount.toDouble(), ImpactNavigateTarget.Park(it.id)) },
+        formatter = { formatGermanNumber(it.roundToInt()) },
+    )
+    val parkCount = (nationalSummary?.windParkCount ?: parks.size).coerceAtLeast(1)
+    return TurbinesImpactDetail(
+        summaryValue = formatGermanNumber(totalTurbines),
+        summarySubtitle = "aus MaStR im lokalen Snapshot",
+        byDecade = byDecade,
+        heightBuckets = heightBuckets,
+        topParks = topParks,
+        avgPerPark = "${formatGermanNumber(totalTurbines.toDouble() / parkCount, 1)} Windanlagen je Windpark",
+        assumptions = listOf(
+            StatsImpactFact("Quelle", "MaStR"),
+            StatsImpactFact("Einheit", "Windanlage"),
+            StatsImpactFact("Darstellung", "Windpark als UX-Einheit"),
+            StatsImpactFact("Datenstand", "lokaler Snapshot, keine Live-Daten"),
+        ),
+        qualityLabel = formatDataQuality("official"),
+    )
+}
+
+internal fun buildCo2ImpactDetailFromSummary(
+    parks: List<WindPark>,
+    nationalSummary: NationalStatsSummary?,
+    assumptions: List<SnapshotAssumption>,
+): Co2ImpactDetail {
+    val totalCo2Kg = nationalSummary?.co2SavingsKg ?: 0.0
+    val topParks = buildParkImpactBars(
+        parks = parks,
+        assumptions = assumptions,
+        selector = { it.co2Kg },
+        formatter = { "${formatGermanNumber(it / 1_000.0, 0)} t" },
+    )
+    return Co2ImpactDetail(
+        summaryValue = formatCo2(totalCo2Kg),
+        summarySubtitle = "pro Jahr gegenüber Strommix-Emissionen",
+        topParks = topParks,
+        equivalents = buildCo2Comparisons(totalCo2Kg),
+        assumptions = listOf(
+            StatsImpactFact("Emissionsfaktor", "380 g/kWh"),
+            StatsImpactFact("Basis", "vorberechnete Jahresproduktion"),
+            StatsImpactFact("Einordnung", "transparente Schätzung, keine gemessene Einsparung"),
+        ),
+        qualityLabel = formatDataQuality("estimated"),
+    )
+}
+
+private fun buildParkImpactBars(
+    parks: List<WindPark>,
+    assumptions: List<SnapshotAssumption>,
+    selector: (ComparisonMetrics) -> Double,
+    formatter: (Double) -> String,
+): List<ImpactBarEntry> =
+    topBars(
+        parks.map { park ->
+            ImpactBarInput(
+                label = park.name,
+                value = selector(park.comparisonMetrics(emptyList(), assumptions)),
+                navigateTarget = ImpactNavigateTarget.Park(park.id),
+            )
+        },
+        formatter = formatter,
+    )
 
 private fun parkHouseholds(
     park: WindPark,

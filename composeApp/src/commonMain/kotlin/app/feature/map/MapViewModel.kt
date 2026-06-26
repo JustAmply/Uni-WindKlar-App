@@ -7,14 +7,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.core.model.MapMarkerKind
 import app.core.model.MapMarkerUiModel
-import app.core.model.MapSearchEntry
-import app.core.model.WindTurbine
 import app.core.model.WindPark
 
 import app.core.ui.components.EntityType
 import app.core.ui.components.EntityPreviewData
 import app.core.ui.components.PreviewSheetState
-import app.data.repository.WindParkRepository
+import app.data.repository.DataHintRepository
+import app.data.repository.MapRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,15 +21,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
-import kotlin.math.floor
 
 import app.core.location.LocationProvider
 
 private const val SearchDebounceMillis = 80L
-private const val SearchResultLimit = 50
 
 class MapViewModel(
-    private val repository: WindParkRepository,
+    private val repository: MapRepository,
+    private val dataHintRepository: DataHintRepository,
     private val locationProvider: LocationProvider
 ) : ViewModel() {
     var uiState by mutableStateOf(MapUiState(isLoading = true))
@@ -56,20 +54,7 @@ class MapViewModel(
                 val filters = uiState.filters
                 val zoom = uiState.zoomLevel
                 val startupData = withContext(Dispatchers.Default) {
-                    val parkById = snapshot.parks.associateBy { it.id }
-                    val index = snapshot.searchEntries.mapNotNull { entry ->
-                        entry.toSearchIndexEntry(parkById)
-                    }
-                    val filteredParks = applyMapFilters(
-                        parks = snapshot.parks,
-                        statuses = snapshot.parkStatuses,
-                        filters = filters,
-                    )
-                    InitialMapData(
-                        searchIndex = index,
-                        filteredParks = filteredParks,
-                        mapMarkers = markersForZoom(filteredParks, zoom),
-                    )
+                    buildInitialMapData(snapshot, filters, zoom)
                 }
 
                 parkStatuses = snapshot.parkStatuses
@@ -153,7 +138,7 @@ class MapViewModel(
             searchJob = viewModelScope.launch {
                 delay(SearchDebounceMillis)
                 val combinedResults = withContext(Dispatchers.Default) {
-                    searchMapIndex(normalizedQuery)
+                    searchMapIndex(searchIndex, normalizedQuery)
                 }
 
                 if (uiState.searchQuery == newQuery) {
@@ -170,57 +155,6 @@ class MapViewModel(
             )
         }
     }
-
-    private fun MapSearchEntry.toSearchIndexEntry(parkById: Map<String, WindPark>): MapSearchIndexEntry? {
-        val result = when (resultType) {
-            "state" -> MapSearchResult.State(targetId, label, latitude, longitude)
-            "district" -> MapSearchResult.District(targetId, label, description.removePrefix("Landkreis in "), latitude, longitude)
-            "city" -> {
-                val parts = description.removePrefix("Gemeinde in ").split(", ")
-                MapSearchResult.Municipality(
-                    id = targetId,
-                    name = label,
-                    districtName = parts.getOrNull(0).orEmpty(),
-                    stateName = parts.getOrNull(1).orEmpty(),
-                    latitude = latitude,
-                    longitude = longitude,
-                )
-            }
-            "park" -> parkById[targetId]?.let(MapSearchResult::Park)
-            else -> null
-        } ?: return null
-
-        return MapSearchIndexEntry(
-            result = result,
-            typeRank = typeRank,
-            id = targetId.normalizeForSearch(),
-            name = label.normalizeForSearch(),
-            haystack = haystack,
-            sortName = sortName,
-        )
-    }
-
-    private fun searchMapIndex(
-        normalizedQuery: String,
-    ): List<MapSearchResult> =
-        searchIndex
-            .asSequence()
-            .mapNotNull { entry ->
-                entry.matchRank(normalizedQuery)?.let { matchRank ->
-                    SearchMatch(entry, matchRank)
-                }
-            }
-            .sortedWith(
-                compareBy<SearchMatch>(
-                    { it.entry.typeRank },
-                    { it.matchRank },
-                    { it.entry.sortName.lowercase() },
-                    { it.entry.id },
-                )
-            )
-            .take(SearchResultLimit)
-            .map { it.entry.result }
-            .toList()
 
     fun onSearchResultSelected(result: MapSearchResult) {
         searchJob?.cancel()
@@ -383,7 +317,7 @@ class MapViewModel(
         onSuccess: () -> Unit
     ) {
         viewModelScope.launch {
-            repository.submitDataHint(
+            dataHintRepository.submitDataHint(
                 category = category,
                 confidence = confidence,
                 description = description,
@@ -560,36 +494,6 @@ class MapViewModel(
         )
     }
 
-    private fun filterTurbines(turbines: List<WindTurbine>, filters: MapFilterState): List<WindTurbine> =
-        turbines.filter { turbine ->
-            statusMatches(
-                status = determineTurbineStatus(turbine.status),
-                filters = filters,
-            )
-        }
-
-    private fun determineTurbineStatus(status: String?): String {
-        if (status == null) return "Aktiv"
-        val lower = status.lowercase()
-        if (lower.contains("bau") || lower.contains("errichtung")) return "Im Bau"
-        if (lower.contains("betrieb") || lower.contains("aktiv")) return "Aktiv"
-        if (lower.contains("stillgelegt")) return "Stillgelegt"
-        return "Geplant"
-    }
-
-    private fun turbinesToMarkers(turbines: List<WindTurbine>): List<MapMarkerUiModel> {
-        return turbines.map { turbine ->
-            MapMarkerUiModel(
-                id = turbine.id,
-                latitude = turbine.latitude,
-                longitude = turbine.longitude,
-                kind = MapMarkerKind.Turbine,
-                count = 1,
-                parkId = turbine.windParkId
-            )
-        }
-    }
-
     private fun applyFilters() {
         filterJob?.cancel()
         if (uiState.isPinPlacementMode) {
@@ -656,164 +560,4 @@ class MapViewModel(
         }
     }
 
-    private fun applyMapFilters(
-        parks: List<WindPark>,
-        statuses: Map<String, String>,
-        filters: MapFilterState,
-    ): List<WindPark> =
-        parks.filter { park ->
-            statusMatches(
-                status = statusForPark(statuses, park.id),
-                filters = filters,
-            ) &&
-                filters.sizeRange.matches(park.turbineCount) &&
-                filters.capacityRange.matches(park.installedCapacityKw)
-        }
-
-    private fun statusForPark(parkId: String): String =
-        statusForPark(parkStatuses, parkId)
-
-    private fun statusForPark(statuses: Map<String, String>, parkId: String): String =
-        statuses[parkId] ?: "Aktiv"
-
-    private fun statusMatches(status: String, filters: MapFilterState): Boolean {
-        if (!filters.includeDecommissioned && status == "Stillgelegt") {
-            return false
-        }
-
-        return when (filters.status) {
-            MapStatusFilter.All -> true
-            MapStatusFilter.Active -> status == "Aktiv"
-            MapStatusFilter.Planned -> status == "Geplant" || status == "Im Bau"
-        }
-    }
-
-    private fun filterParksInBounds(parks: List<WindPark>, bounds: MapBounds?): List<WindPark> =
-        bounds?.let { mapBounds ->
-            parks.filter { park -> mapBounds.contains(park.latitude, park.longitude) }
-        } ?: parks
-
-    private fun markersForZoom(parks: List<WindPark>, zoom: Float): List<MapMarkerUiModel> {
-        val gridSize = when {
-            zoom < 6.5f -> 1.5
-            zoom < 7.5f -> 1.0
-            zoom < 8.5f -> 0.65
-            zoom < 9.5f -> 0.4
-            zoom < 10.25f -> 0.22
-            else -> null
-        }
-
-        if (gridSize == null) {
-            return parks.map { park ->
-                MapMarkerUiModel(
-                    id = park.id,
-                    latitude = park.latitude,
-                    longitude = park.longitude,
-                    kind = MapMarkerKind.Park,
-                    count = 1,
-                    parkId = park.id,
-                )
-            }
-        }
-
-        return parks
-            .groupBy { park ->
-                val latBucket = floor(park.latitude / gridSize).toInt()
-                val lonBucket = floor(park.longitude / gridSize).toInt()
-                latBucket to lonBucket
-            }
-            .map { (bucket, bucketParks) ->
-                if (bucketParks.size == 1) {
-                    val park = bucketParks.first()
-                    MapMarkerUiModel(
-                        id = park.id,
-                        latitude = park.latitude,
-                        longitude = park.longitude,
-                        kind = MapMarkerKind.Park,
-                        count = 1,
-                        parkId = park.id,
-                    )
-                } else {
-                    val lat = bucketParks.map { it.latitude }.average()
-                    val lon = bucketParks.map { it.longitude }.average()
-                    MapMarkerUiModel(
-                        id = "cluster_${gridSize}_${bucket.first}_${bucket.second}",
-                        latitude = lat,
-                        longitude = lon,
-                        kind = MapMarkerKind.Cluster,
-                        count = bucketParks.size,
-                    )
-                }
-            }
-    }
-
-    private fun fallbackBounds(centerLat: Double, centerLon: Double, zoom: Float): MapBounds {
-        val latSpan = when {
-            zoom > 16.0f -> 0.04
-            zoom > 15.0f -> 0.08
-            zoom > 14.0f -> 0.16
-            else -> 10.0
-        }
-        val lonSpan = latSpan * 1.5
-        return MapBounds(
-            swLat = centerLat - latSpan,
-            swLon = centerLon - lonSpan,
-            neLat = centerLat + latSpan,
-            neLon = centerLon + lonSpan,
-        )
-    }
-
-    private data class MapBounds(
-        val swLat: Double,
-        val swLon: Double,
-        val neLat: Double,
-        val neLon: Double,
-    ) {
-        fun contains(latitude: Double, longitude: Double): Boolean {
-            val inLatitude = latitude in swLat..neLat
-            val inLongitude = if (swLon <= neLon) {
-                longitude in swLon..neLon
-            } else {
-                longitude >= swLon || longitude <= neLon
-            }
-            return inLatitude && inLongitude
-        }
-
-        fun isCloseTo(other: MapBounds): Boolean =
-            abs(swLat - other.swLat) <= 0.0001 &&
-                abs(swLon - other.swLon) <= 0.0001 &&
-                abs(neLat - other.neLat) <= 0.0001 &&
-                abs(neLon - other.neLon) <= 0.0001
-    }
 }
-
-private data class MapSearchIndexEntry(
-    val result: MapSearchResult,
-    val typeRank: Int,
-    val id: String,
-    val name: String,
-    val haystack: String,
-    val sortName: String,
-) {
-    fun matchRank(query: String): Int? =
-        when {
-            id == query || name == query -> 0
-            id.startsWith(query) || name.startsWith(query) -> 1
-            haystack.contains(query) -> 2
-            else -> null
-        }
-}
-
-private data class SearchMatch(
-    val entry: MapSearchIndexEntry,
-    val matchRank: Int,
-)
-
-private data class InitialMapData(
-    val searchIndex: List<MapSearchIndexEntry>,
-    val filteredParks: List<WindPark>,
-    val mapMarkers: List<MapMarkerUiModel>,
-)
-
-private fun String.normalizeForSearch(): String =
-    trim().lowercase()

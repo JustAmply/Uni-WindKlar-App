@@ -6,10 +6,10 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.core.model.DataHint
-import app.data.repository.WindParkRepository
+import app.data.repository.ProfileRepository
 import kotlinx.coroutines.launch
 
-class ProfileViewModel(private val repository: WindParkRepository) : ViewModel() {
+class ProfileViewModel(private val repository: ProfileRepository) : ViewModel() {
     var uiState: ProfileUiState by mutableStateOf(ProfileUiState())
         private set
 

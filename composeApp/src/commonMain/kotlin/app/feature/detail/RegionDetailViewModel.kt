@@ -10,7 +10,7 @@ import app.core.model.WindPark
 import app.core.model.RankingItem
 import app.core.model.RankingDetailLine
 
-import app.data.repository.WindParkRepository
+import app.data.repository.RegionDetailRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,7 +21,7 @@ import app.core.util.roundTo
 class RegionDetailViewModel(
     val regionType: String,
     val regionId: String,
-    private val repository: WindParkRepository,
+    private val repository: RegionDetailRepository,
 ) : ViewModel() {
     var uiState by mutableStateOf(RegionDetailUiState(regionId = regionId, regionType = regionType))
         private set

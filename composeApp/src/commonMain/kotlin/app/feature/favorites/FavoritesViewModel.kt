@@ -5,13 +5,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.data.repository.WindParkRepository
+import app.data.repository.SavedPlacesRepository
 import kotlinx.coroutines.launch
-import app.core.model.FavoriteRegion
 
 import app.core.util.formatGermanNumber
 
-class FavoritesViewModel(private val repository: WindParkRepository) : ViewModel() {
+class FavoritesViewModel(private val repository: SavedPlacesRepository) : ViewModel() {
     var uiState: FavoritesUiState by mutableStateOf(FavoritesUiState())
         private set
 

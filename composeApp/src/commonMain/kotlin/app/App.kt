@@ -1,6 +1,7 @@
 package app
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import app.core.location.LocationProvider
 import app.core.ui.theme.WindklarTheme
 import app.data.local.source.SourceDatabase
@@ -13,7 +14,11 @@ fun App(
     userDatabase: UserDatabase,
     locationProvider: LocationProvider,
 ) {
+    val appGraph = remember(sourceDatabase, userDatabase, locationProvider) {
+        AppGraph(sourceDatabase, userDatabase, locationProvider)
+    }
+
     WindklarTheme {
-        AppNavHost(sourceDatabase, userDatabase, locationProvider)
+        AppNavHost(appGraph)
     }
 }
