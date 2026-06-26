@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.Search
@@ -43,6 +44,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -71,6 +73,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.graphicsLayer
@@ -78,6 +81,7 @@ import app.core.model.WindPark
 import app.core.ui.components.EntityPreviewSheet
 import app.core.ui.components.EntityType
 import app.core.ui.components.PlatformMapView
+import app.core.ui.components.PreviewSheetState
 import app.core.ui.components.rememberLocationPermissionLauncher
 import app.core.ui.theme.WindklarTheme
 import app.feature.report.DataHintDialog
@@ -112,6 +116,7 @@ fun MapScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     
     var showReportDialog by remember { mutableStateOf(false) }
+    var showFilterSheet by remember { mutableStateOf(false) }
     var reportedLatitude by remember { mutableStateOf(0.0) }
     var reportedLongitude by remember { mutableStateOf(0.0) }
 
@@ -170,7 +175,7 @@ fun MapScreen(
             )
         }
 
-        // Overlay Components (Search Bar, Status Chips)
+        // Overlay Components (Search Bar and Search Results)
         if (!uiState.isPinPlacementMode) {
             Column(
                 modifier = Modifier
@@ -180,8 +185,13 @@ fun MapScreen(
             ) {
                 SearchBar(
                     query = uiState.searchQuery,
+                    filters = uiState.filters,
                     onQueryChange = viewModel::onQueryChange,
                     onFocusChanged = viewModel::onSearchFocusChanged,
+                    onFilterClick = {
+                        focusManager.clearFocus()
+                        showFilterSheet = true
+                    },
                 )
                 
                 // Search results dropdown overlay
@@ -326,24 +336,16 @@ fun MapScreen(
                     }
                 }
 
-                // Status Filter Chips
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    listOf("Alle", "Aktiv", "Geplant").forEach { status ->
-                        StatusChip(
-                            text = status,
-                            selected = uiState.selectedStatus == status,
-                            onClick = { viewModel.setStatusFilter(status) }
-                        )
-                    }
-                }
             }
         }
 
         // Location stays visible; zoom is handled through map gestures on mobile.
         if (!uiState.isPinPlacementMode) {
+            val locationButtonBottomPadding = locationButtonBottomPadding(
+                hasPreview = uiState.selectedPreviewData != null,
+                previewSheetState = uiState.previewSheetState,
+            )
+
             MapActionButton(
                 icon = Icons.Outlined.NearMe,
                 contentDescription = "Standort zentrieren",
@@ -362,8 +364,8 @@ fun MapScreen(
                     )
                 },
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 16.dp, bottom = 144.dp),
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = locationButtonBottomPadding),
             )
         }
 
@@ -453,6 +455,18 @@ fun MapScreen(
                 }
             }
         }
+
+        if (showFilterSheet && !uiState.isPinPlacementMode) {
+            MapFilterSheet(
+                filters = uiState.filters,
+                onStatusSelected = viewModel::setStatusFilter,
+                onIncludeDecommissionedChanged = viewModel::setIncludeDecommissioned,
+                onSizeRangeSelected = viewModel::setParkSizeRange,
+                onCapacityRangeSelected = viewModel::setCapacityRange,
+                onReset = viewModel::resetMapFilters,
+                onDismiss = { showFilterSheet = false },
+            )
+        }
         
         SnackbarHost(
             hostState = snackbarHostState,
@@ -501,8 +515,10 @@ fun MapScreen(
 @Composable
 private fun SearchBar(
     query: String,
+    filters: MapFilterState,
     onQueryChange: (String) -> Unit,
     onFocusChanged: (Boolean) -> Unit,
+    onFilterClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -534,13 +550,43 @@ private fun SearchBar(
                 )
             },
             trailingIcon = {
-                if (query.isNotEmpty()) {
-                    IconButton(onClick = { onQueryChange("") }) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Suche leeren",
-                            tint = PrimaryGreen,
-                        )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { onQueryChange("") }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Suche leeren",
+                                tint = PrimaryGreen,
+                            )
+                        }
+                    }
+                    Box {
+                        IconButton(onClick = onFilterClick) {
+                            Icon(
+                                imageVector = Icons.Outlined.FilterList,
+                                contentDescription = "Kartenfilter öffnen",
+                                tint = if (filters.activeFilterCount > 0) PrimaryGreen else MutedGreen,
+                            )
+                        }
+                        if (filters.activeFilterCount > 0) {
+                            Surface(
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .size(18.dp),
+                                shape = CircleShape,
+                                color = PrimaryGreen,
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = filters.activeFilterCount.toString(),
+                                        color = Color.White,
+                                        fontSize = 10.sp,
+                                        lineHeight = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -558,7 +604,162 @@ private fun SearchBar(
 }
 
 @Composable
-private fun StatusChip(
+private fun MapFilterSheet(
+    filters: MapFilterState,
+    onStatusSelected: (MapStatusFilter) -> Unit,
+    onIncludeDecommissionedChanged: (Boolean) -> Unit,
+    onSizeRangeSelected: (MapParkSizeRange) -> Unit,
+    onCapacityRangeSelected: (MapCapacityRange) -> Unit,
+    onReset: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.24f))
+            .clickable(onClick = onDismiss),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = {}),
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            color = WindklarTheme.colors.cardBackground,
+            shadowElevation = 16.dp,
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Kartenfilter",
+                        color = DarkGreen,
+                        fontSize = 20.sp,
+                        lineHeight = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (filters.activeFilterCount > 0) {
+                            Surface(
+                                onClick = onReset,
+                                shape = CircleShape,
+                                color = PaleGreen,
+                            ) {
+                                Text(
+                                    text = "Zurücksetzen",
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    color = PrimaryGreen,
+                                    fontSize = 13.sp,
+                                    lineHeight = 16.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Kartenfilter schließen",
+                                tint = MutedGreen,
+                            )
+                        }
+                    }
+                }
+
+                FilterChoiceSection(
+                    title = "Status",
+                    options = MapStatusFilter.values().toList(),
+                    selected = filters.status,
+                    label = { it.label },
+                    onSelected = onStatusSelected,
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Weitere",
+                            color = MutedGreen,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = "Stillgelegte anzeigen",
+                            color = DarkGreen,
+                            fontSize = 15.sp,
+                            lineHeight = 20.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                    Switch(
+                        checked = filters.includeDecommissioned,
+                        onCheckedChange = onIncludeDecommissionedChanged,
+                    )
+                }
+
+                FilterChoiceSection(
+                    title = "Parkgröße",
+                    options = MapParkSizeRange.values().toList(),
+                    selected = filters.sizeRange,
+                    label = { it.label },
+                    onSelected = onSizeRangeSelected,
+                )
+
+                FilterChoiceSection(
+                    title = "Leistung",
+                    options = MapCapacityRange.values().toList(),
+                    selected = filters.capacityRange,
+                    label = { it.label },
+                    onSelected = onCapacityRangeSelected,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun <T> FilterChoiceSection(
+    title: String,
+    options: List<T>,
+    selected: T,
+    label: (T) -> String,
+    onSelected: (T) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = title,
+            color = MutedGreen,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            options.forEach { option ->
+                FilterChoiceChip(
+                    text = label(option),
+                    selected = option == selected,
+                    onClick = { onSelected(option) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterChoiceChip(
     text: String,
     selected: Boolean,
     onClick: () -> Unit
@@ -579,6 +780,19 @@ private fun StatusChip(
         )
     }
 }
+
+private fun locationButtonBottomPadding(
+    hasPreview: Boolean,
+    previewSheetState: PreviewSheetState,
+): Dp =
+    if (!hasPreview) {
+        24.dp
+    } else {
+        when (previewSheetState) {
+            PreviewSheetState.Expanded -> 332.dp
+            PreviewSheetState.Minimized -> 116.dp
+        }
+    }
 
 private fun formatWindInstallationCount(count: Int): String =
     "$count Windanlage${if (count == 1) "" else "n"}"
