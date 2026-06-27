@@ -134,7 +134,10 @@ actual fun PlatformMapView(
                     line-height: 16px;
                 }
                 .leaflet-control-zoom { display: none !important; }
-                .leaflet-control-attribution { font-size: 8px !important; }
+                .leaflet-control-attribution {
+                    font-size: 8px !important;
+                    pointer-events: none;
+                }
                 .windklar-cluster {
                     width: 30px;
                     height: 30px;
@@ -213,7 +216,7 @@ actual fun PlatformMapView(
 
                 function createBaseTileLayer() {
                     baseTileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        attribution: '&copy; OpenStreetMap contributors',
                         referrerPolicy: 'origin',
                         updateWhenIdle: true,
                         keepBuffer: 1
@@ -228,11 +231,13 @@ actual fun PlatformMapView(
                 try {
                     map = L.map('map', {
                         zoomControl: false,
+                        attributionControl: true,
                         maxZoom: 18,
                         minZoom: 5,
                         preferCanvas: true
                     }).setView([$centerLatDefault, $centerLonDefault], $zoomDefault);
 
+                    map.attributionControl.setPrefix(false);
                     createBaseTileLayer().addTo(map);
 
                     markersGroup = L.layerGroup().addTo(map);
