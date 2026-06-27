@@ -1,6 +1,7 @@
 package app.feature.profile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,7 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Info
@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -50,6 +51,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.jetbrains.compose.resources.painterResource
+import windklar.composeapp.generated.resources.Res
+import windklar.composeapp.generated.resources.windklar_app_icon
 
 private val ScreenBackground @Composable get() = WindklarTheme.colors.screenBackground
 private val PrimaryGreen @Composable get() = WindklarTheme.colors.primaryGreen
@@ -176,11 +180,12 @@ private fun ProfileHeader() {
                         .background(Color.White.copy(alpha = 0.2f), CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Air,
+                    Image(
+                        painter = painterResource(Res.drawable.windklar_app_icon),
                         contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(CircleShape),
                     )
                 }
             }
