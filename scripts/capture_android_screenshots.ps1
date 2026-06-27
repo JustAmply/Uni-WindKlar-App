@@ -7,6 +7,7 @@ param(
     [switch]$FullPage,
     [int]$FullPageScrolls = 14,
     [int]$InitialWaitSeconds = 8,
+    [int]$PostOnboardingWaitSeconds = 15,
     [int]$StepWaitMilliseconds = 1200,
     [string]$PackageName = "product.lifecycle.windenergy",
     [string]$MainActivity = "product.lifecycle.windenergy.MainActivity"
@@ -551,7 +552,9 @@ function Main {
 
     $captured.Add((Capture-Page -Name "00-start" -OutputDirectory $OutputDir -Screen $screen -Scrollable $false))
 
-    Tap-Relative -Screen $screen -XRatio 0.50 -YRatio 0.91 -Label "Start CTA"
+    Tap-Relative -Screen $screen -XRatio 0.82 -YRatio 0.105 -Label "Skip onboarding"
+    Write-Step "Wait ${PostOnboardingWaitSeconds}s for map and snapshot data"
+    Start-Sleep -Seconds $PostOnboardingWaitSeconds
     $captured.Add((Capture-Page -Name "01-map" -OutputDirectory $OutputDir -Screen $screen -Scrollable $false))
 
     $bottomNavY = 0.94
