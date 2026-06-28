@@ -27,6 +27,7 @@ interface MapRepository {
     suspend fun getRecentWindParks(limit: Long): List<WindPark>
     suspend fun recordRecentWindPark(parkId: String)
     suspend fun getMetricsForPark(parkId: String): List<Metric>
+    suspend fun getWindTurbinesForPark(parkId: String): List<WindTurbine>
     suspend fun getWindTurbinesInBounds(swLat: Double, swLon: Double, neLat: Double, neLon: Double): List<WindTurbine>
     suspend fun getRegionSummaries(type: String): List<RegionSummary>
 }
@@ -49,6 +50,7 @@ interface SavedPlacesRepository {
     suspend fun getRecentWindParks(limit: Long): List<WindPark>
     suspend fun getWindParks(): List<WindPark>
     suspend fun getMetricsForParks(parkIds: List<String>): List<Metric>
+    suspend fun getWindParkStatuses(): Map<String, String>
 }
 
 interface ProfileRepository {
@@ -108,7 +110,7 @@ interface WindParkRepository :
     suspend fun getMetricsForNational(): List<Metric>
     suspend fun getAllWindTurbines(): List<WindTurbine>
     suspend fun countActiveWindTurbines(): Int
-    suspend fun getWindParkStatuses(): Map<String, String>
+    override suspend fun getWindParkStatuses(): Map<String, String>
     suspend fun getMapSearchEntries(): List<MapSearchEntry>
     suspend fun getAllMetrics(): List<Metric>
 }

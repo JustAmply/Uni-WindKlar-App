@@ -8,10 +8,13 @@ import androidx.lifecycle.viewModelScope
 import app.core.model.MapMarkerKind
 import app.core.model.MapMarkerUiModel
 import app.core.model.WindPark
+import app.core.model.WindTurbine
 
 import app.core.ui.components.EntityType
 import app.core.ui.components.EntityPreviewData
 import app.core.ui.components.PreviewSheetState
+import app.core.ui.components.PreviewTurbinePoint
+import app.core.util.formatGermanNumber
 import app.data.repository.DataHintRepository
 import app.data.repository.MapRepository
 import kotlinx.coroutines.CancellationException
@@ -167,7 +170,7 @@ class MapViewModel(
                     zoomLevel = 8.0f,
                     selectedPark = null,
                     selectedPreviewData = null,
-                    previewSheetState = PreviewSheetState.Expanded,
+                    previewSheetState = PreviewSheetState.Hidden,
                     showSearchOverlay = false,
                     searchQuery = ""
                 )
@@ -180,7 +183,7 @@ class MapViewModel(
                     zoomLevel = 10.0f,
                     selectedPark = null,
                     selectedPreviewData = null,
-                    previewSheetState = PreviewSheetState.Expanded,
+                    previewSheetState = PreviewSheetState.Hidden,
                     showSearchOverlay = false,
                     searchQuery = ""
                 )
@@ -193,7 +196,7 @@ class MapViewModel(
                     zoomLevel = 12.0f,
                     selectedPark = null,
                     selectedPreviewData = null,
-                    previewSheetState = PreviewSheetState.Expanded,
+                    previewSheetState = PreviewSheetState.Hidden,
                     showSearchOverlay = false,
                     searchQuery = ""
                 )
@@ -201,12 +204,18 @@ class MapViewModel(
             }
             is MapSearchResult.Park -> {
                 val park = result.park
+                val zoom = 12.0f
+                val focusedCenter = previewFocusedCenter(
+                    latitude = park.latitude,
+                    longitude = park.longitude,
+                    zoom = zoom,
+                )
                 uiState = uiState.copy(
-                    mapCenterLat = park.latitude,
-                    mapCenterLon = park.longitude,
-                    zoomLevel = 12.0f,
+                    mapCenterLat = focusedCenter.first,
+                    mapCenterLon = focusedCenter.second,
+                    zoomLevel = zoom,
                     selectedPark = park,
-                    previewSheetState = PreviewSheetState.Expanded,
+                    previewSheetState = PreviewSheetState.Peek,
                     filters = MapFilterState(),
                     showSearchOverlay = false,
                     searchQuery = ""
@@ -218,9 +227,16 @@ class MapViewModel(
     }
 
     fun onParkClicked(park: WindPark) {
+        val focusedCenter = previewFocusedCenter(
+            latitude = park.latitude,
+            longitude = park.longitude,
+            zoom = uiState.zoomLevel,
+        )
         uiState = uiState.copy(
+            mapCenterLat = focusedCenter.first,
+            mapCenterLon = focusedCenter.second,
             selectedPark = park,
-            previewSheetState = PreviewSheetState.Expanded
+            previewSheetState = PreviewSheetState.Peek
         )
         loadParkPreviewData(park)
     }
@@ -236,6 +252,7 @@ class MapViewModel(
                 repository.recordRecentWindPark(park.id)
                 loadRecentParks()
                 val metrics = repository.getMetricsForPark(park.id)
+                val turbines = repository.getWindTurbinesForPark(park.id)
                 val annualMetric = metrics.firstOrNull { it.metricType == "annual_production" }
                 val co2Metric = metrics.firstOrNull { it.metricType == "co2_savings" }
                 val annualGwh = annualMetric?.value?.let { it / 1_000_000.0 }
@@ -247,9 +264,12 @@ class MapViewModel(
                         type = EntityType.PARK,
                         title = park.name,
                         subtitle = "Gemeinde ${park.municipalityName}",
-                        badgeLabel = "Aktiv",
+                        statusLabel = parkStatuses[park.id] ?: "Aktiv",
+                        turbineCountLabel = formatTurbineLabel(park.turbineCount),
+                        capacityLabel = formatCapacityLabel(park.installedCapacityKw),
+                        turbines = turbines.toPreviewPoints(),
                         annualProductionGwh = annualGwh,
-                        co2SavingsTons = co2Tons
+                        co2SavingsTons = co2Tons,
                     )
                 )
             } catch (e: Throwable) {
@@ -274,7 +294,7 @@ class MapViewModel(
                     else -> EntityType.CITY
                 }
                 
-                val badgeLabel = when (entityType) {
+                val regionTypeLabel = when (entityType) {
                     EntityType.CITY -> "Gemeinde"
                     EntityType.DISTRICT -> "Landkreis"
                     EntityType.STATE -> "Bundesland"
@@ -294,9 +314,11 @@ class MapViewModel(
                         type = entityType,
                         title = name,
                         subtitle = subtitle,
-                        badgeLabel = badgeLabel,
+                        statusLabel = regionTypeLabel,
+                        turbineCountLabel = regionSummary?.turbineCount?.let { formatTurbineLabel(it) },
+                        capacityLabel = regionSummary?.installedCapacityKw?.let { formatCapacityLabel(it) },
                         annualProductionGwh = annualProductionGwh,
-                        co2SavingsTons = co2SavingsTons
+                        co2SavingsTons = co2SavingsTons,
                     )
                 )
             } catch (e: Throwable) {
@@ -371,13 +393,13 @@ class MapViewModel(
 
 
     fun expandPreview() {
-        if (uiState.selectedPark != null || uiState.selectedPreviewData != null) {
-            uiState = uiState.copy(previewSheetState = PreviewSheetState.Expanded)
+        if (uiState.previewSheetState != PreviewSheetState.Hidden) {
+            uiState = uiState.copy(previewSheetState = PreviewSheetState.Peek)
         }
     }
 
     fun minimizePreview() {
-        if (uiState.selectedPark != null || uiState.selectedPreviewData != null) {
+        if (uiState.previewSheetState != PreviewSheetState.Hidden) {
             uiState = uiState.copy(previewSheetState = PreviewSheetState.Minimized)
         }
     }
@@ -386,7 +408,7 @@ class MapViewModel(
         uiState = uiState.copy(
             selectedPark = null,
             selectedPreviewData = null,
-            previewSheetState = PreviewSheetState.Expanded
+            previewSheetState = PreviewSheetState.Hidden
         )
     }
 
@@ -436,7 +458,7 @@ class MapViewModel(
             zoomLevel = (uiState.zoomLevel + 2.0f).coerceIn(5.0f, 18.0f),
             selectedPark = null,
             selectedPreviewData = null,
-            previewSheetState = PreviewSheetState.Expanded,
+            previewSheetState = PreviewSheetState.Hidden,
         )
         applyFilters()
     }
@@ -561,3 +583,55 @@ class MapViewModel(
     }
 
 }
+
+private fun formatTurbineLabel(count: Int): String =
+    "$count Anlage${if (count == 1) "" else "n"}"
+
+private fun formatCapacityLabel(capacityKw: Long?): String? {
+    val capacity = capacityKw ?: return null
+    val capacityMw = capacity / 1_000.0
+    return "${formatGermanNumber(capacityMw, 1)} MW"
+}
+
+private fun List<WindTurbine>.toPreviewPoints(): List<PreviewTurbinePoint> =
+    map { turbine ->
+        PreviewTurbinePoint(
+            id = turbine.id,
+            latitude = turbine.latitude,
+            longitude = turbine.longitude,
+            statusLabel = turbine.status?.let(::formatStatusLabel),
+        )
+    }
+
+private fun formatStatusLabel(status: String): String {
+    val lower = status.lowercase()
+    return when {
+        lower.contains("bau") || lower.contains("errichtung") -> "Im Bau"
+        lower.contains("stillgelegt") -> "Stillgelegt"
+        lower.contains("geplant") -> "Geplant"
+        lower.contains("betrieb") || lower.contains("aktiv") -> "Aktiv"
+        else -> status
+    }
+}
+
+private fun previewFocusedCenter(
+    latitude: Double,
+    longitude: Double,
+    zoom: Float,
+): Pair<Double, Double> {
+    val latSpan = visibleLatitudeSpan(zoom)
+    return latitude - (latSpan * 0.16) to longitude
+}
+
+private fun visibleLatitudeSpan(zoom: Float): Double =
+    when {
+        zoom >= 16.0f -> 0.04
+        zoom >= 15.0f -> 0.08
+        zoom >= 14.0f -> 0.16
+        zoom >= 13.0f -> 0.32
+        zoom >= 12.0f -> 0.64
+        zoom >= 11.0f -> 1.2
+        zoom >= 10.0f -> 2.4
+        zoom >= 9.0f -> 4.8
+        else -> 10.0
+    }

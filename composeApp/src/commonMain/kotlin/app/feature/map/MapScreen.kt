@@ -86,9 +86,6 @@ import app.core.ui.components.rememberLocationPermissionLauncher
 import app.core.ui.theme.WindklarTheme
 import app.feature.report.DataHintDialog
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.painterResource
-import windklar.composeapp.generated.resources.Res
-import windklar.composeapp.generated.resources.start_background
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -351,7 +348,8 @@ fun MapScreen(
         // Location stays visible; zoom is handled through map gestures on mobile.
         if (!uiState.isPinPlacementMode) {
             val locationButtonBottomPadding = locationButtonBottomPadding(
-                hasPreview = uiState.selectedPreviewData != null,
+                hasPreview = uiState.selectedPreviewData != null &&
+                    uiState.previewSheetState != PreviewSheetState.Hidden,
                 previewSheetState = uiState.previewSheetState,
             )
 
@@ -385,7 +383,7 @@ fun MapScreen(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     previewData = previewData,
                     sheetState = uiState.previewSheetState,
-                    onDetailsClick = {
+                    onOpenDetails = {
                         when (previewData.type) {
                             EntityType.PARK -> onParkSelected(previewData.id)
                             EntityType.STATE -> onRegionSelected("state", previewData.id)
@@ -395,6 +393,7 @@ fun MapScreen(
                     },
                     onExpand = viewModel::expandPreview,
                     onMinimize = viewModel::minimizePreview,
+                    onDismiss = viewModel::dismissPreview,
                 )
             }
         }
@@ -798,8 +797,9 @@ private fun locationButtonBottomPadding(
         24.dp
     } else {
         when (previewSheetState) {
-            PreviewSheetState.Expanded -> 332.dp
-            PreviewSheetState.Minimized -> 116.dp
+            PreviewSheetState.Hidden -> 24.dp
+            PreviewSheetState.Minimized -> 132.dp
+            PreviewSheetState.Peek -> 278.dp
         }
     }
 

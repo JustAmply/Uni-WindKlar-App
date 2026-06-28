@@ -50,7 +50,7 @@ data class MapUiState(
     val mapMarkers: List<MapMarkerUiModel> = emptyList(),
     val selectedPark: WindPark? = null,
     val selectedPreviewData: EntityPreviewData? = null,
-    val previewSheetState: PreviewSheetState = PreviewSheetState.Expanded,
+    val previewSheetState: PreviewSheetState = PreviewSheetState.Hidden,
     val searchQuery: String = "",
     val searchResults: List<MapSearchResult> = emptyList(),
     val showSearchOverlay: Boolean = false,
