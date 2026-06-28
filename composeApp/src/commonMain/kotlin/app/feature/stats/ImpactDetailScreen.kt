@@ -29,6 +29,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,7 +49,8 @@ import app.core.model.RankingItem
 import app.core.ui.components.BreadcrumbSegment
 import app.core.ui.components.FactList
 import app.core.ui.components.FactListItem
-import app.core.ui.components.RankingList
+import app.core.ui.components.FullRankingDialog
+import app.core.ui.components.TopRankingList
 import app.core.ui.components.WindklarHeader
 import app.core.ui.theme.WindklarTheme
 import org.jetbrains.compose.resources.painterResource
@@ -224,9 +229,11 @@ private fun ImpactSummaryBlock(
 @Composable
 private fun ImpactRankingList(
     entries: List<ImpactBarEntry>,
+    fullListTitle: String,
     onNavigateToParkDetail: (String) -> Unit,
     onNavigateToRegionDetail: (String, String) -> Unit,
 ) {
+    var showFullRankingDialog by remember { mutableStateOf(false) }
     val items = entries.mapIndexed { index, entry ->
         ImpactRankingEntry(
             item = RankingItem(
@@ -245,8 +252,9 @@ private fun ImpactRankingList(
         )
     }
 
-    RankingList(
+    TopRankingList(
         values = items.map { it.item },
+        onShowFullListClick = { showFullRankingDialog = true },
         onDetailsClick = { id ->
             items.firstOrNull { it.item.id == id }?.target?.let { target ->
                 when (target) {
@@ -254,8 +262,25 @@ private fun ImpactRankingList(
                     is ImpactNavigateTarget.Region -> onNavigateToRegionDetail(target.type, target.id)
                 }
             }
-        }
+        },
     )
+
+    if (showFullRankingDialog) {
+        FullRankingDialog(
+            title = fullListTitle,
+            rankingItems = items.map { it.item },
+            onDismiss = { showFullRankingDialog = false },
+            onDetailsClick = { id ->
+                showFullRankingDialog = false
+                items.firstOrNull { it.item.id == id }?.target?.let { target ->
+                    when (target) {
+                        is ImpactNavigateTarget.Park -> onNavigateToParkDetail(target.id)
+                        is ImpactNavigateTarget.Region -> onNavigateToRegionDetail(target.type, target.id)
+                    }
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -366,7 +391,12 @@ private fun HouseholdsDetailContent(
     ImpactSectionCard {
         SectionTitle(title = "Top-Windparks nach versorgten Haushalten")
         Spacer(modifier = Modifier.height(14.dp))
-        ImpactRankingList(detail.topParks, onNavigateToParkDetail, onNavigateToRegionDetail)
+        ImpactRankingList(
+            entries = detail.topParks,
+            fullListTitle = "Rangliste: Windparks nach versorgten Haushalten",
+            onNavigateToParkDetail = onNavigateToParkDetail,
+            onNavigateToRegionDetail = onNavigateToRegionDetail,
+        )
     }
     ImpactSectionCard {
         SectionTitle(title = "Annahmen")
@@ -408,7 +438,12 @@ private fun MunicipalBenefitDetailContent(
     ImpactSectionCard {
         SectionTitle(title = "Top-Landkreise nach möglichem Nutzen")
         Spacer(modifier = Modifier.height(14.dp))
-        ImpactRankingList(detail.topDistricts, onNavigateToParkDetail = {}, onNavigateToRegionDetail = onNavigateToRegionDetail)
+        ImpactRankingList(
+            entries = detail.topDistricts,
+            fullListTitle = "Rangliste: Landkreise nach möglichem Nutzen",
+            onNavigateToParkDetail = {},
+            onNavigateToRegionDetail = onNavigateToRegionDetail,
+        )
     }
     ImpactSectionCard {
         SectionTitle(title = "Annahmen")
@@ -453,7 +488,12 @@ private fun TurbinesDetailContent(
     ImpactSectionCard {
         SectionTitle(title = "Top-Windparks nach Anlagenzahl")
         Spacer(modifier = Modifier.height(14.dp))
-        ImpactRankingList(detail.topParks, onNavigateToParkDetail, onNavigateToRegionDetail)
+        ImpactRankingList(
+            entries = detail.topParks,
+            fullListTitle = "Rangliste: Windparks nach Anlagenzahl",
+            onNavigateToParkDetail = onNavigateToParkDetail,
+            onNavigateToRegionDetail = onNavigateToRegionDetail,
+        )
     }
     ImpactSectionCard {
         SectionTitle(title = "Annahmen")
@@ -486,7 +526,12 @@ private fun Co2DetailContent(
     ImpactSectionCard {
         SectionTitle(title = "Top-Windparks nach CO₂-Einsparung")
         Spacer(modifier = Modifier.height(14.dp))
-        ImpactRankingList(detail.topParks, onNavigateToParkDetail, onNavigateToRegionDetail)
+        ImpactRankingList(
+            entries = detail.topParks,
+            fullListTitle = "Rangliste: Windparks nach CO₂-Einsparung",
+            onNavigateToParkDetail = onNavigateToParkDetail,
+            onNavigateToRegionDetail = onNavigateToRegionDetail,
+        )
     }
     ImpactSectionCard {
         SectionTitle(title = "Was heißt das ungefähr?")

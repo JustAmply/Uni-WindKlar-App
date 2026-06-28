@@ -512,12 +512,10 @@ private fun parkMunicipalBenefit(
 private fun topBars(
     entries: List<ImpactBarInput>,
     formatter: (Double) -> String,
-    limit: Int = 5,
 ): List<ImpactBarEntry> {
     val max = entries.maxOfOrNull { it.value }?.takeIf { it > 0.0 } ?: 1.0
     return entries
         .sortedByDescending { it.value }
-        .take(limit)
         .map { input ->
             ImpactBarEntry(
                 label = input.label,

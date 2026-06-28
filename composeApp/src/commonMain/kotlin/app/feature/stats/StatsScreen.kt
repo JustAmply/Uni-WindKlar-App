@@ -71,12 +71,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import app.core.model.RankingItem
 import app.core.model.RankingDetailLine
 import app.core.ui.components.formatDataQuality
 import app.core.ui.components.qualityColors
-import app.core.ui.components.RankingList
-import app.core.ui.components.RankingItemRow
+import app.core.ui.components.FullRankingDialog
+import app.core.ui.components.TopRankingList
 import app.core.ui.theme.WindklarTheme
 import org.jetbrains.compose.resources.painterResource
 import windklar.composeapp.generated.resources.Res
@@ -216,8 +215,8 @@ fun StatsScreen(
                             onSelected = viewModel::setRankingType,
                         )
                         Spacer(modifier = Modifier.height(18.dp))
-                        RankingList(
-                            values = uiState.rankingItems.take(5),
+                        TopRankingList(
+                            values = uiState.rankingItems,
                             onActionClick = { itemId ->
                                 viewModel.selectInComparison(uiState.rankingType, itemId)
                             },
@@ -228,21 +227,9 @@ fun StatsScreen(
                                     RankingType.DISTRICTS -> onNavigateToRegionDetail("district", itemId)
                                     RankingType.STATES -> onNavigateToRegionDetail("state", itemId)
                                 }
-                            }
+                            },
+                            onShowFullListClick = { showFullRankingDialog = true },
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Button(
-                            onClick = { showFullRankingDialog = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = SoftGreen, contentColor = PrimaryGreen),
-                            shape = RoundedCornerShape(10.dp),
-                        ) {
-                            Text(
-                                text = "Gesamte Rangliste anzeigen (${uiState.rankingItems.size} Einträge)",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
                         Spacer(modifier = Modifier.height(8.dp))
                         SourceFootnote(
                             text = when (uiState.rankingType) {
@@ -665,94 +652,6 @@ private fun RankingTypeSegment(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-        }
-    }
-}
-
-
-@Composable
-private fun FullRankingDialog(
-    title: String,
-    rankingItems: List<RankingItem>,
-    onDismiss: () -> Unit,
-    onActionClick: (String) -> Unit,
-    onDetailsClick: (String) -> Unit,
-) {
-    var query by remember { mutableStateOf("") }
-    val filteredItems = remember(query, rankingItems) {
-        val normalizedQuery = query.trim()
-        if (normalizedQuery.isBlank()) {
-            rankingItems
-        } else {
-            rankingItems.filter { item ->
-                item.name.contains(normalizedQuery, ignoreCase = true) ||
-                    item.subtitle.contains(normalizedQuery, ignoreCase = true)
-            }
-        }
-    }
-    var expandedItemId by remember(filteredItems) { mutableStateOf<String?>(null) }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 620.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = WindklarTheme.colors.cardBackground,
-            shadowElevation = 8.dp,
-        ) {
-            Column(
-                modifier = Modifier.padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = title,
-                        color = DarkText,
-                        fontSize = 18.sp,
-                        lineHeight = 24.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    TextButton(onClick = onDismiss) {
-                        Text(text = "Schließen")
-                    }
-                }
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Search,
-                            contentDescription = null,
-                            tint = MutedText,
-                        )
-                    },
-                    label = { Text("Suchen") },
-                )
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    items(filteredItems, key = { it.id }) { item ->
-                        RankingItemRow(
-                            item = item,
-                            isExpanded = expandedItemId == item.id,
-                            onToggleExpand = {
-                                expandedItemId = if (expandedItemId == item.id) null else item.id
-                            },
-                            onActionClick = onActionClick,
-                            onDetailsClick = onDetailsClick,
-                        )
-                        HorizontalDivider(color = WindklarTheme.colors.trackGreen.copy(alpha = 0.5f))
-                    }
-                }
-            }
         }
     }
 }
