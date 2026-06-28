@@ -36,7 +36,9 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Eco
+import androidx.compose.material.icons.outlined.Euro
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -99,6 +101,8 @@ data class EntityPreviewData(
     val turbines: List<PreviewTurbinePoint> = emptyList(),
     val annualProductionGwh: Double?,
     val co2SavingsTons: Double?,
+    val householdsSupplied: Double? = null,
+    val municipalBenefitEur: Double? = null,
 )
 
 enum class PreviewSheetState {
@@ -208,7 +212,6 @@ fun EntityPreviewSheet(
             },
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         color = WindklarTheme.colors.cardBackground,
-        border = BorderStroke(1.dp, WindklarTheme.colors.lightOverlayGreen.copy(alpha = 0.6f)),
         shadowElevation = 16.dp,
     ) {
         Column(
@@ -422,8 +425,8 @@ private fun DetailsLink(
     Surface(
         onClick = onOpenDetails,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = WindklarTheme.colors.primaryGreen,
+        shape = RoundedCornerShape(14.dp),
+        color = WindklarTheme.colors.primaryButtonContainer,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
@@ -432,15 +435,15 @@ private fun DetailsLink(
         ) {
             Text(
                 text = "Alle Informationen öffnen",
-                color = Color.White,
+                color = WindklarTheme.colors.primaryGreen,
                 fontSize = 15.sp,
                 lineHeight = 20.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
             )
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                 contentDescription = null,
-                tint = Color.White,
+                tint = WindklarTheme.colors.primaryGreen,
                 modifier = Modifier.size(20.dp),
             )
         }
@@ -537,22 +540,11 @@ private fun EntityVisualSummary(
     previewData: EntityPreviewData,
     modifier: Modifier = Modifier,
 ) {
-    val visualGradient = Brush.horizontalGradient(
-        colors = listOf(
-            WindklarTheme.colors.paleGreen,
-            WindklarTheme.colors.paleGreen.copy(alpha = 0.35f)
-        )
-    )
-
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(visualGradient)
-            .border(
-                BorderStroke(1.dp, WindklarTheme.colors.primaryGreen.copy(alpha = 0.08f)),
-                shape = RoundedCornerShape(18.dp)
-            ),
+            .background(WindklarTheme.colors.paleGreen),
     ) {
         TurbineCanvas(
             points = previewData.turbines,
@@ -727,27 +719,49 @@ private fun TurbineCanvas(
 
 @Composable
 private fun PrimaryMetrics(previewData: EntityPreviewData) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        val prodStr = previewData.annualProductionGwh?.let {
-            "${formatGermanNumber(it, 1)} GWh"
-        } ?: "k.A."
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            val prodStr = previewData.annualProductionGwh?.let {
+                "${formatGermanNumber(it, 1)} GWh"
+            } ?: "k.A."
+            val houseStr = previewData.householdsSupplied?.let {
+                "${formatGermanNumber(it.toInt())}"
+            } ?: "k.A."
 
-        val co2Str = previewData.co2SavingsTons?.let {
-            "${formatGermanNumber(it.toInt())} t"
-        } ?: "k.A."
+            MetricCard(
+                modifier = Modifier.weight(1f),
+                label = "Jahresproduktion",
+                value = prodStr,
+                icon = Icons.Outlined.Bolt,
+            )
+            MetricCard(
+                modifier = Modifier.weight(1f),
+                label = "Versorgte Haushalte",
+                value = houseStr,
+                icon = Icons.Outlined.Home,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            val co2Str = previewData.co2SavingsTons?.let {
+                "${formatGermanNumber(it.toInt())} t"
+            } ?: "k.A."
+            val muniStr = previewData.municipalBenefitEur?.let {
+                "${formatGermanNumber(it.toInt())} €"
+            } ?: "k.A."
 
-        MetricCard(
-            modifier = Modifier.weight(1f),
-            label = "Jahresproduktion",
-            value = prodStr,
-            icon = Icons.Outlined.Bolt,
-        )
-        MetricCard(
-            modifier = Modifier.weight(1f),
-            label = "CO₂-Einsparung",
-            value = co2Str,
-            icon = Icons.Outlined.Eco,
-        )
+            MetricCard(
+                modifier = Modifier.weight(1f),
+                label = "CO₂-Einsparung",
+                value = co2Str,
+                icon = Icons.Outlined.Eco,
+            )
+            MetricCard(
+                modifier = Modifier.weight(1f),
+                label = "EEG-Beteiligung",
+                value = muniStr,
+                icon = Icons.Outlined.Euro,
+            )
+        }
     }
 }
 
@@ -758,49 +772,31 @@ private fun MetricCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     modifier: Modifier = Modifier,
 ) {
-    val metricGradient = Brush.verticalGradient(
-        colors = listOf(
-            Color.White,
-            WindklarTheme.colors.paleGreen.copy(alpha = 0.4f)
-        )
-    )
-
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(18.dp),
-        color = Color.Transparent,
-        border = BorderStroke(1.dp, WindklarTheme.colors.lightOverlayGreen.copy(alpha = 0.5f)),
+        color = WindklarTheme.colors.paleGreen,
     ) {
         Column(
-            modifier = Modifier
-                .background(metricGradient, shape = RoundedCornerShape(18.dp))
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(26.dp)
-                        .clip(CircleShape)
-                        .background(WindklarTheme.colors.primaryGreen.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = WindklarTheme.colors.primaryGreen,
-                        modifier = Modifier.size(14.dp),
-                    )
-                }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = WindklarTheme.colors.primaryGreen,
+                    modifier = Modifier.size(16.dp),
+                )
                 Text(
                     text = label,
-                    color = WindklarTheme.colors.mutedText,
+                    color = WindklarTheme.colors.primaryGreen,
                     fontSize = 12.sp,
                     lineHeight = 16.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -808,8 +804,8 @@ private fun MetricCard(
             Text(
                 text = value,
                 color = WindklarTheme.colors.darkGreen,
-                fontSize = 20.sp,
-                lineHeight = 28.sp,
+                fontSize = 18.sp,
+                lineHeight = 24.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -822,8 +818,7 @@ private fun MetricCard(
 private fun SummaryChip(text: String) {
     Surface(
         shape = CircleShape,
-        color = Color.White.copy(alpha = 0.9f),
-        border = BorderStroke(1.dp, WindklarTheme.colors.primaryGreen.copy(alpha = 0.12f)),
+        color = Color.White.copy(alpha = 0.82f),
     ) {
         Text(
             text = text,
@@ -844,15 +839,14 @@ private fun StatusPill(
     Surface(
         modifier = modifier,
         shape = CircleShape,
-        color = WindklarTheme.colors.primaryGreen.copy(alpha = 0.12f),
-        border = BorderStroke(1.dp, WindklarTheme.colors.primaryGreen.copy(alpha = 0.2f)),
+        color = WindklarTheme.colors.primaryGreen,
     ) {
         Text(
             text = text,
-            color = WindklarTheme.colors.darkGreen,
+            color = Color.White,
             fontSize = 12.sp,
             lineHeight = 16.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
         )
     }

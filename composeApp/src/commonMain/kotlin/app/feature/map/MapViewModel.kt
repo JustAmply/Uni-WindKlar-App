@@ -265,8 +265,12 @@ class MapViewModel(
                 val turbines = repository.getWindTurbinesForPark(park.id)
                 val annualMetric = metrics.firstOrNull { it.metricType == "annual_production" }
                 val co2Metric = metrics.firstOrNull { it.metricType == "co2_savings" }
+                val houseMetric = metrics.firstOrNull { it.metricType == "households_supplied" } ?: metrics.firstOrNull { it.metricType == "household_equivalent" }
+                val muniMetric = metrics.firstOrNull { it.metricType == "municipal_participation" }
                 val annualGwh = annualMetric?.value?.let { it / 1_000_000.0 }
                 val co2Tons = co2Metric?.value?.let { it / 1000.0 }
+                val households = houseMetric?.value
+                val municipalBenefit = muniMetric?.value
 
                 uiState = uiState.copy(
                     selectedPreviewData = EntityPreviewData(
@@ -280,6 +284,8 @@ class MapViewModel(
                         turbines = turbines.toPreviewPoints(),
                         annualProductionGwh = annualGwh,
                         co2SavingsTons = co2Tons,
+                        householdsSupplied = households,
+                        municipalBenefitEur = municipalBenefit,
                     )
                 )
             } catch (e: Throwable) {
@@ -296,6 +302,8 @@ class MapViewModel(
                     .firstOrNull { it.regionId == id }
                 val annualProductionGwh = regionSummary?.annualProductionKwh?.let { it / 1_000_000.0 }
                 val co2SavingsTons = regionSummary?.co2SavingsKg?.let { it / 1000.0 }
+                val households = regionSummary?.householdEquivalent
+                val municipalBenefit = regionSummary?.municipalBenefitEur
                 
                 val entityType = when (type.lowercase()) {
                     "city" -> EntityType.CITY
@@ -310,14 +318,14 @@ class MapViewModel(
                     EntityType.STATE -> "Bundesland"
                     else -> "Region"
                 }
-
+ 
                 val subtitle = when (entityType) {
                     EntityType.CITY -> "Gemeinde in $parentContext"
                     EntityType.DISTRICT -> "Landkreis in $parentContext"
                     EntityType.STATE -> "Bundesland"
                     else -> "Region"
                 }
-
+ 
                 uiState = uiState.copy(
                     selectedPreviewData = EntityPreviewData(
                         id = id,
@@ -329,6 +337,8 @@ class MapViewModel(
                         capacityLabel = regionSummary?.installedCapacityKw?.let { formatCapacityLabel(it) },
                         annualProductionGwh = annualProductionGwh,
                         co2SavingsTons = co2SavingsTons,
+                        householdsSupplied = households,
+                        municipalBenefitEur = municipalBenefit,
                     )
                 )
             } catch (e: Throwable) {
