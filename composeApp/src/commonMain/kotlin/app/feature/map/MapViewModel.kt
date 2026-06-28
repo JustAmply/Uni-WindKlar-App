@@ -639,6 +639,10 @@ private fun List<WindTurbine>.toPreviewPoints(): List<PreviewTurbinePoint> =
             latitude = turbine.latitude,
             longitude = turbine.longitude,
             statusLabel = turbine.status?.let(::formatStatusLabel),
+            hubHeightM = turbine.hubHeightM,
+            rotorDiameterM = turbine.rotorDiameterM,
+            installedCapacityKw = turbine.installedCapacityKw,
+            commissioningYear = turbine.commissioningYear,
         )
     }
 
