@@ -142,6 +142,7 @@ def main(argv: list[str] | None = None) -> int:
     aggregate_parser = subparsers.add_parser("aggregate", help="Build derived wind park aggregates")
     aggregate_parser.add_argument("--input", required=True)
     aggregate_parser.add_argument("--output", default="data/intermediate/wind_parks.json")
+    aggregate_parser.add_argument("--eps-km", type=float, default=1.5, help="Spatial clustering epsilon in km")
 
     calculate_parser = subparsers.add_parser("calculate", help="Build a complete app snapshot")
     calculate_parser.add_argument("--turbines", required=True)
@@ -182,7 +183,7 @@ def main(argv: list[str] | None = None) -> int:
             args.boundary_tolerance_km,
         )
     if args.command == "aggregate":
-        return aggregate(Path(args.input), Path(args.output))
+        return aggregate(Path(args.input), Path(args.output), args.eps_km)
     if args.command == "calculate":
         quality_report = args.quality_report or args.repair_report or args.cleaning_report
         quality_report_path = Path(quality_report) if quality_report else None
@@ -513,9 +514,9 @@ def repair(
     return 0 if kept else 2
 
 
-def aggregate(input_path: Path, output_path: Path) -> int:
+def aggregate(input_path: Path, output_path: Path, eps_km: float = 1.5) -> int:
     turbines = list(read_jsonl(input_path))
-    parks_by_key = group_turbines(turbines)
+    parks_by_key = group_turbines(turbines, eps_km)
 
     parks = []
     for key, group in sorted(parks_by_key.items()):
@@ -2088,25 +2089,114 @@ def spatial_clustering(turbines: list[dict[str, Any]], eps_km: float = 2.0) -> l
     return clusters
 
 
-def group_turbines(turbines: list[dict[str, Any]], eps_km: float = 2.0) -> dict[str, list[dict[str, Any]]]:
-    source_groups = defaultdict(list)
-    to_cluster = []
+def normalize_wind_park_name(name: str | None) -> str:
+    if not name:
+        return ""
+    name = name.lower().strip()
+    import re
+    words_to_remove = ["windpark", "wp", "wka", "windkraftanlage", "windenergieanlage", "wea", "gmbh", "co", "kg", "mb-h", "mbh"]
+    for w in words_to_remove:
+        name = re.sub(rf'\b{w}\b', '', name)
+    return "".join(c for c in name if c.isalnum())
+
+
+def get_name_tokens(name: str | None) -> set[str]:
+    if not name:
+        return set()
+    name = name.lower()
+    for char in ["-", "_", ",", ".", "(", ")", "/"]:
+        name = name.replace(char, " ")
+    tokens = set(name.split())
+    stopwords = {"windpark", "wp", "wea", "windenergie", "windenergieanlage", "buergerwindpark", "energiepark", "windfarm", "wind", "park", "gmbh", "co", "kg", "anlagen", "unbekannt"}
+    return tokens - stopwords
+
+
+def names_share_meaningful_token(name1: str | None, name2: str | None) -> bool:
+    tokens1 = get_name_tokens(name1)
+    tokens2 = get_name_tokens(name2)
+    if not tokens1 or not tokens2:
+        return False
+    return len(tokens1 & tokens2) > 0
+
+
+def names_conflict(name1: str | None, name2: str | None) -> bool:
+    n1 = normalize_wind_park_name(name1)
+    n2 = normalize_wind_park_name(name2)
+    if not n1 or not n2:
+        return False
+    if len(n1) < 3 or len(n2) < 3:
+        return False
+    return n1 != n2
+
+
+def group_turbines(turbines: list[dict[str, Any]], eps_km: float = 1.5) -> dict[str, list[dict[str, Any]]]:
+    # Option B: Attribut-basiertes Clustering (MaStR + Name/Gemeinde)
+    parent = {t["id"]: t["id"] for t in turbines}
+    
+    def find(i):
+        path = []
+        while parent[i] != i:
+            path.append(i)
+            i = parent[i]
+        for node in path:
+            parent[node] = i
+        return i
+        
+    def union(i, j):
+        root_i = find(i)
+        root_j = find(j)
+        if root_i != root_j:
+            parent[root_i] = root_j
+            
+    # Stufe 1: Gruppierung nach windParkId
+    pids = defaultdict(list)
     for t in turbines:
-        park_id = t.get("windParkId")
-        if park_id:
-            source_groups[f"source:{park_id}"].append(t)
-        else:
-            to_cluster.append(t)
-    clusters = spatial_clustering(to_cluster, eps_km)
-    grouped = dict(source_groups)
-    for cluster in clusters:
-        sorted_ids = sorted(t["id"] for t in cluster)
+        pid = t.get("windParkId")
+        if pid:
+            pids[pid].append(t["id"])
+            
+    for pid, ids in pids.items():
+        for i in range(1, len(ids)):
+            union(ids[0], ids[i])
+            
+    # Stufe 2: Gruppierung nach windParkName + municipalityId
+    name_mun_groups = defaultdict(list)
+    for t in turbines:
+        name = t.get("windParkName")
+        mun = t.get("municipalityId")
+        cname = normalize_wind_park_name(name)
+        if cname and len(cname) >= 3 and mun and mun != "unknown":
+            key = (cname, mun)
+            name_mun_groups[key].append(t["id"])
+            
+    for key, ids in name_mun_groups.items():
+        for i in range(1, len(ids)):
+            union(ids[0], ids[i])
+            
+    # Zusammenbauen
+    grouped_turbines = defaultdict(list)
+    for t in turbines:
+        root_id = find(t["id"])
+        grouped_turbines[root_id].append(t)
+        
+    # Schlüsselgenerierung mit Typen-Präfix
+    grouped = {}
+    for root_id, cluster_turbines in grouped_turbines.items():
+        sorted_ids = sorted(t["id"] for t in cluster_turbines)
         key_hash = stable_hash("_".join(sorted_ids))[:12]
-        has_name = any(t.get("windParkName") for t in cluster)
-        prefix = "spatial_named" if has_name else "spatial"
-        cluster_key = f"{prefix}:{key_hash}"
-        grouped[cluster_key] = cluster
+        
+        has_malo = any(t.get("windParkId") for t in cluster_turbines)
+        if has_malo:
+            prefix = "malo"
+        elif len(cluster_turbines) > 1:
+            prefix = "name_mun"
+        else:
+            prefix = "singleton"
+            
+        grouped[f"{prefix}:{key_hash}"] = cluster_turbines
+        
     return grouped
+
 
 
 def representative_park_name(group: list[dict[str, Any]], default_name: str) -> str:
@@ -2118,11 +2208,11 @@ def representative_park_name(group: list[dict[str, Any]], default_name: str) -> 
 
 
 def grouping_method(group: list[dict[str, Any]], key: str) -> str:
-    if key.startswith("source:"):
-        return "source_wind_park_id"
-    if key.startswith("spatial_named:"):
-        return "spatial_clustering_name_fallback"
-    return "spatial_clustering_fallback"
+    if key.startswith("malo:"):
+        return "malo_id_grouping"
+    if key.startswith("name_mun:"):
+        return "name_municipality_grouping"
+    return "singleton_fallback"
 
 
 def snapshot_turbine(turbine: dict[str, Any]) -> dict[str, Any]:
