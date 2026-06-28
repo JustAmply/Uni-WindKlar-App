@@ -48,8 +48,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.core.model.SnapshotAssumption
 import app.core.model.WindPark
-import app.core.ui.components.formatDataQuality
-import app.core.ui.components.qualityColors
 import app.core.ui.components.RankingList
 import app.core.ui.components.CitizenImpactDashboard
 import app.core.ui.components.DataStatusFooter
@@ -484,7 +482,6 @@ private fun WindParksSection(
         )
 
         windParks.forEach { park ->
-            val qualityColor = qualityColors(park.dataQuality)
             val capMw = (park.installedCapacityKw ?: 0L) / 1000.0
             
             Surface(
@@ -524,20 +521,6 @@ private fun WindParksSection(
                                  color = WindklarTheme.colors.mutedGreen,
                                  fontSize = 12.sp
                              )
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = qualityColor.container,
-                            modifier = Modifier.padding(top = 2.dp)
-                        ) {
-                            Text(
-                                text = "Stammdaten: ${formatDataQuality(park.dataQuality)}",
-                                color = qualityColor.content,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-                            )
                         }
                     }
                     
