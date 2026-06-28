@@ -54,6 +54,7 @@ data class MapUiState(
     val searchQuery: String = "",
     val searchResults: List<MapSearchResult> = emptyList(),
     val showSearchOverlay: Boolean = false,
+    val parkStatuses: Map<String, String> = emptyMap(),
     val mapCenterLat: Double = 51.1657, // Default center of Germany
     val mapCenterLon: Double = 10.4515,
     val zoomLevel: Float = 6.0f,

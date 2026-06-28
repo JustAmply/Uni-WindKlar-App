@@ -33,12 +33,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.LocationCity
 import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.WindPower
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.SnackbarHost
@@ -65,7 +69,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -187,11 +191,12 @@ fun MapScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
                 SearchBar(
                     query = uiState.searchQuery,
                     filters = uiState.filters,
+                    connectedToResults = uiState.showSearchOverlay,
                     onQueryChange = viewModel::onQueryChange,
                     onFocusChanged = viewModel::onSearchFocusChanged,
                     onFilterClick = {
@@ -205,16 +210,8 @@ fun MapScreen(
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 240.dp)
-                            .pointerInput(Unit) {
-                                awaitPointerEventScope {
-                                    while (true) {
-                                        val event = awaitPointerEvent()
-                                        event.changes.forEach { it.consume() }
-                                    }
-                                }
-                            },
-                        shape = RoundedCornerShape(16.dp),
+                            .heightIn(max = 336.dp),
+                        shape = RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp),
                         color = WindklarTheme.colors.cardBackground,
                         shadowElevation = 8.dp
                     ) {
@@ -229,37 +226,17 @@ fun MapScreen(
                                 )
                                 LazyColumn {
                                     items(uiState.recentParks, key = { it.id }) { park ->
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable {
-                                                    focusManager.clearFocus()
-                                                    viewModel.onSearchResultSelected(MapSearchResult.Park(park))
-                                                }
-                                                .padding(vertical = 8.dp, horizontal = 12.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Outlined.LocationOn,
-                                                contentDescription = null,
-                                                tint = WindklarTheme.colors.primaryGreen,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(
-                                                    text = park.name,
-                                                    color = WindklarTheme.colors.darkGreen,
-                                                    fontWeight = FontWeight.Medium,
-                                                    fontSize = 14.sp
-                                                )
-                                                Text(
-                                                    text = "${park.municipalityName} • ${formatWindInstallationCount(park.turbineCount)}",
-                                                    color = WindklarTheme.colors.mutedGreen,
-                                                    fontSize = 12.sp
-                                                )
-                                            }
-                                        }
+                                        SearchResultRow(
+                                            title = park.name,
+                                            subtitle = "${park.municipalityName} • ${formatWindInstallationCount(park.turbineCount)}",
+                                            leadingIcon = Icons.Outlined.WindPower,
+                                            status = uiState.parkStatuses[park.id] ?: "Aktiv",
+                                            onClick = {
+                                                focusManager.clearFocus()
+                                                viewModel.onSearchResultSelected(MapSearchResult.Park(park))
+                                            },
+                                        )
+                                        HorizontalDivider(color = WindklarTheme.colors.dividerColor)
                                     }
                                 }
                             }
@@ -279,62 +256,20 @@ fun MapScreen(
                                     )
                                 }
                             } else {
-                                LazyColumn(modifier = Modifier.padding(8.dp)) {
+                                LazyColumn(modifier = Modifier.padding(vertical = 4.dp)) {
                                     items(uiState.searchResults, key = { it.key }) { result ->
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable {
-                                                    focusManager.clearFocus()
-                                                    viewModel.onSearchResultSelected(result)
-                                                }
-                                                .padding(vertical = 8.dp, horizontal = 12.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Outlined.LocationOn,
-                                                contentDescription = null,
-                                                tint = WindklarTheme.colors.primaryGreen,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-
-                                             val title: String
-                                             val subtitle: String
-
-                                             when (result) {
-                                                 is MapSearchResult.State -> {
-                                                     title = result.name
-                                                     subtitle = "Bundesland"
-                                                 }
-                                                 is MapSearchResult.District -> {
-                                                     title = result.name
-                                                     subtitle = "Landkreis in ${result.stateName}"
-                                                 }
-                                                 is MapSearchResult.Municipality -> {
-                                                     title = result.name
-                                                     subtitle = "Gemeinde in ${result.stateName}"
-                                                 }
-                                                 is MapSearchResult.Park -> {
-                                                     title = result.park.name
-                                                     subtitle = "${result.park.municipalityName} • ${formatWindInstallationCount(result.park.turbineCount)}"
-                                                 }
-                                             }
-
-                                             Column(modifier = Modifier.weight(1f)) {
-                                                 Text(
-                                                     text = title,
-                                                     color = WindklarTheme.colors.darkGreen,
-                                                     fontWeight = FontWeight.Medium,
-                                                     fontSize = 14.sp
-                                                 )
-                                                 Text(
-                                                     text = subtitle,
-                                                     color = WindklarTheme.colors.mutedGreen,
-                                                     fontSize = 12.sp
-                                                 )
-                                             }
-                                        }
+                                        val row = result.toSearchResultRowModel(uiState.parkStatuses)
+                                        SearchResultRow(
+                                            title = row.title,
+                                            subtitle = row.subtitle,
+                                            leadingIcon = row.leadingIcon,
+                                            status = row.status,
+                                            onClick = {
+                                                focusManager.clearFocus()
+                                                viewModel.onSearchResultSelected(result)
+                                            },
+                                        )
+                                        HorizontalDivider(color = WindklarTheme.colors.dividerColor)
                                     }
                                 }
                             }
@@ -520,10 +455,146 @@ fun MapScreen(
 
 }
 
+private data class SearchResultRowModel(
+    val title: String,
+    val subtitle: String,
+    val leadingIcon: ImageVector,
+    val status: String?,
+)
+
+private fun MapSearchResult.toSearchResultRowModel(parkStatuses: Map<String, String>): SearchResultRowModel =
+    when (this) {
+        is MapSearchResult.State -> SearchResultRowModel(
+            title = name,
+            subtitle = "Bundesland",
+            leadingIcon = Icons.Outlined.Public,
+            status = null,
+        )
+        is MapSearchResult.District -> SearchResultRowModel(
+            title = name,
+            subtitle = "Landkreis in $stateName",
+            leadingIcon = Icons.Outlined.LocationOn,
+            status = null,
+        )
+        is MapSearchResult.Municipality -> SearchResultRowModel(
+            title = name,
+            subtitle = "Gemeinde in $stateName",
+            leadingIcon = Icons.Outlined.LocationCity,
+            status = null,
+        )
+        is MapSearchResult.Park -> SearchResultRowModel(
+            title = park.name,
+            subtitle = "${park.municipalityName} • ${formatWindInstallationCount(park.turbineCount)}",
+            leadingIcon = Icons.Outlined.WindPower,
+            status = parkStatuses[park.id] ?: "Aktiv",
+        )
+    }
+
+@Composable
+private fun SearchResultRow(
+    title: String,
+    subtitle: String,
+    leadingIcon: ImageVector,
+    status: String?,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(
+            modifier = Modifier.size(38.dp),
+            shape = CircleShape,
+            color = PaleGreen,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    tint = PrimaryGreen,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                text = title,
+                color = DarkGreen,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp,
+                lineHeight = 19.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.LocationOn,
+                    contentDescription = null,
+                    tint = MutedGreen,
+                    modifier = Modifier.size(13.dp),
+                )
+                Text(
+                    text = subtitle,
+                    color = MutedGreen,
+                    fontSize = 12.sp,
+                    lineHeight = 15.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+
+        status?.let {
+            SearchStatusPill(status = it)
+        }
+    }
+}
+
+@Composable
+private fun SearchStatusPill(status: String) {
+    val colors = searchStatusColors(status)
+    Surface(
+        shape = CircleShape,
+        color = colors.first,
+    ) {
+        Text(
+            text = status,
+            color = colors.second,
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun searchStatusColors(status: String): Pair<Color, Color> =
+    when (status.lowercase()) {
+        "aktiv" -> WindklarTheme.colors.headerEndGreen to Color.White
+        "geplant" -> WindklarTheme.colors.warningAmber to WindklarTheme.colors.darkGreen
+        "im bau" -> WindklarTheme.colors.statusOrangeDark to Color.White
+        "stillgelegt" -> WindklarTheme.colors.qualityMissingContainer to WindklarTheme.colors.qualityMissingContent
+        else -> WindklarTheme.colors.paleGreen to WindklarTheme.colors.primaryGreen
+    }
+
 @Composable
 private fun SearchBar(
     query: String,
     filters: MapFilterState,
+    connectedToResults: Boolean,
     onQueryChange: (String) -> Unit,
     onFocusChanged: (Boolean) -> Unit,
     onFilterClick: () -> Unit,
@@ -531,7 +602,11 @@ private fun SearchBar(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
+        shape = if (connectedToResults) {
+            RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        } else {
+            RoundedCornerShape(28.dp)
+        },
         color = WindklarTheme.colors.cardBackground,
         shadowElevation = 6.dp,
     ) {
@@ -610,6 +685,9 @@ private fun SearchBar(
         )
     }
 }
+
+private fun formatWindInstallationCount(count: Int): String =
+    "$count Windanlage${if (count == 1) "" else "n"}"
 
 @Composable
 private fun MapFilterSheet(
@@ -802,9 +880,6 @@ private fun locationButtonBottomPadding(
             PreviewSheetState.Peek -> 278.dp
         }
     }
-
-private fun formatWindInstallationCount(count: Int): String =
-    "$count Windanlage${if (count == 1) "" else "n"}"
 
 @Composable
 private fun MapActionButton(

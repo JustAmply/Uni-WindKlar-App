@@ -71,6 +71,7 @@ class MapViewModel(
                     parks = snapshot.parks,
                     filteredParks = startupData.filteredParks,
                     mapMarkers = startupData.mapMarkers,
+                    parkStatuses = snapshot.parkStatuses,
                 )
                 loadRecentParks()
             } catch (e: Throwable) {
