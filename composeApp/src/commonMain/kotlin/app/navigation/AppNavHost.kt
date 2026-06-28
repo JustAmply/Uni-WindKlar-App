@@ -2,10 +2,12 @@ package app.navigation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -111,6 +113,11 @@ fun AppNavHost(appGraph: AppGraph) {
     }
 
     Scaffold(
+        contentWindowInsets = if (currentRoute == Route.Start) {
+            WindowInsets(0)
+        } else {
+            ScaffoldDefaults.contentWindowInsets
+        },
         bottomBar = {
             if (currentRoute != Route.Start) {
                 val activeTopLevelRoute = currentRoute.let {

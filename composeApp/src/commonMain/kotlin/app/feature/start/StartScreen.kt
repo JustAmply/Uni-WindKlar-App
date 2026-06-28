@@ -17,7 +17,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.ButtonDefaults
@@ -40,15 +39,18 @@ import androidx.compose.ui.unit.sp
 import app.core.ui.components.PrimaryButton
 import app.core.ui.theme.WindklarTheme
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import windklar.composeapp.generated.resources.Res
 import windklar.composeapp.generated.resources.start_background
+import windklar.composeapp.generated.resources.windklar_logo
 
 private data class OnboardingSlide(
     val title: String,
     val subtitle: String,
     val description: String,
-    val icon: ImageVector
+    val icon: ImageVector? = null,
+    val image: DrawableResource? = null,
 )
 
 @Composable
@@ -62,7 +64,7 @@ fun StartScreen(
             title = "WindKlar",
             subtitle = "Transparente Windenergie",
             description = "Erfahren Sie, woher der Wind weht. WindKlar bringt Licht in die Daten deutscher Windparks und berechnet deren regionalen Nutzen.",
-            icon = Icons.Outlined.Air
+            image = Res.drawable.windklar_logo,
         ),
         OnboardingSlide(
             title = "Karte & Details",
@@ -152,12 +154,21 @@ fun StartScreen(
                             .background(Color.White.copy(alpha = 0.22f)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
-                            imageVector = slide.icon,
-                            contentDescription = null,
-                            modifier = Modifier.size(56.dp),
-                            tint = Color.White,
-                        )
+                        if (slide.image != null) {
+                            Image(
+                                painter = painterResource(slide.image),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop,
+                            )
+                        } else if (slide.icon != null) {
+                            Icon(
+                                imageVector = slide.icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(56.dp),
+                                tint = Color.White,
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(32.dp))
