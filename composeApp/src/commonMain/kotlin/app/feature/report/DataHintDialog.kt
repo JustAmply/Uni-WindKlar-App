@@ -67,6 +67,7 @@ fun DataHintDialog(
     var selectedConfidence by remember { mutableStateOf("likely") }
     var description by remember { mutableStateOf("") }
     var suggestedValue by remember { mutableStateOf("") }
+    var descriptionTouched by remember { mutableStateOf(false) }
     
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -140,11 +141,19 @@ fun DataHintDialog(
                 )
                 
                 // Description
+                val isDescriptionError = description.isBlank() && descriptionTouched
                 OutlinedTextField(
                     value = description,
-                    onValueChange = { description = it },
+                    onValueChange = {
+                        description = it
+                        descriptionTouched = true
+                    },
                     label = { Text("Beschreibung *") },
                     placeholder = { Text("Bitte beschreiben Sie den Fehler genauer...") },
+                    isError = isDescriptionError,
+                    supportingText = if (isDescriptionError) {
+                        { Text("Beschreibung ist erforderlich") }
+                    } else null,
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3
                 )
@@ -203,7 +212,13 @@ fun DataHintDialog(
                         )
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = WindklarTheme.colors.primaryGreen)
+                enabled = description.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = WindklarTheme.colors.primaryGreen,
+                    contentColor = Color.White,
+                    disabledContainerColor = WindklarTheme.colors.primaryButtonDisabledContainer,
+                    disabledContentColor = WindklarTheme.colors.primaryButtonDisabledContent
+                )
             ) {
                 Text("Datenhinweis speichern")
             }
