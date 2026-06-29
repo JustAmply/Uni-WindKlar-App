@@ -90,9 +90,8 @@ fun AppNavHost(appGraph: AppGraph) {
     }
 
     val navigateToCountry: () -> Unit = {
-        val topLevelRoute = routeHistory.firstOrNull { it.isTopLevelRoute() } ?: Route.Map
         routeHistory = emptyList()
-        currentRoute = topLevelRoute
+        currentRoute = Route.Stats
     }
 
     val mapViewModel = remember(appGraph) { appGraph.mapViewModel() }
