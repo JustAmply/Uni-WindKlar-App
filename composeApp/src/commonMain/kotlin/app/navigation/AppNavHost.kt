@@ -42,6 +42,7 @@ import app.feature.faq.FaqScreen
 import app.feature.map.MapScreen
 import app.feature.profile.ProfileScreen
 import app.feature.start.StartScreen
+import app.feature.start.StartViewModel
 import app.feature.stats.ImpactDetailScreen
 import app.feature.stats.StatsScreen
 import app.feature.stats.toImpactDetailUiState
@@ -51,14 +52,16 @@ import androidx.compose.runtime.snapshotFlow
 
 @Composable
 fun AppNavHost(appGraph: AppGraph) {
-    var startRoute by remember { mutableStateOf<Route?>(null) }
+    val startViewModel = remember(appGraph) { appGraph.startViewModel() }
+    val startUiState = startViewModel.uiState
 
-    LaunchedEffect(appGraph) {
-        val completed = appGraph.repository.isOnboardingCompleted()
-        startRoute = if (completed) Route.Map else Route.Start
+    val resolvedStartRoute = remember(startUiState.isOnboardingCompleted) {
+        when (startUiState.isOnboardingCompleted) {
+            true -> Route.Map
+            false -> Route.Start
+            null -> null
+        }
     }
-
-    val resolvedStartRoute = startRoute
     if (resolvedStartRoute == null) {
         Box(
             modifier = Modifier
@@ -173,10 +176,9 @@ fun AppNavHost(appGraph: AppGraph) {
                     when (val route = currentRoute) {
                 Route.Start -> StartScreen(
                     onGetStartedClick = {
-                        coroutineScope.launch {
-                            appGraph.repository.setOnboardingCompleted(true)
+                        startViewModel.completeOnboarding {
+                            currentRoute = Route.Map
                         }
-                        currentRoute = Route.Map
                     },
                 )
 

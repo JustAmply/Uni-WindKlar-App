@@ -12,6 +12,7 @@ import app.feature.favorites.FavoritesViewModel
 import app.feature.map.MapViewModel
 import app.feature.profile.ProfileViewModel
 import app.feature.stats.StatsViewModel
+import app.feature.start.StartViewModel
 
 class AppGraph(
     sourceDatabase: SourceDatabase,
@@ -47,4 +48,7 @@ class AppGraph(
 
     fun regionDetailViewModel(type: String, id: String): RegionDetailViewModel =
         RegionDetailViewModel(type, id, repository)
+
+    fun startViewModel(): StartViewModel =
+        StartViewModel(repository)
 }
