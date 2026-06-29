@@ -3,7 +3,7 @@ package app.data.local.dao
 import app.data.local.source.SourceDatabase
 import app.data.local.source.Wind_turbine
 import app.data.local.source.Metric as DbMetric
-import app.data.local.source.Snapshot_metadata
+import app.data.local.entity.SnapshotMetadata
 import app.data.local.user.Data_hint
 import app.data.local.user.UserDatabase
 import app.core.model.WindTurbine
@@ -420,12 +420,23 @@ class SqlDelightDataHintDao(private val database: UserDatabase) : DataHintDao {
 // --- Snapshot Metadata DAO ---
 
 interface SnapshotMetadataDao {
-    suspend fun getLatest(): Snapshot_metadata?
+    suspend fun getLatest(): SnapshotMetadata?
 }
 
 class SqlDelightSnapshotMetadataDao(private val database: SourceDatabase) : SnapshotMetadataDao {
-    override suspend fun getLatest(): Snapshot_metadata? {
-        return database.snapshotMetadataQueries.selectLatestSnapshot().executeAsOneOrNull()
+    override suspend fun getLatest(): SnapshotMetadata? {
+        return database.snapshotMetadataQueries.selectLatestSnapshot().executeAsOneOrNull()?.let {
+            SnapshotMetadata(
+                snapshotId = it.snapshot_id,
+                sourceName = it.source_name,
+                attribution = it.attribution,
+                mastrExportDate = it.mastr_export_date,
+                processedAt = it.processed_at,
+                pipelineVersion = it.pipeline_version,
+                limitations = it.limitations,
+                assumptionsJson = it.assumptions_json
+            )
+        }
     }
 }
 

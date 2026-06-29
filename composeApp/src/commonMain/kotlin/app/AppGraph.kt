@@ -3,6 +3,7 @@ package app
 import app.core.location.LocationProvider
 import app.data.local.source.SourceDatabase
 import app.data.local.user.UserDatabase
+import app.data.local.dao.*
 import app.data.repository.SqlDelightWindParkRepository
 import app.data.repository.WindParkRepository
 import app.feature.detail.ParkDetailViewModel
@@ -17,7 +18,17 @@ class AppGraph(
     userDatabase: UserDatabase,
     private val locationProvider: LocationProvider,
 ) {
-    val repository: WindParkRepository = SqlDelightWindParkRepository(sourceDatabase, userDatabase)
+    val repository: WindParkRepository = SqlDelightWindParkRepository(
+        windParkDao = SqlDelightWindParkDao(sourceDatabase),
+        windTurbineDao = SqlDelightWindTurbineDao(sourceDatabase),
+        metricDao = SqlDelightMetricDao(sourceDatabase),
+        favoriteDao = SqlDelightFavoriteDao(userDatabase),
+        recentWindParkDao = SqlDelightRecentWindParkDao(userDatabase),
+        dataHintDao = SqlDelightDataHintDao(userDatabase),
+        snapshotMetadataDao = SqlDelightSnapshotMetadataDao(sourceDatabase),
+        settingsDao = SqlDelightSettingsDao(userDatabase),
+        summaryDao = SqlDelightSummaryDao(sourceDatabase)
+    )
 
     fun mapViewModel(): MapViewModel =
         MapViewModel(repository, repository, locationProvider)
