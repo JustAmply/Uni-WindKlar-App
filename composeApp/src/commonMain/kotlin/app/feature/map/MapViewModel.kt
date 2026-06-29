@@ -318,8 +318,7 @@ class MapViewModel(
         viewModelScope.launch {
             try {
                 val regionSummary = repository
-                    .getRegionSummaries(type)
-                    .firstOrNull { it.regionId == id }
+                    .getRegionSummary(type, id)
                 val annualProductionGwh = regionSummary?.annualProductionKwh?.let { it / 1_000_000.0 }
                 val co2SavingsTons = regionSummary?.co2SavingsKg?.let { it / 1000.0 }
                 val households = regionSummary?.householdEquivalent
@@ -471,8 +470,7 @@ class MapViewModel(
         viewModelScope.launch {
             try {
                 val regionSummary = repository
-                    .getRegionSummaries(type)
-                    .firstOrNull { it.regionId == id } ?: return@launch
+                    .getRegionSummary(type, id) ?: return@launch
                 
                 val zoom = when (type.lowercase()) {
                     "state" -> 8.0f
