@@ -46,6 +46,10 @@ class SqlDelightWindParkRepository(
     private val snapshotMetadataDao: SnapshotMetadataDao = SqlDelightSnapshotMetadataDao(sourceDatabase)
     private val settingsDao: SettingsDao = SqlDelightSettingsDao(userDatabase)
 
+    private var cachedSnapshotInfo: SnapshotInfo? = null
+    private var hasCachedSnapshotInfo = false
+    private var cachedAssumptions: List<SnapshotAssumption>? = null
+
     private val operationalSummaryMap: Map<String, OperationalSummary> by lazy {
         sourceDatabase.summaryQueries.selectAllParkOperationalSummaries().executeAsList().associate { row ->
             row.wind_park_id to OperationalSummary(
@@ -311,30 +315,35 @@ class SqlDelightWindParkRepository(
     }
 
     override suspend fun getSnapshotAttribution(): String = withContext(Dispatchers.Default) {
-        snapshotMetadataDao.getLatest()?.attribution ?: "Marktstammdatenregister"
+        getSnapshotInfo()?.attribution ?: "Marktstammdatenregister"
     }
 
     override suspend fun getSnapshotLimitations(): List<String> = withContext(Dispatchers.Default) {
-        val raw = snapshotMetadataDao.getLatest()?.limitations ?: ""
-        if (raw.isBlank()) emptyList() else raw.split("\n")
+        getSnapshotInfo()?.limitations ?: emptyList()
     }
 
     override suspend fun getSnapshotInfo(): SnapshotInfo? = withContext(Dispatchers.Default) {
-        val metadata = snapshotMetadataDao.getLatest() ?: return@withContext null
-        val limitations = metadata.limitations
-            .takeIf { it.isNotBlank() }
+        if (hasCachedSnapshotInfo) return@withContext cachedSnapshotInfo
+        val metadata = snapshotMetadataDao.getLatest()
+        val limitations = metadata?.limitations
+            ?.takeIf { it.isNotBlank() }
             ?.split("\n")
             ?: emptyList()
-        SnapshotInfo(
-            snapshotId = metadata.snapshot_id,
-            sourceName = metadata.source_name,
-            attribution = metadata.attribution,
-            mastrExportDate = metadata.mastr_export_date,
-            processedAt = metadata.processed_at,
-            pipelineVersion = metadata.pipeline_version,
-            limitations = limitations,
-            isLocalSnapshot = true,
-        )
+        val info = metadata?.let {
+            SnapshotInfo(
+                snapshotId = it.snapshot_id,
+                sourceName = it.source_name,
+                attribution = it.attribution,
+                mastrExportDate = it.mastr_export_date,
+                processedAt = it.processed_at,
+                pipelineVersion = it.pipeline_version,
+                limitations = limitations,
+                isLocalSnapshot = true,
+            )
+        }
+        cachedSnapshotInfo = info
+        hasCachedSnapshotInfo = true
+        info
     }
 
     override suspend fun getDataHints(): List<DataHint> = withContext(Dispatchers.Default) {
@@ -354,8 +363,9 @@ class SqlDelightWindParkRepository(
     }
 
     override suspend fun getSnapshotAssumptions(): List<SnapshotAssumption> = withContext(Dispatchers.Default) {
+        cachedAssumptions?.let { return@withContext it }
         val raw = snapshotMetadataDao.getLatest()?.assumptions_json ?: return@withContext emptyList()
-        runCatching {
+        val parsed = runCatching {
             json.decodeFromString<List<SnapshotAssumptionDto>>(raw).map { assumption ->
                 SnapshotAssumption(
                     id = assumption.id,
@@ -369,6 +379,8 @@ class SqlDelightWindParkRepository(
                 )
             }
         }.getOrDefault(emptyList())
+        cachedAssumptions = parsed
+        parsed
     }
 
     override suspend fun getAllMetrics(): List<Metric> = withContext(Dispatchers.Default) {
