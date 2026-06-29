@@ -63,6 +63,45 @@ function Invoke-AdbText {
     return $output
 }
 
+function Invoke-AdbOutputFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$OutputPath
+    )
+
+    $adbArgs = @()
+    if ($Serial -ne "") {
+        $adbArgs += @("-s", $Serial)
+    }
+    $adbArgs += $Arguments
+
+    $stderrPath = [System.IO.Path]::GetTempFileName()
+    try {
+        $process = Start-Process `
+            -FilePath $script:AdbCommand `
+            -ArgumentList $adbArgs `
+            -NoNewWindow `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput $OutputPath `
+            -RedirectStandardError $stderrPath
+
+        if ($process.ExitCode -ne 0) {
+            $stderr = if (Test-Path $stderrPath) { (Get-Content -Raw $stderrPath).Trim() } else { "" }
+            if (Test-Path $OutputPath) {
+                Remove-Item -LiteralPath $OutputPath -Force
+            }
+            throw "adb failed: $script:AdbCommand $($adbArgs -join ' ') $stderr"
+        }
+    } finally {
+        if (Test-Path $stderrPath) {
+            Remove-Item -LiteralPath $stderrPath -Force
+        }
+    }
+}
+
 function Resolve-AdbCommand {
     param([string]$RepoRoot)
 
@@ -152,13 +191,10 @@ function Capture-Screen {
 
     $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
     $fileName = "$timestamp-$Name.png"
-    $remotePath = "/sdcard/windklar-$fileName"
     $localPath = Join-Path $OutputDirectory $fileName
 
     Write-Step "Capture $Name"
-    Invoke-Adb -Arguments @("shell", "screencap", "-p", $remotePath)
-    Invoke-Adb -Arguments @("pull", $remotePath, $localPath)
-    Invoke-Adb -Arguments @("shell", "rm", $remotePath)
+    Invoke-AdbOutputFile -Arguments @("exec-out", "screencap", "-p") -OutputPath $localPath
 
     return $localPath
 }
