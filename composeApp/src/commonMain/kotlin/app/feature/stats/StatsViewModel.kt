@@ -37,6 +37,7 @@ class StatsViewModel(private val repository: StatsRepository) : ViewModel() {
     private var loadedStates: List<StateStat> = emptyList()
     private var loadedAssumptions: List<SnapshotAssumption> = emptyList()
     private val parkMetricCache = mutableMapOf<String, List<Metric>>()
+    private var precomputedRankings: Map<RankingType, List<RankingItem>> = emptyMap()
 
     fun loadIfNeeded() {
         if (!hasLoaded) {
@@ -123,7 +124,7 @@ class StatsViewModel(private val repository: StatsRepository) : ViewModel() {
     fun setRankingType(type: RankingType) {
         uiState = uiState.copy(
             rankingType = type,
-            rankingItems = buildRankingItems(type, loadedParks, loadedCities, loadedDistricts, loadedStates)
+            rankingItems = precomputedRankings[type] ?: emptyList()
         )
     }
 
@@ -284,6 +285,11 @@ class StatsViewModel(private val repository: StatsRepository) : ViewModel() {
                     assumptions = assumptions,
                 )
 
+                val rankings = RankingType.values().associateWith { type ->
+                    buildRankingItems(type, parks, cities, districts, states)
+                }
+                precomputedRankings = rankings
+
                 StatsUiState(
                     subtitle = snapshotInfo?.let { "Deutschland · Snapshot ${formatGermanDate(it.mastrExportDate)}" }
                         ?: "Deutschland · Snapshot",
@@ -344,13 +350,7 @@ class StatsViewModel(private val repository: StatsRepository) : ViewModel() {
                         ),
                     ),
                     rankingType = RankingType.DISTRICTS,
-                    rankingItems = buildRankingItems(
-                        RankingType.DISTRICTS,
-                        parks,
-                        cities,
-                        districts,
-                        states,
-                    ),
+                    rankingItems = rankings[RankingType.DISTRICTS] ?: emptyList(),
                     districtComparison = selectedDistrict,
                     comparisonType = ComparisonType.PARKS,
                     allParks = parkOptions,
