@@ -11,6 +11,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 
 import app.core.util.formatGermanNumber
+import app.core.model.WindPark
+import app.core.model.Metric
 
 class FavoritesViewModel(private val repository: SavedPlacesRepository) : ViewModel() {
     var uiState: FavoritesUiState by mutableStateOf(FavoritesUiState())
@@ -38,22 +40,7 @@ class FavoritesViewModel(private val repository: SavedPlacesRepository) : ViewMo
                     val batchMetricsByParkId = batchMetricsList.groupBy { it.subjectId }
 
                     val favUiList = favs.map { park ->
-                        val metrics = batchMetricsByParkId[park.id] ?: emptyList()
-                        val prodMetric = metrics.firstOrNull { it.metricType == "annual_production" }
-                        val co2Metric = metrics.firstOrNull { it.metricType == "co2_savings" }
-
-                        val prodStr = formatProduction(prodMetric?.value)
-                        val co2Str = formatCo2(co2Metric?.value)
-
-                        FavoriteParkUiModel(
-                            id = park.id,
-                            name = park.name,
-                            distance = "Gemeinde ${park.municipalityName}",
-                            production = prodStr,
-                            co2Reduction = co2Str,
-                            thumbnail = getThumbnailForId(park.id),
-                            isFavorite = park.isFavorite,
-                        )
+                        mapToFavoriteParkUiModel(park, batchMetricsByParkId)
                     }
 
                     val favRegionUiList = favRegionSummaries.map { region ->
@@ -75,22 +62,7 @@ class FavoritesViewModel(private val repository: SavedPlacesRepository) : ViewMo
                     }
 
                     val recentUiList = recents.map { park ->
-                        val metrics = batchMetricsByParkId[park.id] ?: emptyList()
-                        val prodMetric = metrics.firstOrNull { it.metricType == "annual_production" }
-                        val co2Metric = metrics.firstOrNull { it.metricType == "co2_savings" }
-
-                        val prodStr = formatProduction(prodMetric?.value)
-                        val co2Str = formatCo2(co2Metric?.value)
-
-                        FavoriteParkUiModel(
-                            id = park.id,
-                            name = park.name,
-                            distance = "Gemeinde ${park.municipalityName}",
-                            production = prodStr,
-                            co2Reduction = co2Str,
-                            thumbnail = getThumbnailForId(park.id),
-                            isFavorite = park.isFavorite,
-                        )
+                        mapToFavoriteParkUiModel(park, batchMetricsByParkId)
                     }
                     Triple(favUiList, favRegionUiList, recentUiList)
                 }
@@ -145,5 +117,23 @@ class FavoritesViewModel(private val repository: SavedPlacesRepository) : ViewMo
             6 -> FavoriteParkThumbnail.Winter
             else -> FavoriteParkThumbnail.Dorf
         }
+    }
+
+    private fun mapToFavoriteParkUiModel(
+        park: WindPark,
+        metricsByParkId: Map<String, List<Metric>>
+    ): FavoriteParkUiModel {
+        val metrics = metricsByParkId[park.id] ?: emptyList()
+        val prodMetric = metrics.firstOrNull { it.metricType == "annual_production" }
+        val co2Metric = metrics.firstOrNull { it.metricType == "co2_savings" }
+        return FavoriteParkUiModel(
+            id = park.id,
+            name = park.name,
+            distance = "Gemeinde ${park.municipalityName}",
+            production = formatProduction(prodMetric?.value),
+            co2Reduction = formatCo2(co2Metric?.value),
+            thumbnail = getThumbnailForId(park.id),
+            isFavorite = park.isFavorite,
+        )
     }
 }
