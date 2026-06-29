@@ -209,12 +209,10 @@ private fun WindPark.toParkMarker() =
 
 private fun WindPark.projectForZoom(zoom: Float): ProjectedPark {
     val scale = mapScale(zoom)
-    val latitudeRadians = latitude.coerceIn(-85.05112878, 85.05112878) * PI / 180.0
-    val sinLatitude = sin(latitudeRadians)
     return ProjectedPark(
         park = this,
-        x = (longitude + 180.0) / 360.0 * scale,
-        y = (0.5 - ln((1.0 + sinLatitude) / (1.0 - sinLatitude)) / (4.0 * PI)) * scale,
+        x = xOffset * scale,
+        y = yOffset * scale,
     )
 }
 
