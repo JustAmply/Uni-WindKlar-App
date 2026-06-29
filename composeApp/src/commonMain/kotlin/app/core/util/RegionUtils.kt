@@ -1,15 +1,12 @@
 package app.core.util
 
-private val redundantRegionTokens = listOf(
+private val normalizedRedundantTokens = listOf(
     "kreisfreie stadt",
     "kreisangehoerige stadt",
-    "kreisangehörige stadt",
     "landkreis",
     "stadtkreis",
-    "städteregion",
     "staedteregion",
-    "städte-region",
-    "staedte-region",
+    "staedte region",
     "regionalverband",
     "gemeinde",
     "stadt",
@@ -37,7 +34,7 @@ fun normalizeRegionName(name: String): String {
     var changed = true
     while (changed) {
         changed = false
-        for (token in redundantRegionTokens.map(::normalizeToken)) {
+        for (token in normalizedRedundantTokens) {
             if (normalized == token) {
                 normalized = ""
                 changed = true
@@ -58,14 +55,3 @@ fun normalizeRegionName(name: String): String {
 
     return normalized
 }
-
-private fun normalizeToken(token: String): String =
-    token
-        .lowercase()
-        .replace("ä", "ae")
-        .replace("ö", "oe")
-        .replace("ü", "ue")
-        .replace("ß", "ss")
-        .replace(Regex("[\\p{Punct}]"), " ")
-        .replace(Regex("\\s+"), " ")
-        .trim()
