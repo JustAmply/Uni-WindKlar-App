@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import app.core.ui.theme.WindklarTheme
 import app.core.ui.components.WindklarHeader
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -72,6 +73,9 @@ fun FaqScreen(
     uiState: FaqUiState = FaqUiState(),
 ) {
     var expandedQuestionId by rememberSaveable { mutableStateOf(uiState.initialExpandedQuestionId) }
+    val groupedQuestions = remember(uiState.questions) {
+        uiState.questions.groupBy { it.category }
+    }
 
     Column(
         modifier = modifier
@@ -86,9 +90,7 @@ fun FaqScreen(
                 .padding(start = 20.dp, top = 20.dp, end = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            uiState.questions
-                .groupBy { it.category }
-                .forEach { (category, questions) ->
+            groupedQuestions.forEach { (category, questions) ->
                     FaqCategoryHeader(category = category)
 
                     questions.forEach { question ->
