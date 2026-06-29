@@ -14,6 +14,11 @@ class SqlDelightWindParkDao(
     override suspend fun getById(id: String): WindParkEntity? {
         return database.windParkQueries.selectWindParkById(id).executeAsOneOrNull()?.toEntity()
     }
+    
+    override suspend fun getByIds(ids: Collection<String>): List<WindParkEntity> {
+        if (ids.isEmpty()) return emptyList()
+        return database.windParkQueries.selectWindParksByIds(ids).executeAsList().map { it.toEntity() }
+    }
 
     override suspend fun search(query: String): List<WindParkEntity> {
         return database.windParkQueries.searchWindParks(query).executeAsList().map { it.toEntity() }

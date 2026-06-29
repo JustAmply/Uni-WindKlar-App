@@ -90,12 +90,13 @@ class SqlDelightWindParkRepository(
         val favorites = favoriteDao.getFavoriteIds()
         if (favorites.isEmpty()) return@withContext emptyList()
         val summaries = getOperationalSummaryMap()
+        val entitiesMap = windParkDao.getByIds(favorites).associateBy { it.id }
         favorites.mapNotNull { id ->
             val summary = summaries[id]
             if (summary?.parkStatus == "Stillgelegt") {
                 null
             } else {
-                windParkDao.getById(id)?.toDomain(true, summary)
+                entitiesMap[id]?.toDomain(true, summary)
             }
         }
     }
@@ -151,13 +152,15 @@ class SqlDelightWindParkRepository(
     override suspend fun getRecentWindParks(limit: Long): List<WindPark> = withContext(Dispatchers.Default) {
         val favorites = favoriteDao.getFavoriteIds().toSet()
         val recentIds = recentWindParkDao.getRecentWindParkIds(limit)
+        if (recentIds.isEmpty()) return@withContext emptyList()
         val summaries = getOperationalSummaryMap()
+        val entitiesMap = windParkDao.getByIds(recentIds).associateBy { it.id }
         recentIds.mapNotNull { id ->
             val summary = summaries[id]
             if (summary?.parkStatus == "Stillgelegt") {
                 null
             } else {
-                windParkDao.getById(id)?.toDomain(favorites.contains(id), summary)
+                entitiesMap[id]?.toDomain(favorites.contains(id), summary)
             }
         }
     }

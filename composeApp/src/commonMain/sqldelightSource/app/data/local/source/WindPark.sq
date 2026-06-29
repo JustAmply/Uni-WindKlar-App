@@ -105,3 +105,9 @@ WHERE id = :id;
 
 deleteAllWindParks:
 DELETE FROM wind_park;
+
+selectWindParksByIds:
+SELECT *
+FROM wind_park
+WHERE id IN ?;
+
