@@ -5,7 +5,11 @@
 xcuserdata
 !src/**/build/
 local.properties
-.idea
+.idea/*
+!.idea/
+!.idea/runConfigurations/
+.idea/runConfigurations/*
+!.idea/runConfigurations/androidApp.xml
 .DS_Store
 captures
 .externalNativeBuild

@@ -120,6 +120,8 @@ The app automatically copies the latest bundled source seed database when a chec
 ## 🛠️ Build & Development Guides
 
 ### Build Android App
+For Android Studio, open the project, wait for Gradle sync, and run the shared `androidApp` configuration. This is the only runnable Android app module; `composeApp` is the shared Kotlin Multiplatform library.
+
 To build the debug APK on Windows:
 ```powershell
 .\gradlew.bat :androidApp:assembleDebug
@@ -148,4 +150,3 @@ For stitched full-page screenshots:
 .\scripts\capture_android_screenshots.ps1 -Build -Install -CleanAppData -FullPage -InitialWaitSeconds 25
 ```
 Screenshots are output to `screenshots/android-ai/<timestamp>/`.
-
