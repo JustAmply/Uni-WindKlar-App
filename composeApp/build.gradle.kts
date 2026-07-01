@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
@@ -10,13 +10,22 @@ plugins {
 }
 
 kotlin {
-    androidTarget {
+    android {
+        namespace = "product.lifecycle.windenergy"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
+        
+        androidResources {
+            enable = true
+        }
+
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
+            jvmTarget.set(JvmTarget.JVM_21)
         }
     }
     
     listOf(
+        iosX64(),
         iosArm64(),
         iosSimulatorArm64()
     ).forEach { iosTarget ->
@@ -31,12 +40,13 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.sqldelight.android.driver)
+            implementation(libs.compose.uiTooling)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
-            implementation(compose.materialIconsExtended)
+            implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
@@ -54,41 +64,19 @@ kotlin {
     }
 }
 
-android {
-    namespace = "product.lifecycle.windenergy"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
 
-    defaultConfig {
-        applicationId = "product.lifecycle.windenergy"
-        minSdk = libs.versions.android.minSdk.get().toInt()
-        targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
-    }
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
-    buildTypes {
-        getByName("release") {
-            isMinifyEnabled = false
-        }
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-}
 
-dependencies {
-    debugImplementation(libs.compose.uiTooling)
-}
+
 
 sqldelight {
     databases {
-        create("AppDatabase") {
-            packageName.set("app.data.local.db")
+        create("SourceDatabase") {
+            packageName.set("app.data.local.source")
+            srcDirs("src/commonMain/sqldelightSource")
+        }
+        create("UserDatabase") {
+            packageName.set("app.data.local.user")
+            srcDirs("src/commonMain/sqldelightUser")
         }
     }
 }

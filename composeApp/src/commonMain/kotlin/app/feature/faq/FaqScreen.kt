@@ -37,7 +37,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import app.core.ui.theme.WindklarTheme
+import app.core.ui.components.WindklarHeader
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,14 +55,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.jetbrains.compose.resources.painterResource
+import windklar.composeapp.generated.resources.Res
+import windklar.composeapp.generated.resources.header_background_quiet
 
-private val ScreenBackground = Color(0xFFF8FAF7)
-private val PrimaryGreen = Color(0xFF2D5A2D)
-private val HeaderEndGreen = Color(0xFF43A047)
-private val DarkGreen = Color(0xFF1A3A1A)
-private val MutedGreen = Color(0xFF5A7A5A)
-private val PaleGreen = Color(0xFFE8F5E9)
-private val ContactCardEndGreen = Color(0xFFC8E6C9)
+private val ScreenBackground @Composable get() = WindklarTheme.colors.screenBackground
+private val PrimaryGreen @Composable get() = WindklarTheme.colors.primaryGreen
+private val HeaderEndGreen @Composable get() = WindklarTheme.colors.headerEndGreen
+private val DarkGreen @Composable get() = WindklarTheme.colors.darkGreen
+private val MutedGreen @Composable get() = WindklarTheme.colors.mutedGreen
+private val PaleGreen @Composable get() = WindklarTheme.colors.paleGreen
+private val ContactCardEndGreen @Composable get() = WindklarTheme.colors.contactCardEndGreen
 
 @Composable
 fun FaqScreen(
@@ -66,6 +73,9 @@ fun FaqScreen(
     uiState: FaqUiState = FaqUiState(),
 ) {
     var expandedQuestionId by rememberSaveable { mutableStateOf(uiState.initialExpandedQuestionId) }
+    val groupedQuestions = remember(uiState.questions) {
+        uiState.questions.groupBy { it.category }
+    }
 
     Column(
         modifier = modifier
@@ -77,13 +87,10 @@ fun FaqScreen(
 
         Column(
             modifier = Modifier
-                .offset(y = (-16).dp)
-                .padding(start = 20.dp, top = 16.dp, end = 20.dp),
+                .padding(start = 20.dp, top = 20.dp, end = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            uiState.questions
-                .groupBy { it.category }
-                .forEach { (category, questions) ->
+            groupedQuestions.forEach { (category, questions) ->
                     FaqCategoryHeader(category = category)
 
                     questions.forEach { question ->
@@ -112,28 +119,13 @@ fun FaqScreen(
 
 @Composable
 private fun FaqHeader() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(PrimaryGreen, HeaderEndGreen),
-                    start = Offset.Zero,
-                    end = Offset(900f, 900f),
-                ),
-            )
-            .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 32.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = "Häufige Fragen",
-            color = Color.White,
-            fontSize = 24.sp,
-            lineHeight = 32.sp,
-            fontWeight = FontWeight.Medium,
-        )
-    }
+    WindklarHeader(
+        title = "Häufige Fragen",
+        subtitle = "Hintergründe zu Datenquellen und Berechnungen",
+        showDecorativeCircles = false,
+        backgroundPainter = painterResource(Res.drawable.header_background_quiet),
+        bottomPadding = 24.dp
+    )
 }
 
 @Composable
@@ -167,7 +159,7 @@ private fun FaqAccordionItem(
             .clip(itemShape)
             .animateContentSize(),
         shape = itemShape,
-        color = Color.White,
+        color = WindklarTheme.colors.cardBackground,
         shadowElevation = 6.dp,
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {

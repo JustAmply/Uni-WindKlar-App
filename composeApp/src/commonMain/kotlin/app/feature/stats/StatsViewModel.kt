@@ -5,161 +5,423 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.core.model.Metric
+import app.core.model.NationalStatsSummary
+import app.core.model.RegionSummary
+import app.core.model.SnapshotAssumption
 import app.core.model.WindPark
-import app.data.repository.WindParkRepository
+import app.core.model.RankingItem
+import app.core.model.RankingDetailLine
+
+import app.data.repository.StatsRepository
 import kotlinx.coroutines.launch
-import kotlin.math.round
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import app.core.util.formatGermanNumber
+import kotlinx.coroutines.Job
+import app.core.ui.components.formatDataQuality
 
-private const val DEFAULT_FULL_LOAD_HOURS = 2_000.0
-private const val CO2_PER_BERLIN_NYC_FLIGHT_KG = 1_000.0
-private const val CO2_PER_CAR_YEAR_KG = 1_500.0
-private const val CO2_PER_COAL_PLANT_YEAR_KG = 1_250_000_000.0
-
-class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
+class StatsViewModel(private val repository: StatsRepository) : ViewModel() {
     var uiState by mutableStateOf(StatsUiState())
         private set
 
-    init {
-        loadStats()
-    }
+    private var hasLoaded = false
+    private var loadJob: Job? = null
+    private val loadingImpactDetails = mutableSetOf<String>()
+    private var loadedParks: List<WindPark> = emptyList()
+    private var loadedNationalSummary: NationalStatsSummary? = null
+    private var loadedCitySummariesById: Map<String, RegionSummary> = emptyMap()
+    private var loadedDistrictSummariesById: Map<String, RegionSummary> = emptyMap()
+    private var loadedStateSummariesById: Map<String, RegionSummary> = emptyMap()
+    private var loadedCities: List<CityStat> = emptyList()
+    private var loadedDistricts: List<DistrictStat> = emptyList()
+    private var loadedStates: List<StateStat> = emptyList()
+    private var loadedAssumptions: List<SnapshotAssumption> = emptyList()
+    private val parkMetricCache = mutableMapOf<String, List<Metric>>()
+    private var precomputedRankings: Map<RankingType, List<RankingItem>> = emptyMap()
 
-    fun refresh() {
-        loadStats()
-    }
-
-    private fun loadStats() {
-        viewModelScope.launch {
-            val parks = repository.getWindParks()
-            val turbines = repository.getAllWindTurbines()
-            val nationalMetrics = repository.getMetricsForNational()
-            val recentParks = repository.getRecentWindParks(limit = 1)
-            val assumptions = repository.getSnapshotAssumptions()
-            val attribution = repository.getSnapshotAttribution()
-
-            val totalCapacityKw = parks.sumOf { it.installedCapacityKw ?: 0L }
-            val totalCapacityMw = totalCapacityKw / 1_000.0
-            val totalProductionKwh = nationalMetrics.firstValue("annual_production")
-                ?: totalCapacityKw * (assumptions.firstOrNull { it.id == "full_load_hours" }?.value ?: DEFAULT_FULL_LOAD_HOURS)
-            val totalCo2Kg = nationalMetrics.firstValue("co2_savings") ?: 0.0
-            val totalHouseholds = nationalMetrics.firstValue("household_equivalent") ?: 0.0
-            val totalMunicipalBenefit = nationalMetrics.firstValue("municipal_participation") ?: 0.0
-
-            val districts = buildDistrictStats(parks, turbines.size, totalCapacityMw)
-            val selectedDistrict = selectDistrictComparison(
-                districts = districts,
-                recentPark = recentParks.firstOrNull(),
-            )
-
-            uiState = StatsUiState(
-                subtitle = "Deutschland · Snapshot 2025",
-                overviewCards = listOf(
-                    StatsOverviewCard(
-                        value = formatInteger(parks.size),
-                        label = "Windparks",
-                        icon = StatsIcon.Wind,
-                    ),
-                    StatsOverviewCard(
-                        value = formatEnergy(totalProductionKwh),
-                        label = "Produktion",
-                        icon = StatsIcon.Production,
-                    ),
-                    StatsOverviewCard(
-                        value = formatCapacity(totalCapacityMw),
-                        label = "Leistung",
-                        icon = StatsIcon.Capacity,
-                    ),
-                ),
-                impactCards = listOf(
-                    StatsImpactCard(
-                        title = "Haushalte",
-                        value = formatCompact(totalHouseholds),
-                        description = "rechnerisch mit Windstrom versorgt",
-                        quality = "estimated",
-                        icon = StatsIcon.Household,
-                    ),
-                    StatsImpactCard(
-                        title = "Kommunaler Nutzen",
-                        value = formatCurrency(totalMunicipalBenefit),
-                        description = "mögliche Beteiligung nach § 6 EEG",
-                        quality = "estimated",
-                        icon = StatsIcon.Money,
-                    ),
-                    StatsImpactCard(
-                        title = "Anlagen",
-                        value = formatInteger(turbines.size),
-                        description = "MaStR/Open-MaStR-Stammdaten im Snapshot",
-                        quality = "official",
-                        icon = StatsIcon.Wind,
-                    ),
-                    StatsImpactCard(
-                        title = "CO2 gespart",
-                        value = formatCo2(totalCo2Kg),
-                        description = "vermiedene Emissionen pro Jahr",
-                        quality = "estimated",
-                        icon = StatsIcon.Co2,
-                    ),
-                ),
-                topDistricts = districts.take(5),
-                districtComparison = selectedDistrict,
-                co2Summary = formatCo2(totalCo2Kg),
-                co2Comparisons = buildCo2Comparisons(totalCo2Kg),
-                capacityClasses = buildCapacityClasses(parks),
-                qualityNotes = listOf(
-                    StatsQualityNote(
-                        label = "Windanlagen",
-                        quality = "official",
-                        description = "Stammdaten aus MaStR/Open-MaStR.",
-                    ),
-                    StatsQualityNote(
-                        label = "Windparks",
-                        quality = "derived",
-                        description = "Gruppierung wird in der Vorverarbeitung aus Anlagendaten gebildet.",
-                    ),
-                    StatsQualityNote(
-                        label = "Wirkungswerte",
-                        quality = "estimated",
-                        description = "Produktion, CO2 und kommunaler Nutzen beruhen auf dokumentierten MVP-Annahmen.",
-                    ),
-                ),
-                attribution = attribution,
-                isLoading = false,
-            )
+    fun loadIfNeeded() {
+        if (!hasLoaded) {
+            loadStats(force = false)
         }
     }
 
-    private fun buildDistrictStats(
-        parks: List<WindPark>,
-        nationalTurbineCount: Int,
-        totalCapacityMw: Double,
-    ): List<DistrictStat> {
-        val parkGroups = parks
-            .filter { it.municipalityId.length >= 5 }
-            .groupBy { it.municipalityId.take(5) }
+    fun refresh() {
+        loadStats(force = true)
+    }
 
-        return parkGroups.map { (districtId, districtParks) ->
-            val districtCapacityMw = districtParks.sumOf { it.installedCapacityKw ?: 0L } / 1_000.0
-            val districtTurbines = districtParks.sumOf { it.turbineCount }
-            val representativeMunicipality = districtParks
-                .groupBy { it.municipalityName }
-                .maxByOrNull { (_, municipalityParks) ->
-                    municipalityParks.sumOf { it.installedCapacityKw ?: 0L }
+    fun loadImpactDetail(metricType: String) {
+        if (!hasLoaded || uiState.isLoading || metricType in loadingImpactDetails) return
+        val alreadyLoaded = when (metricType) {
+            StatsImpactType.Households.name -> uiState.householdsDetail != null
+            StatsImpactType.MunicipalBenefit.name -> uiState.municipalBenefitDetail != null
+            StatsImpactType.Turbines.name -> uiState.turbinesDetail != null
+            StatsImpactType.Co2.name -> uiState.co2Detail != null
+            else -> true
+        }
+        if (alreadyLoaded) return
+
+        loadingImpactDetails += metricType
+        viewModelScope.launch {
+            try {
+                when (metricType) {
+                    StatsImpactType.Households.name -> {
+                        val detail = withContext(Dispatchers.Default) {
+                            buildHouseholdsImpactDetailFromSummary(
+                                parks = loadedParks,
+                                nationalSummary = loadedNationalSummary,
+                                assumptions = loadedAssumptions,
+                            )
+                        }
+                        uiState = uiState.copy(householdsDetail = detail)
+                    }
+                    StatsImpactType.MunicipalBenefit.name -> {
+                        val detail = withContext(Dispatchers.Default) {
+                            buildMunicipalBenefitImpactDetailFromSummary(
+                                parks = loadedParks,
+                                districts = loadedDistricts,
+                                states = loadedStates,
+                                nationalSummary = loadedNationalSummary,
+                                assumptions = loadedAssumptions,
+                            )
+                        }
+                        uiState = uiState.copy(municipalBenefitDetail = detail)
+                    }
+                    StatsImpactType.Turbines.name -> {
+                        val detail = withContext(Dispatchers.Default) {
+                            buildTurbinesImpactDetailFromSummary(
+                                parks = loadedParks,
+                                nationalSummary = loadedNationalSummary,
+                            )
+                        }
+                        uiState = uiState.copy(turbinesDetail = detail)
+                    }
+                    StatsImpactType.Co2.name -> {
+                        val detail = withContext(Dispatchers.Default) {
+                            buildCo2ImpactDetailFromSummary(
+                                parks = loadedParks,
+                                nationalSummary = loadedNationalSummary,
+                                assumptions = loadedAssumptions,
+                            )
+                        }
+                        uiState = uiState.copy(co2Detail = detail)
+                    }
                 }
-                ?.key
-                ?: districtId
-            DistrictStat(
-                districtId = districtId,
-                label = "AGS-Kreis $districtId",
-                contextLabel = representativeMunicipality,
-                windParkCount = districtParks.size,
-                turbineCount = if (districtTurbines > 0) districtTurbines else nationalTurbineCount,
-                installedCapacityMw = districtCapacityMw,
-                shareOfNationalCapacity = if (totalCapacityMw > 0.0) {
-                    (districtCapacityMw / totalCapacityMw).toFloat().coerceIn(0f, 1f)
-                } else {
-                    0f
-                },
-            )
-        }.sortedByDescending { it.installedCapacityMw }
+            } finally {
+                loadingImpactDetails -= metricType
+            }
+        }
+    }
+
+    fun setComparisonType(type: ComparisonType) {
+        uiState = uiState.copy(comparisonType = type)
+        updateComparison()
+    }
+
+    fun setSelectedTab(tab: StatsTab) {
+        uiState = uiState.copy(selectedTab = tab)
+    }
+
+    fun setRankingType(type: RankingType) {
+        uiState = uiState.copy(
+            rankingType = type,
+            rankingItems = precomputedRankings[type] ?: emptyList()
+        )
+    }
+
+    fun selectInComparison(type: RankingType, itemId: String) {
+        when (type) {
+            RankingType.PARKS -> {
+                uiState = uiState.copy(
+                    comparisonType = ComparisonType.PARKS,
+                    selectedParkA = uiState.allParks.firstOrNull { it.id == itemId },
+                    selectedTab = StatsTab.COMPARISON
+                )
+            }
+            RankingType.CITIES -> {
+                uiState = uiState.copy(
+                    comparisonType = ComparisonType.CITIES,
+                    selectedCityA = uiState.allCities.firstOrNull { it.id == itemId },
+                    selectedTab = StatsTab.COMPARISON
+                )
+            }
+            RankingType.DISTRICTS -> {
+                uiState = uiState.copy(
+                    comparisonType = ComparisonType.DISTRICTS,
+                    selectedDistrictA = uiState.allDistricts.firstOrNull { it.id == itemId },
+                    selectedTab = StatsTab.COMPARISON
+                )
+            }
+            RankingType.STATES -> {
+                uiState = uiState.copy(
+                    comparisonType = ComparisonType.STATES,
+                    selectedStateA = uiState.allStates.firstOrNull { it.id == itemId },
+                    selectedTab = StatsTab.COMPARISON
+                )
+            }
+        }
+        updateComparison()
+    }
+
+    fun selectParkA(parkId: String?) {
+        uiState = uiState.copy(selectedParkA = uiState.allParks.firstOrNull { it.id == parkId })
+        updateComparison()
+    }
+
+    fun selectParkB(parkId: String?) {
+        uiState = uiState.copy(selectedParkB = uiState.allParks.firstOrNull { it.id == parkId })
+        updateComparison()
+    }
+
+    fun selectCityA(cityId: String?) {
+        uiState = uiState.copy(selectedCityA = uiState.allCities.firstOrNull { it.id == cityId })
+        updateComparison()
+    }
+
+    fun selectCityB(cityId: String?) {
+        uiState = uiState.copy(selectedCityB = uiState.allCities.firstOrNull { it.id == cityId })
+        updateComparison()
+    }
+
+    fun selectDistrictA(districtId: String?) {
+        uiState = uiState.copy(selectedDistrictA = uiState.allDistricts.firstOrNull { it.id == districtId })
+        updateComparison()
+    }
+
+    fun selectDistrictB(districtId: String?) {
+        uiState = uiState.copy(selectedDistrictB = uiState.allDistricts.firstOrNull { it.id == districtId })
+        updateComparison()
+    }
+
+    fun selectStateA(stateId: String?) {
+        uiState = uiState.copy(selectedStateA = uiState.allStates.firstOrNull { it.id == stateId })
+        updateComparison()
+    }
+
+    fun selectStateB(stateId: String?) {
+        uiState = uiState.copy(selectedStateB = uiState.allStates.firstOrNull { it.id == stateId })
+        updateComparison()
+    }
+
+    private fun loadStats(force: Boolean) {
+        if (loadJob?.isActive == true) return
+        if (!force && hasLoaded) return
+
+        uiState = uiState.copy(isLoading = true)
+        loadJob = viewModelScope.launch {
+            val parks = repository.getWindParks()
+            val nationalSummary = repository.getNationalStatsSummary()
+            val citySummaries = repository.getRegionSummaries("city")
+            val districtSummaries = repository.getRegionSummaries("district")
+            val stateSummaries = repository.getRegionSummaries("state")
+            val recentParks = repository.getRecentWindParks(limit = 1)
+            val assumptions = repository.getSnapshotAssumptions()
+            val attribution = repository.getSnapshotAttribution()
+            val snapshotInfo = repository.getSnapshotInfo()
+
+            val newState = withContext(Dispatchers.Default) {
+                loadedParks = parks
+                loadedNationalSummary = nationalSummary
+                loadedCitySummariesById = citySummaries.associateBy { it.regionId }
+                loadedDistrictSummariesById = districtSummaries.associateBy { it.regionId }
+                loadedStateSummariesById = stateSummaries.associateBy { it.regionId }
+                loadedAssumptions = assumptions
+                parkMetricCache.clear()
+
+                val totalCapacityKw = nationalSummary?.installedCapacityKw
+                    ?: parks.sumOf { it.installedCapacityKw ?: 0L }
+                val totalCapacityMw = totalCapacityKw / 1_000.0
+                val totalProductionKwh = nationalSummary?.annualProductionKwh
+                    ?: totalCapacityKw * assumptionValue("full_load_hours", assumptions, DEFAULT_FULL_LOAD_HOURS)
+                val totalCo2Kg = nationalSummary?.co2SavingsKg ?: 0.0
+                val totalHouseholds = nationalSummary?.householdEquivalent ?: 0.0
+                val totalMunicipalBenefit = nationalSummary?.municipalBenefitEur ?: 0.0
+                val activeTurbineCount = nationalSummary?.activeTurbineCount ?: parks.sumOf { it.turbineCount }
+
+                val cities = buildCityStatsFromSummaries(citySummaries, stateSummaries, totalCapacityMw)
+                loadedCities = cities
+
+                val districts = buildDistrictStatsFromSummaries(districtSummaries, stateSummaries, totalCapacityMw)
+                loadedDistricts = districts
+
+                val states = buildStateStatsFromSummaries(stateSummaries, totalCapacityMw)
+                loadedStates = states
+
+                val recentPark = recentParks.firstOrNull()
+                val selectedDistrict = selectDistrictComparison(
+                    districts = districts,
+                    recentPark = recentPark,
+                )
+
+                val parkOptions = parks
+                    .sortedWith(compareByDescending<WindPark> { it.installedCapacityKw ?: 0L }.thenBy { it.name })
+                    .map { it.toComparisonOption() }
+                val cityOptions = cities.map { it.toComparisonOption() }
+                val districtOptions = districts.map { it.toComparisonOption() }
+                val stateOptions = states.map { it.toComparisonOption() }
+
+                val selectedParkA = recentPark?.let { recent ->
+                    parkOptions.firstOrNull { it.id == recent.id }
+                } ?: parkOptions.firstOrNull()
+                val selectedParkB = parkOptions.firstOrNull { it.id != selectedParkA?.id }
+
+                val selectedCityA = recentPark?.let { recent ->
+                    cityOptions.firstOrNull { it.id == recent.municipalityId }
+                } ?: cityOptions.firstOrNull()
+                val selectedCityB = cityOptions.firstOrNull { it.id != selectedCityA?.id }
+
+                val selectedDistrictA = recentPark?.let { recent ->
+                    districtOptions.firstOrNull { it.id == recent.districtId }
+                } ?: districtOptions.firstOrNull()
+                val selectedDistrictB = districtOptions.firstOrNull { it.id != selectedDistrictA?.id }
+
+                val selectedStateA = recentPark?.let { recent ->
+                    stateOptions.firstOrNull { it.id == recent.stateId }
+                } ?: stateOptions.firstOrNull()
+                val selectedStateB = stateOptions.firstOrNull { it.id != selectedStateA?.id }
+
+                val comparisonRows = buildParkComparisonRows(
+                    parkIdA = selectedParkA?.id,
+                    parkIdB = selectedParkB?.id,
+                    assumptions = assumptions,
+                )
+
+                val rankings = RankingType.values().associateWith { type ->
+                    buildRankingItems(type, parks, cities, districts, states)
+                }
+                precomputedRankings = rankings
+
+                StatsUiState(
+                    subtitle = snapshotInfo?.let { "Deutschland · Snapshot ${formatGermanDate(it.mastrExportDate)}" }
+                        ?: "Deutschland · Snapshot",
+                    snapshotInfoLine = "Lokaler Datenstand · keine Live-Daten",
+                    overviewCards = listOf(
+                        StatsOverviewCard(
+                            value = formatInteger(nationalSummary?.windParkCount ?: parks.size),
+                            label = "Windparks",
+                            icon = StatsIcon.Wind,
+                        ),
+                        StatsOverviewCard(
+                            value = formatEnergy(totalProductionKwh),
+                            label = "Produktion",
+                            icon = StatsIcon.Production,
+                        ),
+                        StatsOverviewCard(
+                            value = formatCapacity(totalCapacityMw),
+                            label = "Leistung",
+                            icon = StatsIcon.Capacity,
+                        ),
+                    ),
+                    impactCards = listOf(
+                        StatsImpactCard(
+                            type = StatsImpactType.Households,
+                            title = "Haushalte",
+                            value = formatCompact(totalHouseholds),
+                            description = "rechnerisch mit Windstrom versorgt",
+                            quality = "estimated",
+                            metaLabel = "Geschätzt",
+                            icon = StatsIcon.Household,
+                        ),
+                        StatsImpactCard(
+                            type = StatsImpactType.MunicipalBenefit,
+                            title = "Kommunaler Nutzen",
+                            value = formatCurrency(totalMunicipalBenefit),
+                            description = "mögliche Beteiligung für Windenergie an Land nach § 6 EEG",
+                            quality = "estimated",
+                            metaLabel = "Szenario",
+                            icon = StatsIcon.Money,
+                        ),
+                        StatsImpactCard(
+                            type = StatsImpactType.Turbines,
+                            title = "Windanlagen",
+                            value = formatInteger(activeTurbineCount),
+                            description = "MaStR-Stammdaten im Snapshot",
+                            quality = "official",
+                            metaLabel = "Offiziell",
+                            icon = StatsIcon.Wind,
+                        ),
+                        StatsImpactCard(
+                            type = StatsImpactType.Co2,
+                            title = "CO₂ gespart",
+                            value = formatCo2(totalCo2Kg),
+                            description = "vermiedene Emissionen pro Jahr",
+                            quality = "estimated",
+                            metaLabel = "Geschätzt",
+                            icon = StatsIcon.Co2,
+                        ),
+                    ),
+                    rankingType = RankingType.DISTRICTS,
+                    rankingItems = rankings[RankingType.DISTRICTS] ?: emptyList(),
+                    districtComparison = selectedDistrict,
+                    comparisonType = ComparisonType.PARKS,
+                    allParks = parkOptions,
+                    allCities = cityOptions,
+                    allDistricts = districtOptions,
+                    allStates = stateOptions,
+                    selectedParkA = selectedParkA,
+                    selectedParkB = selectedParkB,
+                    selectedCityA = selectedCityA,
+                    selectedCityB = selectedCityB,
+                    selectedDistrictA = selectedDistrictA,
+                    selectedDistrictB = selectedDistrictB,
+                    selectedStateA = selectedStateA,
+                    selectedStateB = selectedStateB,
+                    comparisonRows = comparisonRows,
+                    co2Summary = formatCo2(totalCo2Kg),
+                    co2Comparisons = buildCo2Comparisons(totalCo2Kg),
+                    capacityClasses = buildCapacityClasses(nationalSummary, parks),
+                    qualityNotes = listOf(
+                        StatsQualityNote(
+                            label = "Windanlagen",
+                            quality = "official",
+                            description = "Stammdaten aus MaStR.",
+                        ),
+                        StatsQualityNote(
+                            label = "Windparks",
+                            quality = "derived",
+                            description = "Gruppierung wird in der Vorverarbeitung aus Anlagendaten gebildet.",
+                        ),
+                        StatsQualityNote(
+                            label = "Wirkungswerte",
+                            quality = "estimated",
+                            description = "Produktion, CO₂ und kommunaler Nutzen für Windenergie an Land beruhen auf dokumentierten MVP-Annahmen.",
+                        ),
+                    ),
+                    attribution = attribution,
+                    isLoading = false,
+                )
+            }
+            hasLoaded = true
+            uiState = newState.copy(selectedTab = uiState.selectedTab)
+        }
+    }
+
+    private fun updateComparison() {
+        viewModelScope.launch {
+            val currentState = uiState
+            val rows = withContext(Dispatchers.Default) {
+                when (currentState.comparisonType) {
+                    ComparisonType.PARKS -> buildParkComparisonRows(
+                        parkIdA = currentState.selectedParkA?.id,
+                        parkIdB = currentState.selectedParkB?.id,
+                        assumptions = loadedAssumptions,
+                    )
+                    ComparisonType.CITIES -> buildCityComparisonRows(
+                        cityIdA = currentState.selectedCityA?.id,
+                        cityIdB = currentState.selectedCityB?.id,
+                    )
+                    ComparisonType.DISTRICTS -> buildDistrictComparisonRows(
+                        districtIdA = currentState.selectedDistrictA?.id,
+                        districtIdB = currentState.selectedDistrictB?.id,
+                    )
+                    ComparisonType.STATES -> buildStateComparisonRows(
+                        stateIdA = currentState.selectedStateA?.id,
+                        stateIdB = currentState.selectedStateB?.id,
+                    )
+                }
+            }
+            uiState = uiState.copy(comparisonRows = rows)
+        }
     }
 
     private fun selectDistrictComparison(
@@ -169,17 +431,16 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
         if (districts.isEmpty()) return null
 
         val district = recentPark
-            ?.municipalityId
-            ?.takeIf { it.length >= 5 }
-            ?.take(5)
+            ?.districtId
             ?.let { districtId -> districts.firstOrNull { it.districtId == districtId } }
             ?: districts.first()
 
         val rank = districts.indexOfFirst { it.districtId == district.districtId } + 1
-        val contextLabel = recentPark?.let { "Zuletzt geöffnet: Gemeinde ${it.municipalityName}" }
-            ?: "Kein zuletzt geöffneter Park"
+        val contextLabel = recentPark?.let { "Zuletzt angesehen: Gemeinde ${it.municipalityName}" }
+            ?: "Kein zuletzt angesehener Windpark"
 
         return DistrictComparison(
+            districtId = district.districtId,
             label = district.label,
             contextLabel = contextLabel,
             rankText = "Rang $rank von ${districts.size}",
@@ -188,107 +449,333 @@ class StatsViewModel(private val repository: WindParkRepository) : ViewModel() {
             turbines = formatInteger(district.turbineCount),
             nationalShare = formatPercent(district.shareOfNationalCapacity),
             shareProgress = district.shareOfNationalCapacity,
-            isFallback = recentPark == null,
         )
     }
 
-    private fun buildCo2Comparisons(totalCo2Kg: Double): List<Co2Comparison> {
-        val values = listOf(
-            "Flüge Berlin-NYC" to totalCo2Kg / CO2_PER_BERLIN_NYC_FLIGHT_KG,
-            "Auto-Jahresfahrten" to totalCo2Kg / CO2_PER_CAR_YEAR_KG,
-            "Kohlekraftwerksjahre" to totalCo2Kg / CO2_PER_COAL_PLANT_YEAR_KG,
+    private suspend fun buildParkComparisonRows(
+        parkIdA: String?,
+        parkIdB: String?,
+        assumptions: List<SnapshotAssumption>,
+    ): List<ComparisonRow> {
+        val parkA = loadedParks.firstOrNull { it.id == parkIdA }
+        val parkB = loadedParks.firstOrNull { it.id == parkIdB }
+        if (parkA == null || parkB == null) return emptyList()
+
+        return buildComparisonRows(
+            metricsA = parkA.comparisonMetrics(metricsForPark(parkA.id), assumptions),
+            metricsB = parkB.comparisonMetrics(metricsForPark(parkB.id), assumptions),
         )
-        return values.map { (label, value) ->
-            Co2Comparison(
-                label = label,
-                value = when (label) {
-                    "Kohlekraftwerksjahre" -> "ca. ${value.roundTo(0).formatGerman()} Jahre"
-                    else -> "ca. ${formatCompact(value)}"
-                },
-                description = when (label) {
-                    "Flüge Berlin-NYC" -> "als grobe Flug-Emissionseinordnung"
-                    "Auto-Jahresfahrten" -> "auf Basis typischer Jahresfahrten"
-                    else -> "bezogen auf ein großes Kohlekraftwerk"
-                },
+    }
+
+    private fun buildCityComparisonRows(
+        cityIdA: String?,
+        cityIdB: String?,
+    ): List<ComparisonRow> {
+        val cityA = loadedCities.firstOrNull { it.cityId == cityIdA }
+        val cityB = loadedCities.firstOrNull { it.cityId == cityIdB }
+        if (cityA == null || cityB == null) return emptyList()
+
+        return buildComparisonRows(
+            metricsA = cityA.comparisonMetrics(),
+            metricsB = cityB.comparisonMetrics(),
+        )
+    }
+
+    private fun buildDistrictComparisonRows(
+        districtIdA: String?,
+        districtIdB: String?,
+    ): List<ComparisonRow> {
+        val districtA = loadedDistricts.firstOrNull { it.districtId == districtIdA }
+        val districtB = loadedDistricts.firstOrNull { it.districtId == districtIdB }
+        if (districtA == null || districtB == null) return emptyList()
+
+        return buildComparisonRows(
+            metricsA = districtA.comparisonMetrics(),
+            metricsB = districtB.comparisonMetrics(),
+        )
+    }
+
+    private fun buildStateComparisonRows(
+        stateIdA: String?,
+        stateIdB: String?,
+    ): List<ComparisonRow> {
+        val stateA = loadedStates.firstOrNull { it.stateId == stateIdA }
+        val stateB = loadedStates.firstOrNull { it.stateId == stateIdB }
+        if (stateA == null || stateB == null) return emptyList()
+
+        return buildComparisonRows(
+            metricsA = stateA.comparisonMetrics(),
+            metricsB = stateB.comparisonMetrics(),
+        )
+    }
+
+    private fun buildComparisonRows(
+        metricsA: ComparisonMetrics,
+        metricsB: ComparisonMetrics,
+    ): List<ComparisonRow> = buildList {
+        add(comparisonRow("Anzahl Windanlagen", metricsA.turbines.toDouble(), metricsB.turbines.toDouble()) {
+            formatInteger(it.roundToInt())
+        }!!)
+        add(comparisonRow("Leistung", metricsA.capacityMw, metricsB.capacityMw) {
+            "${formatGermanNumber(it, 1)} MW"
+        }!!)
+        add(comparisonRow("Jahresproduktion", metricsA.annualProductionKwh, metricsB.annualProductionKwh) {
+            "${formatGermanNumber(it / 1_000_000.0, 1)} GWh"
+        }!!)
+        add(comparisonRow("CO₂-Einsparung", metricsA.co2Kg, metricsB.co2Kg) {
+            "${formatGermanNumber(it / 1_000.0, 0)} t"
+        }!!)
+        add(comparisonRow("Haushaltsäquivalente", metricsA.households, metricsB.households) {
+            formatCompact(it)
+        }!!)
+        comparisonRow("Kommunale Beteiligung an Land", metricsA.municipalBenefit, metricsB.municipalBenefit) {
+            formatCurrency(it)
+        }?.let { add(it) }
+    }
+
+    private suspend fun metricsForPark(parkId: String): List<Metric> {
+        parkMetricCache[parkId]?.let { return it }
+        return repository.getMetricsForPark(parkId).also { parkMetricCache[parkId] = it }
+    }
+
+    private fun CityStat.comparisonMetrics(): ComparisonMetrics {
+        return loadedCitySummariesById[cityId]?.comparisonMetrics()
+            ?: comparisonMetricsFromDisplayedStats(installedCapacityMw, turbineCount, municipalBenefitEur)
+    }
+
+    private fun DistrictStat.comparisonMetrics(): ComparisonMetrics {
+        return loadedDistrictSummariesById[districtId]?.comparisonMetrics()
+            ?: comparisonMetricsFromDisplayedStats(installedCapacityMw, turbineCount, municipalBenefitEur)
+    }
+
+    private fun StateStat.comparisonMetrics(): ComparisonMetrics {
+        return loadedStateSummariesById[stateId]?.comparisonMetrics()
+            ?: comparisonMetricsFromDisplayedStats(installedCapacityMw, turbineCount, municipalBenefitEur)
+    }
+
+    private fun RegionSummary.comparisonMetrics(): ComparisonMetrics =
+        ComparisonMetrics(
+            turbines = turbineCount,
+            capacityMw = installedCapacityKw / 1_000.0,
+            annualProductionKwh = annualProductionKwh,
+            co2Kg = co2SavingsKg,
+            households = householdEquivalent,
+            municipalBenefit = municipalBenefitEur,
+        )
+
+    private fun comparisonMetricsFromDisplayedStats(
+        capacityMw: Double,
+        turbineCount: Int,
+        municipalBenefit: Double?,
+    ): ComparisonMetrics {
+        val annualProduction = capacityMw * 1_000.0 * DEFAULT_FULL_LOAD_HOURS
+        return ComparisonMetrics(
+            turbines = turbineCount,
+            capacityMw = capacityMw,
+            annualProductionKwh = annualProduction,
+            co2Kg = annualProduction * DEFAULT_EMISSION_FACTOR_KG_PER_KWH,
+            households = annualProduction / DEFAULT_HOUSEHOLD_CONSUMPTION_KWH,
+            municipalBenefit = municipalBenefit,
+        )
+    }
+
+    private fun comparisonRow(
+        label: String,
+        rawA: Double?,
+        rawB: Double?,
+        formatter: (Double) -> String,
+    ): ComparisonRow? {
+        if (rawA == null && rawB == null) return null
+        val comparableA = rawA ?: 0.0
+        val comparableB = rawB ?: 0.0
+        val max = maxOf(comparableA, comparableB).takeIf { it > 0.0 } ?: 1.0
+        return ComparisonRow(
+            label = label,
+            valueA = rawA?.let(formatter) ?: "Nicht anwendbar",
+            valueB = rawB?.let(formatter) ?: "Nicht anwendbar",
+            ratioA = (comparableA / max).toFloat().coerceIn(0f, 1f),
+            ratioB = (comparableB / max).toFloat().coerceIn(0f, 1f),
+            isHigherA = when {
+                rawA != null && rawB != null -> rawA >= rawB
+                rawA != null -> true
+                else -> false
+            },
+        )
+    }
+
+    private fun buildCapacityClasses(
+        nationalSummary: NationalStatsSummary?,
+        parks: List<WindPark>,
+    ): List<CapacityClassStat> {
+        val classes = nationalSummary?.let {
+            listOf(
+                "< 5 MW" to it.capacityClassLt5Mw,
+                "5-20 MW" to it.capacityClass5To20Mw,
+                "20-50 MW" to it.capacityClass20To50Mw,
+                "> 50 MW" to it.capacityClassGte50Mw,
             )
-        }
-    }
-
-    private fun buildCapacityClasses(parks: List<WindPark>): List<CapacityClassStat> {
-        val classes = listOf(
+        } ?: listOf(
             "< 5 MW" to parks.count { (it.installedCapacityKw ?: 0L) < 5_000L },
             "5-20 MW" to parks.count { (it.installedCapacityKw ?: 0L) in 5_000L until 20_000L },
             "20-50 MW" to parks.count { (it.installedCapacityKw ?: 0L) in 20_000L until 50_000L },
             "> 50 MW" to parks.count { (it.installedCapacityKw ?: 0L) >= 50_000L },
         )
+        val totalCount = (nationalSummary?.windParkCount ?: parks.size).coerceAtLeast(1)
         val maxCount = classes.maxOfOrNull { it.second } ?: 0
         return classes.map { (label, count) ->
             CapacityClassStat(
                 label = label,
+                description = "Installierte Leistung je Windpark",
                 count = count,
                 share = if (maxCount > 0) count.toFloat() / maxCount else 0f,
+                percentOfTotal = count.toFloat() / totalCount,
             )
         }
     }
 
-    private fun List<app.core.model.Metric>.firstValue(metricType: String): Double? =
-        firstOrNull { it.metricType == metricType }?.value
+    private fun WindPark.toComparisonOption(): ComparisonOption =
+        ComparisonOption(
+            id = id,
+            label = name,
+            description = "${municipalityName} · ${formatCapacity((installedCapacityKw ?: 0L) / 1_000.0)}",
+        )
 
-    private fun formatInteger(value: Int): String = value.toString()
-        .reversed()
-        .chunked(3)
-        .joinToString(".")
-        .reversed()
+    private fun CityStat.toComparisonOption(): ComparisonOption =
+        ComparisonOption(
+            id = cityId,
+            label = label,
+            description = "$districtName, $stateName · ${formatCapacity(installedCapacityMw)} · ${formatInteger(windParkCount)} Windparks",
+        )
+
+    private fun DistrictStat.toComparisonOption(): ComparisonOption =
+        ComparisonOption(
+            id = districtId,
+            label = label,
+            description = "$stateName · ${formatCapacity(installedCapacityMw)} · ${formatInteger(windParkCount)} Windparks",
+        )
+
+    private fun StateStat.toComparisonOption(): ComparisonOption =
+        ComparisonOption(
+            id = stateId,
+            label = label,
+            description = "${formatCapacity(installedCapacityMw)} · ${formatInteger(windParkCount)} Windparks",
+        )
+
+    private fun formatInteger(value: Int): String = formatGermanNumber(value)
+
+    private fun formatGermanDate(isoDate: String): String {
+        val parts = isoDate.split("-")
+        if (parts.size != 3) return isoDate
+        val (year, month, day) = parts
+        return "$day.$month.$year"
+    }
 
     private fun formatEnergy(kwh: Double): String {
         val twh = kwh / 1_000_000_000.0
         return if (twh >= 1.0) {
-            "${twh.roundTo(1).formatGerman()} TWh"
+            "${formatGermanNumber(twh, 1)} TWh"
         } else {
-            "${(kwh / 1_000_000.0).roundTo(1).formatGerman()} GWh"
+            "${formatGermanNumber(kwh / 1_000_000.0, 1)} GWh"
         }
     }
 
     private fun formatCapacity(mw: Double): String =
         if (mw >= 1_000.0) {
-            "${(mw / 1_000.0).roundTo(1).formatGerman()} GW"
+            "${formatGermanNumber(mw / 1_000.0, 1)} GW"
         } else {
-            "${mw.roundTo(0).formatGerman()} MW"
-        }
-
-    private fun formatCo2(kg: Double): String {
-        val mioTons = kg / 1_000_000_000.0
-        return "${mioTons.roundTo(1).formatGerman()} Mio. t"
-    }
-
-    private fun formatCurrency(value: Double): String =
-        if (value >= 1_000_000_000.0) {
-            "${(value / 1_000_000_000.0).roundTo(1).formatGerman()} Mrd. EUR"
-        } else {
-            "${(value / 1_000_000.0).roundTo(1).formatGerman()} Mio. EUR"
-        }
-
-    private fun formatCompact(value: Double): String =
-        if (value >= 1_000_000.0) {
-            "${(value / 1_000_000.0).roundTo(1).formatGerman()} Mio."
-        } else {
-            formatInteger(value.roundToInt())
+            "${formatGermanNumber(mw, 0)} MW"
         }
 
     private fun formatPercent(value: Float): String =
-        "${(value * 100.0).roundTo(1).formatGerman()} %"
+        "${formatGermanNumber(value * 100.0, 1)} %"
 
-    private fun Double.roundTo(decimals: Int): Double {
-        var multiplier = 1.0
-        repeat(decimals) { multiplier *= 10 }
-        return round(this * multiplier) / multiplier
+    private fun buildRankingItems(
+        type: RankingType,
+        parks: List<WindPark>,
+        cities: List<CityStat>,
+        districts: List<DistrictStat>,
+        states: List<StateStat>,
+    ): List<RankingItem> {
+        return when (type) {
+            RankingType.PARKS -> {
+                val sortedParks = parks.sortedWith(
+                    compareByDescending<WindPark> { it.installedCapacityKw ?: 0L }
+                        .thenBy { it.name }
+                )
+                val maxCapacity = sortedParks.firstOrNull()?.installedCapacityKw?.toDouble()?.coerceAtLeast(1.0) ?: 1.0
+                sortedParks.mapIndexed { index, park ->
+                    val capacityMw = (park.installedCapacityKw ?: 0L) / 1_000.0
+                    RankingItem(
+                        id = park.id,
+                        rank = index + 1,
+                        name = park.name,
+                        subtitle = "${park.municipalityName}, ${park.stateName}",
+                        valueLabel = "${formatGermanNumber(capacityMw, 1)} MW",
+                        progress = ((park.installedCapacityKw ?: 0L) / maxCapacity).toFloat().coerceIn(0f, 1f),
+                        details = listOf(
+                            RankingDetailLine("Windanlagen", formatGermanNumber(park.turbineCount)),
+                            RankingDetailLine("Leistung", "${formatGermanNumber(capacityMw, 1)} MW"),
+                            RankingDetailLine("Gemeinde", park.municipalityName),
+                            RankingDetailLine("Datenqualität", formatDataQuality(park.dataQuality)),
+                        )
+                    )
+                }
+            }
+            RankingType.CITIES -> {
+                val maxCapacity = cities.firstOrNull()?.installedCapacityMw?.coerceAtLeast(1.0) ?: 1.0
+                cities.mapIndexed { index, city ->
+                    RankingItem(
+                        id = city.cityId,
+                        rank = index + 1,
+                        name = city.label,
+                        subtitle = "${city.districtName}, ${city.stateName}",
+                        valueLabel = "${formatGermanNumber(city.installedCapacityMw, 1)} MW",
+                        progress = (city.installedCapacityMw / maxCapacity).toFloat().coerceIn(0f, 1f),
+                        details = listOf(
+                            RankingDetailLine("Windparks", formatGermanNumber(city.windParkCount)),
+                            RankingDetailLine("Windanlagen", formatGermanNumber(city.turbineCount)),
+                            RankingDetailLine("Anteil am Bundesland", formatPercent(city.shareOfStateCapacity)),
+                        )
+                    )
+                }
+            }
+            RankingType.DISTRICTS -> {
+                val maxCapacity = districts.firstOrNull()?.installedCapacityMw?.coerceAtLeast(1.0) ?: 1.0
+                districts.mapIndexed { index, district ->
+                    RankingItem(
+                        id = district.districtId,
+                        rank = index + 1,
+                        name = district.label,
+                        subtitle = district.stateName,
+                        valueLabel = "${formatGermanNumber(district.installedCapacityMw, 1)} MW",
+                        progress = (district.installedCapacityMw / maxCapacity).toFloat().coerceIn(0f, 1f),
+                        details = listOf(
+                            RankingDetailLine("Windparks", formatGermanNumber(district.windParkCount)),
+                            RankingDetailLine("Windanlagen", formatGermanNumber(district.turbineCount)),
+                            RankingDetailLine("Anteil am Bundesland", formatPercent(district.shareOfStateCapacity)),
+                        )
+                    )
+                }
+            }
+            RankingType.STATES -> {
+                val maxCapacity = states.firstOrNull()?.installedCapacityMw?.coerceAtLeast(1.0) ?: 1.0
+                states.mapIndexed { index, state ->
+                    RankingItem(
+                        id = state.stateId,
+                        rank = index + 1,
+                        name = state.label,
+                        subtitle = "Deutschland",
+                        valueLabel = "${formatGermanNumber(state.installedCapacityMw, 1)} MW",
+                        progress = (state.installedCapacityMw / maxCapacity).toFloat().coerceIn(0f, 1f),
+                        details = listOf(
+                            RankingDetailLine("Windparks", formatGermanNumber(state.windParkCount)),
+                            RankingDetailLine("Windanlagen", formatGermanNumber(state.turbineCount)),
+                            RankingDetailLine("Anteil am Bund", formatPercent(state.shareOfNationalCapacity)),
+                        )
+                    )
+                }
+            }
+        }
     }
 
-    private fun Double.roundToInt(): Int = round(this).toInt()
-
-    private fun Double.formatGerman(): String {
-        val rounded = toString()
-        val normalized = if (rounded.endsWith(".0")) rounded.dropLast(2) else rounded
-        return normalized.replace(".", ",")
-    }
 }

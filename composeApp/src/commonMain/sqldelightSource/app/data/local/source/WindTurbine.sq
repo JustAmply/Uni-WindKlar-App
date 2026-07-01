@@ -1,0 +1,139 @@
+CREATE TABLE wind_turbine (
+    id TEXT NOT NULL PRIMARY KEY,
+    wind_park_id TEXT NOT NULL REFERENCES wind_park(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    municipality_id TEXT NOT NULL,
+    municipality_name TEXT NOT NULL,
+    district_id TEXT NOT NULL,
+    district_name TEXT NOT NULL,
+    state_id TEXT NOT NULL,
+    state_name TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    installed_capacity_kw INTEGER,
+    status TEXT,
+    turbine_type TEXT,
+    manufacturer TEXT,
+    model TEXT,
+    hub_height_m REAL,
+    rotor_diameter_m REAL,
+    commissioning_year INTEGER,
+    source_name TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    source_updated_at TEXT NOT NULL,
+    data_quality TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_wind_turbine_coords
+ON wind_turbine(latitude, longitude);
+
+CREATE INDEX IF NOT EXISTS idx_wind_turbine_park_id
+ON wind_turbine(wind_park_id);
+
+selectWindTurbinesByParkId:
+SELECT *
+FROM wind_turbine
+WHERE wind_park_id = ?
+ORDER BY name;
+
+selectAllWindTurbines:
+SELECT *
+FROM wind_turbine;
+
+selectWindTurbinesInBounds:
+SELECT *
+FROM wind_turbine
+WHERE latitude BETWEEN :swLat AND :neLat
+  AND longitude BETWEEN :swLon AND :neLon;
+
+countActiveWindTurbines:
+SELECT COUNT(*)
+FROM wind_turbine
+WHERE (
+    status IS NULL
+    OR LOWER(status) LIKE '%betrieb%'
+    OR LOWER(status) LIKE '%aktiv%'
+);
+
+selectParkStatuses:
+SELECT 
+    wind_park_id,
+    CASE 
+        WHEN SUM(CASE WHEN LOWER(COALESCE(status, '')) LIKE '%bau%' OR LOWER(COALESCE(status, '')) LIKE '%errichtung%' THEN 1 ELSE 0 END) > 0 THEN 'Im Bau'
+        WHEN SUM(CASE WHEN status IS NULL OR LOWER(status) LIKE '%betrieb%' OR LOWER(status) LIKE '%aktiv%' THEN 1 ELSE 0 END) > 0 THEN 'Aktiv'
+        WHEN SUM(CASE WHEN LOWER(COALESCE(status, '')) LIKE '%stillgelegt%' THEN 1 ELSE 0 END) > 0 THEN 'Stillgelegt'
+        ELSE 'Geplant'
+    END AS park_status
+FROM wind_turbine
+GROUP BY wind_park_id;
+
+selectValidParkStats:
+SELECT 
+    wind_park_id,
+    COUNT(*) AS valid_turbine_count,
+    SUM(installed_capacity_kw) AS valid_capacity_kw
+FROM wind_turbine
+WHERE status IS NULL 
+   OR LOWER(status) NOT LIKE '%stillgelegt%'
+GROUP BY wind_park_id;
+
+
+
+
+upsertWindTurbine:
+INSERT OR IGNORE INTO wind_turbine(
+    id,
+    wind_park_id,
+    name,
+    municipality_id,
+    municipality_name,
+    district_id,
+    district_name,
+    state_id,
+    state_name,
+    latitude,
+    longitude,
+    installed_capacity_kw,
+    status,
+    turbine_type,
+    manufacturer,
+    model,
+    hub_height_m,
+    rotor_diameter_m,
+    commissioning_year,
+    source_name,
+    source_url,
+    source_updated_at,
+    data_quality
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateWindTurbine:
+UPDATE wind_turbine
+SET
+    wind_park_id = :wind_park_id,
+    name = :name,
+    municipality_id = :municipality_id,
+    municipality_name = :municipality_name,
+    district_id = :district_id,
+    district_name = :district_name,
+    state_id = :state_id,
+    state_name = :state_name,
+    latitude = :latitude,
+    longitude = :longitude,
+    installed_capacity_kw = :installed_capacity_kw,
+    status = :status,
+    turbine_type = :turbine_type,
+    manufacturer = :manufacturer,
+    model = :model,
+    hub_height_m = :hub_height_m,
+    rotor_diameter_m = :rotor_diameter_m,
+    commissioning_year = :commissioning_year,
+    source_name = :source_name,
+    source_url = :source_url,
+    source_updated_at = :source_updated_at,
+    data_quality = :data_quality
+WHERE id = :id;
+
+deleteAllWindTurbines:
+DELETE FROM wind_turbine;

@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.core.ui.theme.WindklarTheme
 
 data class WindKlarBottomNavItem(
     val label: String,
@@ -35,18 +36,19 @@ fun WindKlarBottomNav(
     items: List<WindKlarBottomNavItem>,
     modifier: Modifier = Modifier,
 ) {
+    val colors = WindklarTheme.colors
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .drawBehind {
                 drawLine(
-                    color = Color(0xFFE8F5E9),
+                    color = colors.dividerColor,
                     start = androidx.compose.ui.geometry.Offset(0f, 0f),
                     end = androidx.compose.ui.geometry.Offset(size.width, 0f),
                     strokeWidth = 1.dp.toPx(),
                 )
             },
-        color = Color.White,
+        color = colors.cardBackground,
         shadowElevation = 10.dp,
     ) {
         Row(
@@ -57,7 +59,7 @@ fun WindKlarBottomNav(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             items.forEach { item ->
-                val contentColor = if (item.selected) Color(0xFF2D5A2D) else Color(0xFF5A7A5A)
+                val contentColor = if (item.selected) colors.primaryGreen else colors.mutedGreen
                 Column(
                     modifier = Modifier
                         .weight(1f)

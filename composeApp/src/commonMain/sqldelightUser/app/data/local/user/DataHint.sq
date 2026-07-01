@@ -1,0 +1,58 @@
+CREATE TABLE data_hint (
+    id TEXT NOT NULL PRIMARY KEY,
+    category TEXT NOT NULL,
+    confidence TEXT NOT NULL,
+    status TEXT NOT NULL,
+    description TEXT NOT NULL,
+    wind_turbine_id TEXT,
+    wind_park_id TEXT,
+    municipality_id TEXT,
+    latitude REAL,
+    longitude REAL,
+    suggested_value TEXT,
+    image_uri TEXT,
+    created_at_epoch_millis INTEGER NOT NULL,
+    updated_at_epoch_millis INTEGER NOT NULL
+);
+
+selectDataHints:
+SELECT *
+FROM data_hint
+ORDER BY updated_at_epoch_millis DESC;
+
+upsertDataHint:
+INSERT OR IGNORE INTO data_hint(
+    id,
+    category,
+    confidence,
+    status,
+    description,
+    wind_turbine_id,
+    wind_park_id,
+    municipality_id,
+    latitude,
+    longitude,
+    suggested_value,
+    image_uri,
+    created_at_epoch_millis,
+    updated_at_epoch_millis
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateDataHint:
+UPDATE data_hint
+SET
+    category = :category,
+    confidence = :confidence,
+    status = :status,
+    description = :description,
+    wind_turbine_id = :wind_turbine_id,
+    wind_park_id = :wind_park_id,
+    municipality_id = :municipality_id,
+    latitude = :latitude,
+    longitude = :longitude,
+    suggested_value = :suggested_value,
+    image_uri = :image_uri,
+    created_at_epoch_millis = :created_at_epoch_millis,
+    updated_at_epoch_millis = :updated_at_epoch_millis
+WHERE id = :id;

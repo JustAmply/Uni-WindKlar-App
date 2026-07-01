@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Info
@@ -27,6 +26,7 @@ import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +34,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import app.core.ui.theme.WindklarTheme
+import app.core.ui.components.WindklarHeader
+import app.core.util.rememberPlatformSharer
+import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -43,21 +49,28 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.jetbrains.compose.resources.painterResource
+import windklar.composeapp.generated.resources.Res
+import windklar.composeapp.generated.resources.profile_header_background
 
-private val ScreenBackground = Color(0xFFF8FAF7)
-private val PrimaryGreen = Color(0xFF2D5A2D)
-private val HeaderEndGreen = Color(0xFF43A047)
-private val DarkGreen = Color(0xFF1A3A1A)
-private val MutedGreen = Color(0xFF5A7A5A)
-private val PaleGreen = Color(0xFFE8F5E9)
+private val ScreenBackground @Composable get() = WindklarTheme.colors.screenBackground
+private val PrimaryGreen @Composable get() = WindklarTheme.colors.primaryGreen
+private val HeaderEndGreen @Composable get() = WindklarTheme.colors.headerEndGreen
+private val DarkGreen @Composable get() = WindklarTheme.colors.darkGreen
+private val MutedGreen @Composable get() = WindklarTheme.colors.mutedGreen
+private val PaleGreen @Composable get() = WindklarTheme.colors.paleGreen
 
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel,
+    onReplayOnboarding: () -> Unit,
+    onCreateDataHint: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState = viewModel.uiState
     var showPrivacyDialog by remember { mutableStateOf(false) }
+    var showClearHistoryDialog by remember { mutableStateOf(false) }
+    val platformSharer = rememberPlatformSharer()
 
     Column(
         modifier = modifier
@@ -78,7 +91,15 @@ fun ProfileScreen(
             DataSourceCard(uiState = uiState)
 
             InfoSettingsCard(
-                onPrivacyClick = { showPrivacyDialog = true }
+                onPrivacyClick = { showPrivacyDialog = true },
+                onClearHistoryClick = { showClearHistoryDialog = true },
+                onReplayOnboardingClick = onReplayOnboarding,
+                onExportDataHintsClick = {
+                    viewModel.exportDataHints { csvContent ->
+                        platformSharer.shareText(csvContent, "WindKlar Datenhinweise")
+                    }
+                },
+                onCreateDataHintClick = onCreateDataHint,
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -91,7 +112,7 @@ fun ProfileScreen(
             title = { Text("Lokale Speicherung & Datenschutz", color = DarkGreen, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    "WindKlar speichert keine personenbezogenen Konten. Ihr Standort wird nur temporär zur Zentrierung der Karte verwendet und im MVP nicht dauerhaft gespeichert. Favoriten, Verlauf und Datenhinweise bleiben lokal auf Ihrem Gerät.",
+                    "WindKlar speichert keine personenbezogenen Konten. Ihr Standort wird nur temporär zur Zentrierung der Karte verwendet und im MVP nicht dauerhaft gespeichert. Favoriten, zuletzt angesehene Windparks und Datenhinweise bleiben lokal auf Ihrem Gerät.",
                     color = DarkGreen,
                     fontSize = 14.sp,
                     lineHeight = 20.sp
@@ -106,66 +127,66 @@ fun ProfileScreen(
             }
         )
     }
+
+    if (showClearHistoryDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearHistoryDialog = false },
+            title = { Text("Zuletzt angesehen löschen", color = DarkGreen, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "Möchten Sie die Liste zuletzt angesehener Windparks wirklich löschen? Dies kann nicht rückgängig gemacht werden.",
+                    color = DarkGreen,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.clearRecentWindParks {
+                            showClearHistoryDialog = false
+                        }
+                    }
+                ) {
+                    Text("Löschen")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showClearHistoryDialog = false }
+                ) {
+                    Text("Abbrechen")
+                }
+            }
+        )
+    }
 }
 
 @Composable
 private fun ProfileHeader() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(PrimaryGreen, HeaderEndGreen),
-                    start = Offset.Zero,
-                    end = Offset(900f, 900f),
-                ),
-            )
-            .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 48.dp),
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "Info & Einstellungen",
-                color = Color.White,
-                fontSize = 24.sp,
-                lineHeight = 32.sp,
-                fontWeight = FontWeight.Medium,
-            )
+    WindklarHeader(
+        title = "Info & Einstellungen",
+        showDecorativeCircles = false,
+        backgroundPainter = painterResource(Res.drawable.profile_header_background),
+        bottomPadding = 48.dp,
+        extraContent = {
+            Spacer(modifier = Modifier.height(80.dp))
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .background(Color.White.copy(alpha = 0.2f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Air,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(40.dp),
-                )
-            }
-        }
-    }
+    )
 }
 
 @Composable
 private fun InfoSettingsCard(
     onPrivacyClick: () -> Unit,
+    onClearHistoryClick: () -> Unit,
+    onReplayOnboardingClick: () -> Unit,
+    onExportDataHintsClick: () -> Unit,
+    onCreateDataHintClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = WindklarTheme.colors.cardBackground,
         shadowElevation = 10.dp,
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -193,6 +214,38 @@ private fun InfoSettingsCard(
                 label = "Lokale Speicherung & Datenschutz",
                 onClick = onPrivacyClick
             )
+
+            SettingsRowDivider()
+
+            SettingsActionRow(
+                icon = Icons.Outlined.Share,
+                label = "Datenhinweise exportieren",
+                onClick = onExportDataHintsClick
+            )
+
+            SettingsRowDivider()
+
+            SettingsActionRow(
+                icon = Icons.Outlined.Info,
+                label = "Datenhinweis erstellen",
+                onClick = onCreateDataHintClick
+            )
+
+            SettingsRowDivider()
+
+            SettingsActionRow(
+                icon = Icons.AutoMirrored.Outlined.HelpOutline,
+                label = "Einführung erneut anzeigen",
+                onClick = onReplayOnboardingClick
+            )
+
+            SettingsRowDivider()
+
+            SettingsActionRow(
+                icon = Icons.Outlined.DeleteSweep,
+                label = "Zuletzt angesehen löschen",
+                onClick = onClearHistoryClick
+            )
         }
     }
 }
@@ -204,7 +257,7 @@ private fun DataSourceCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = WindklarTheme.colors.cardBackground,
         shadowElevation = 10.dp,
     ) {
         Column(
@@ -251,12 +304,12 @@ private fun DataSourceCard(
                     Icon(
                         imageVector = Icons.Outlined.Warning,
                         contentDescription = null,
-                        tint = Color(0xFFD32F2F),
+                        tint = WindklarTheme.colors.errorRed,
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
                         text = "Wichtige Einschränkungen:",
-                        color = Color(0xFFD32F2F),
+                        color = WindklarTheme.colors.errorRed,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -340,6 +393,62 @@ private fun SettingsActionRow(
 }
 
 @Composable
+private fun SettingsSwitchRow(
+    icon: ImageVector,
+    label: String,
+    supportingText: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 72.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(PaleGreen, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = PrimaryGreen,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = label,
+                color = DarkGreen,
+                fontSize = 15.sp,
+                lineHeight = 22.sp,
+                fontWeight = FontWeight.Normal,
+            )
+            Text(
+                text = supportingText,
+                color = MutedGreen,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+            )
+        }
+
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+        )
+    }
+}
+
+@Composable
 private fun SettingsRowDivider() {
     Box(
         modifier = Modifier
@@ -363,7 +472,7 @@ private fun AboutCard(
                 .fillMaxWidth()
                 .background(
                     brush = Brush.linearGradient(
-                        colors = listOf(PaleGreen, Color(0xFFC8E6C9)),
+                        colors = listOf(PaleGreen, WindklarTheme.colors.contactCardEndGreen),
                     ),
                     shape = RoundedCornerShape(16.dp),
                 )

@@ -8,16 +8,45 @@ import androidx.lifecycle.viewModelScope
 import app.core.model.MapMarkerKind
 import app.core.model.MapMarkerUiModel
 import app.core.model.WindPark
-import app.data.repository.WindParkRepository
-import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.floor
+import app.core.model.WindTurbine
 
-class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
+import app.core.ui.components.EntityType
+import app.core.ui.components.EntityPreviewData
+import app.core.ui.components.PreviewSheetState
+import app.core.ui.components.PreviewTurbinePoint
+import app.core.util.formatGermanNumber
+import app.data.repository.DataHintRepository
+import app.data.repository.MapRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.math.abs
+import kotlin.math.pow
+
+import app.core.location.LocationProvider
+
+private const val SearchDebounceMillis = 80L
+private const val SelectedParkSearchZoom = 12.5f
+private const val SelectedParkFocusOffsetFraction = 0.22
+
+class MapViewModel(
+    private val repository: MapRepository,
+    private val dataHintRepository: DataHintRepository,
+    private val locationProvider: LocationProvider
+) : ViewModel() {
     var uiState by mutableStateOf(MapUiState(isLoading = true))
         private set
 
     private var parkStatuses: Map<String, String> = emptyMap()
+    private var viewportBounds: MapBounds? = null
+    private var viewportBoundsZoom: Float? = null
+    private var filterJob: Job? = null
+    private var searchJob: Job? = null
+
+    private var searchIndex: List<MapSearchIndexEntry> = emptyList()
 
     init {
         loadMapData()
@@ -26,26 +55,26 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
     fun loadMapData() {
         viewModelScope.launch {
             try {
-                println("MapViewModel: Starting loadMapData...")
                 uiState = uiState.copy(isLoading = true)
-                
-                val allParks = repository.getWindParks()
-                println("MapViewModel: Loaded ${allParks.size} wind parks from repository.")
-                
-                val statusMap = repository.getWindParkStatuses()
-                println("MapViewModel: Loaded ${statusMap.size} park statuses from repository.")
-                
-                parkStatuses = statusMap
 
+                val snapshot = repository.getMapStartupSnapshot()
+                val filters = uiState.filters
+                val zoom = uiState.zoomLevel
+                val startupData = withContext(Dispatchers.Default) {
+                    buildInitialMapData(snapshot, filters, zoom)
+                }
+
+                parkStatuses = snapshot.parkStatuses
+                searchIndex = startupData.searchIndex
                 uiState = uiState.copy(
                     isLoading = false,
-                    parks = allParks,
+                    parks = snapshot.parks,
+                    filteredParks = startupData.filteredParks,
+                    mapMarkers = startupData.mapMarkers,
+                    parkStatuses = snapshot.parkStatuses,
                 )
-                applyFilters()
-                println("MapViewModel: loadMapData finished successfully.")
+                loadRecentParks()
             } catch (e: Throwable) {
-                println("MapViewModel ERROR: loadMapData failed!")
-                e.printStackTrace()
                 uiState = uiState.copy(
                     isLoading = false,
                     parks = emptyList(),
@@ -55,80 +84,286 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
         }
     }
 
-
-    private fun determineParkStatus(statuses: List<String>): String {
-        if (statuses.isEmpty()) return "Aktiv"
-        val lowerStatuses = statuses.map { it.lowercase() }
-        if (lowerStatuses.any { it.contains("bau") || it.contains("errichtung") }) {
-            return "Im Bau"
+    fun loadRecentParks() {
+        viewModelScope.launch {
+            try {
+                val recents = repository.getRecentWindParks(5)
+                uiState = uiState.copy(recentParks = recents)
+            } catch (e: Throwable) {
+                // Recents are optional; keep the map usable if the user database is unavailable.
+            }
         }
-        if (lowerStatuses.any { it.contains("betrieb") || it.contains("aktiv") }) {
-            return "Aktiv"
-        }
-        if (lowerStatuses.any { it.contains("stillgelegt") }) {
-            return "Stillgelegt"
-        }
-        return "Geplant"
     }
 
-    fun setStatusFilter(status: String) {
-        uiState = uiState.copy(selectedStatus = status)
+    fun onSearchFocusChanged(focused: Boolean) {
+        uiState = uiState.copy(isSearchFocused = focused)
+        if (focused) {
+            loadRecentParks()
+            if (uiState.searchQuery.length >= 2) {
+                uiState = uiState.copy(showSearchOverlay = uiState.searchResults.isNotEmpty())
+            } else {
+                uiState = uiState.copy(showSearchOverlay = uiState.recentParks.isNotEmpty())
+            }
+        } else {
+            uiState = uiState.copy(showSearchOverlay = false)
+        }
+    }
+
+
+
+    fun setStatusFilter(status: MapStatusFilter) {
+        uiState = uiState.copy(filters = uiState.filters.copy(status = status))
+        applyFilters()
+    }
+
+    fun setIncludeDecommissioned(includeDecommissioned: Boolean) {
+        val currentStatus = uiState.filters.status
+        val newStatus = if (!includeDecommissioned && currentStatus == MapStatusFilter.Decommissioned) {
+            MapStatusFilter.All
+        } else {
+            currentStatus
+        }
+        uiState = uiState.copy(
+            filters = uiState.filters.copy(
+                includeDecommissioned = includeDecommissioned,
+                status = newStatus
+            )
+        )
+        applyFilters()
+    }
+
+    fun setParkSizeRange(sizeRange: MapParkSizeRange) {
+        uiState = uiState.copy(filters = uiState.filters.copy(sizeRange = sizeRange))
+        applyFilters()
+    }
+
+    fun setCapacityRange(capacityRange: MapCapacityRange) {
+        uiState = uiState.copy(filters = uiState.filters.copy(capacityRange = capacityRange))
+        applyFilters()
+    }
+
+    fun resetMapFilters() {
+        uiState = uiState.copy(filters = MapFilterState())
         applyFilters()
     }
 
     fun onQueryChange(newQuery: String) {
         uiState = uiState.copy(searchQuery = newQuery)
-        if (newQuery.length >= 2) {
-            viewModelScope.launch {
-                val results = repository.searchWindParks(newQuery)
-                uiState = uiState.copy(
-                    searchResults = results,
-                    showSearchOverlay = true
-                )
+        searchJob?.cancel()
+        val normalizedQuery = newQuery.trim().normalizeForSearch()
+        if (normalizedQuery.length >= 2) {
+            searchJob = viewModelScope.launch {
+                delay(SearchDebounceMillis)
+                val combinedResults = withContext(Dispatchers.Default) {
+                    searchMapIndex(searchIndex, normalizedQuery)
+                }
+
+                if (uiState.searchQuery == newQuery) {
+                    val filteredResults = if (!uiState.filters.includeDecommissioned) {
+                        combinedResults.filter { result ->
+                            if (result is MapSearchResult.Park) {
+                                val status = parkStatuses[result.park.id]
+                                status != "Stillgelegt"
+                            } else true
+                        }
+                    } else {
+                        combinedResults
+                    }
+                    uiState = uiState.copy(
+                        searchResults = filteredResults,
+                        showSearchOverlay = true
+                    )
+                }
             }
         } else {
             uiState = uiState.copy(
                 searchResults = emptyList(),
-                showSearchOverlay = false
+                showSearchOverlay = uiState.isSearchFocused && uiState.recentParks.isNotEmpty()
             )
         }
     }
 
-    fun onSearchResultSelected(park: WindPark) {
-        uiState = uiState.copy(
-            mapCenterLat = park.latitude,
-            mapCenterLon = park.longitude,
-            zoomLevel = 12.0f,
-            selectedPark = park,
-            previewSheetState = ParkPreviewSheetState.Expanded,
-            selectedStatus = "Alle",
-            filteredParks = parksForStatus("Alle"),
-            showSearchOverlay = false,
-            searchQuery = ""
-        )
-        applyFilters()
-        viewModelScope.launch {
-            repository.recordRecentWindPark(park.id)
-            val metrics = repository.getMetricsForPark(park.id)
-            uiState = uiState.copy(selectedParkMetrics = metrics)
+    fun onSearchResultSelected(result: MapSearchResult) {
+        searchJob?.cancel()
+        when (result) {
+            is MapSearchResult.State -> {
+                clearViewportBounds()
+                uiState = uiState.copy(
+                    mapCenterLat = result.latitude,
+                    mapCenterLon = result.longitude,
+                    zoomLevel = 8.0f,
+                    selectedPark = null,
+                    selectedPreviewData = null,
+                    previewSheetState = PreviewSheetState.Peek,
+                    showSearchOverlay = false,
+                    searchQuery = ""
+                )
+                loadRegionMetrics(result.id, "state", result.name, null)
+            }
+            is MapSearchResult.District -> {
+                clearViewportBounds()
+                uiState = uiState.copy(
+                    mapCenterLat = result.latitude,
+                    mapCenterLon = result.longitude,
+                    zoomLevel = 10.0f,
+                    selectedPark = null,
+                    selectedPreviewData = null,
+                    previewSheetState = PreviewSheetState.Peek,
+                    showSearchOverlay = false,
+                    searchQuery = ""
+                )
+                loadRegionMetrics(result.id, "district", result.name, result.stateName)
+            }
+            is MapSearchResult.Municipality -> {
+                clearViewportBounds()
+                uiState = uiState.copy(
+                    mapCenterLat = result.latitude,
+                    mapCenterLon = result.longitude,
+                    zoomLevel = 12.0f,
+                    selectedPark = null,
+                    selectedPreviewData = null,
+                    previewSheetState = PreviewSheetState.Peek,
+                    showSearchOverlay = false,
+                    searchQuery = ""
+                )
+                loadRegionMetrics(result.id, "city", result.name, "${result.districtName}, ${result.stateName}")
+            }
+            is MapSearchResult.Park -> {
+                val park = result.park
+                val zoom = SelectedParkSearchZoom
+                val focusedCenter = previewFocusedCenter(
+                    latitude = park.latitude,
+                    longitude = park.longitude,
+                    zoom = zoom,
+                )
+                clearViewportBounds()
+                uiState = uiState.copy(
+                    mapCenterLat = focusedCenter.first,
+                    mapCenterLon = focusedCenter.second,
+                    zoomLevel = zoom,
+                    selectedPark = park,
+                    previewSheetState = PreviewSheetState.Peek,
+                    filters = MapFilterState(),
+                    showSearchOverlay = false,
+                    searchQuery = ""
+                )
+                applyFilters()
+                loadParkPreviewData(park)
+            }
         }
     }
 
     fun onParkClicked(park: WindPark) {
-        uiState = uiState.copy(
-            selectedPark = park,
-            previewSheetState = ParkPreviewSheetState.Expanded
+        val zoom = maxOf(uiState.zoomLevel, TurbineMarkerMinZoom)
+        val focusedCenter = previewFocusedCenter(
+            latitude = park.latitude,
+            longitude = park.longitude,
+            zoom = zoom,
         )
-        viewModelScope.launch {
-            repository.recordRecentWindPark(park.id)
-            val metrics = repository.getMetricsForPark(park.id)
-            uiState = uiState.copy(selectedParkMetrics = metrics)
-        }
+        clearViewportBounds()
+        uiState = uiState.copy(
+            mapCenterLat = focusedCenter.first,
+            mapCenterLon = focusedCenter.second,
+            zoomLevel = zoom,
+            selectedPark = park,
+            previewSheetState = PreviewSheetState.Peek
+        )
+        loadParkPreviewData(park)
     }
 
     fun onParkClickedById(parkId: String) {
         val park = uiState.parks.firstOrNull { it.id == parkId } ?: return
         onParkClicked(park)
+    }
+
+    private fun loadParkPreviewData(park: WindPark) {
+        viewModelScope.launch {
+            try {
+                repository.recordRecentWindPark(park.id)
+                loadRecentParks()
+                val metrics = repository.getMetricsForPark(park.id)
+                val turbines = repository.getWindTurbinesForPark(park.id)
+                val annualMetric = metrics.firstOrNull { it.metricType == "annual_production" }
+                val co2Metric = metrics.firstOrNull { it.metricType == "co2_savings" }
+                val houseMetric = metrics.firstOrNull { it.metricType == "households_supplied" } ?: metrics.firstOrNull { it.metricType == "household_equivalent" }
+                val muniMetric = metrics.firstOrNull { it.metricType == "municipal_participation" }
+                val annualGwh = annualMetric?.value?.let { it / 1_000_000.0 }
+                val co2Tons = co2Metric?.value?.let { it / 1000.0 }
+                val households = houseMetric?.value
+                val municipalBenefit = muniMetric?.value
+
+                uiState = uiState.copy(
+                    selectedPreviewData = EntityPreviewData(
+                        id = park.id,
+                        type = EntityType.PARK,
+                        title = park.name,
+                        subtitle = "Gemeinde ${park.municipalityName}",
+                        statusLabel = parkStatuses[park.id] ?: "Aktiv",
+                        turbineCountLabel = formatTurbineLabel(park.turbineCount),
+                        capacityLabel = formatCapacityLabel(park.installedCapacityKw),
+                        turbines = turbines.toPreviewPoints(),
+                        annualProductionGwh = annualGwh,
+                        co2SavingsTons = co2Tons,
+                        householdsSupplied = households,
+                        municipalBenefitEur = municipalBenefit,
+                    )
+                )
+            } catch (e: Throwable) {
+                // Preview data is supplemental; selection itself should remain responsive.
+            }
+        }
+    }
+
+    private fun loadRegionMetrics(id: String, type: String, name: String, parentContext: String?) {
+        viewModelScope.launch {
+            try {
+                val regionSummary = repository
+                    .getRegionSummary(type, id)
+                val annualProductionGwh = regionSummary?.annualProductionKwh?.let { it / 1_000_000.0 }
+                val co2SavingsTons = regionSummary?.co2SavingsKg?.let { it / 1000.0 }
+                val households = regionSummary?.householdEquivalent
+                val municipalBenefit = regionSummary?.municipalBenefitEur
+                
+                val entityType = when (type.lowercase()) {
+                    "city" -> EntityType.CITY
+                    "district" -> EntityType.DISTRICT
+                    "state" -> EntityType.STATE
+                    else -> EntityType.CITY
+                }
+                
+                val regionTypeLabel = when (entityType) {
+                    EntityType.CITY -> "Gemeinde"
+                    EntityType.DISTRICT -> "Landkreis"
+                    EntityType.STATE -> "Bundesland"
+                    else -> "Region"
+                }
+ 
+                val subtitle = when (entityType) {
+                    EntityType.CITY -> "Gemeinde in $parentContext"
+                    EntityType.DISTRICT -> "Landkreis in $parentContext"
+                    EntityType.STATE -> "Bundesland"
+                    else -> "Region"
+                }
+ 
+                uiState = uiState.copy(
+                    selectedPreviewData = EntityPreviewData(
+                        id = id,
+                        type = entityType,
+                        title = name,
+                        subtitle = subtitle,
+                        statusLabel = regionTypeLabel,
+                        turbineCountLabel = regionSummary?.turbineCount?.let { formatTurbineLabel(it) },
+                        capacityLabel = regionSummary?.installedCapacityKw?.let { formatCapacityLabel(it) },
+                        annualProductionGwh = annualProductionGwh,
+                        co2SavingsTons = co2SavingsTons,
+                        householdsSupplied = households,
+                        municipalBenefitEur = municipalBenefit,
+                    )
+                )
+            } catch (e: Throwable) {
+                // Region preview metrics are supplemental.
+            }
+        }
     }
 
     fun submitDataHint(
@@ -143,7 +378,7 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
         onSuccess: () -> Unit
     ) {
         viewModelScope.launch {
-            repository.submitDataHint(
+            dataHintRepository.submitDataHint(
                 category = category,
                 confidence = confidence,
                 description = description,
@@ -160,29 +395,64 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
         }
     }
 
+    fun startPinPlacement(reportPark: WindPark? = uiState.selectedPark) {
+        uiState = uiState.copy(
+            isPinPlacementMode = true,
+            placementMarkerLat = reportPark?.latitude ?: uiState.mapCenterLat,
+            placementMarkerLon = reportPark?.longitude ?: uiState.mapCenterLon,
+            pendingReportPark = reportPark,
+        )
+        applyFilters()
+    }
+
+    fun updatePlacementPinLocation(lat: Double, lon: Double) {
+        uiState = uiState.copy(
+            placementMarkerLat = lat,
+            placementMarkerLon = lon
+        )
+        applyFilters()
+    }
+
+    fun cancelPinPlacement() {
+        uiState = uiState.copy(
+            isPinPlacementMode = false,
+            pendingReportPark = null,
+        )
+        applyFilters()
+    }
+
+    fun confirmPinPlacement(onConfirm: (Double, Double) -> Unit) {
+        val lat = uiState.placementMarkerLat
+        val lon = uiState.placementMarkerLon
+        uiState = uiState.copy(isPinPlacementMode = false)
+        applyFilters()
+        onConfirm(lat, lon)
+    }
+
 
 
     fun expandPreview() {
-        if (uiState.selectedPark != null) {
-            uiState = uiState.copy(previewSheetState = ParkPreviewSheetState.Expanded)
+        if (uiState.previewSheetState != PreviewSheetState.Hidden) {
+            uiState = uiState.copy(previewSheetState = PreviewSheetState.Peek)
         }
     }
 
     fun minimizePreview() {
-        if (uiState.selectedPark != null) {
-            uiState = uiState.copy(previewSheetState = ParkPreviewSheetState.Minimized)
+        if (uiState.previewSheetState != PreviewSheetState.Hidden) {
+            uiState = uiState.copy(previewSheetState = PreviewSheetState.Minimized)
         }
     }
 
     fun dismissPreview() {
         uiState = uiState.copy(
             selectedPark = null,
-            previewSheetState = ParkPreviewSheetState.Expanded,
-            selectedParkMetrics = emptyList()
+            selectedPreviewData = null,
+            previewSheetState = PreviewSheetState.Hidden
         )
     }
 
     fun centerOnLocation(lat: Double, lon: Double) {
+        clearViewportBounds()
         uiState = uiState.copy(
             mapCenterLat = lat,
             mapCenterLon = lon,
@@ -191,24 +461,110 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
         applyFilters()
     }
 
+    fun selectParkOnMap(parkId: String) {
+        val park = uiState.parks.firstOrNull { it.id == parkId } ?: return
+        onParkClicked(park)
+    }
+
+    fun selectRegionOnMap(type: String, id: String) {
+        viewModelScope.launch {
+            try {
+                val regionSummary = repository
+                    .getRegionSummary(type, id) ?: return@launch
+                
+                val zoom = when (type.lowercase()) {
+                    "state" -> 8.0f
+                    "district" -> 10.0f
+                    "city" -> 12.0f
+                    else -> 10.0f
+                }
+                
+                clearViewportBounds()
+                uiState = uiState.copy(
+                    mapCenterLat = regionSummary.latitude,
+                    mapCenterLon = regionSummary.longitude,
+                    zoomLevel = zoom,
+                    selectedPark = null,
+                    selectedPreviewData = null,
+                    previewSheetState = PreviewSheetState.Peek,
+                    showSearchOverlay = false,
+                    searchQuery = ""
+                )
+                loadRegionMetrics(id, type, regionSummary.name, regionSummary.contextLabel)
+            } catch (e: Throwable) {
+                // Ignore
+            }
+        }
+    }
+
+    fun selectTurbineOnMap(parkId: String, turbineId: String) {
+        viewModelScope.launch {
+            try {
+                val park = uiState.parks.firstOrNull { it.id == parkId } ?: return@launch
+                val turbines = repository.getWindTurbinesForPark(parkId)
+                val turbine = turbines.firstOrNull { it.id == turbineId } ?: return@launch
+                
+                clearViewportBounds()
+                uiState = uiState.copy(
+                    mapCenterLat = turbine.latitude,
+                    mapCenterLon = turbine.longitude,
+                    zoomLevel = 15.0f,
+                    selectedPark = park,
+                    previewSheetState = PreviewSheetState.Peek,
+                    showSearchOverlay = false,
+                    searchQuery = ""
+                )
+                applyFilters()
+                loadParkPreviewData(park)
+            } catch (e: Throwable) {
+                // Ignore
+            }
+        }
+    }
+
+    fun centerOnUserLocation(onPermissionRequired: () -> Unit, onError: (String) -> Unit) {
+        if (!locationProvider.hasPermission()) {
+            onPermissionRequired()
+            return
+        }
+        viewModelScope.launch {
+            try {
+                uiState = uiState.copy(isLoading = true)
+                val location = locationProvider.getCurrentLocation()
+                uiState = uiState.copy(isLoading = false)
+                if (location != null) {
+                    centerOnLocation(location.first, location.second)
+                } else {
+                    onError("Standort konnte nicht ermittelt werden.")
+                }
+            } catch (e: Throwable) {
+                uiState = uiState.copy(isLoading = false)
+                onError("Fehler bei der Ortung: ${e.message ?: e.toString()}")
+            }
+        }
+    }
+
     fun onZoomChanged(zoom: Float) {
+        clearViewportBounds()
         uiState = uiState.copy(zoomLevel = zoom.coerceIn(5.0f, 18.0f))
         applyFilters()
     }
 
     fun onClusterClicked(lat: Double, lon: Double) {
+        clearViewportBounds()
         uiState = uiState.copy(
             mapCenterLat = lat,
             mapCenterLon = lon,
             zoomLevel = (uiState.zoomLevel + 2.0f).coerceIn(5.0f, 18.0f),
             selectedPark = null,
-            selectedParkMetrics = emptyList(),
-            previewSheetState = ParkPreviewSheetState.Expanded,
+            selectedPreviewData = null,
+            previewSheetState = PreviewSheetState.Hidden,
         )
         applyFilters()
     }
 
     fun onMapMoved(lat: Double, lon: Double, zoom: Float) {
+        clearViewportBounds()
         if (abs(uiState.mapCenterLat - lat) > 0.0001 || 
             abs(uiState.mapCenterLon - lon) > 0.0001 || 
             abs(uiState.zoomLevel - zoom) > 0.1) {
@@ -216,6 +572,40 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
                 mapCenterLat = lat,
                 mapCenterLon = lon,
                 zoomLevel = zoom.coerceIn(5.0f, 18.0f)
+            )
+            applyFilters()
+        }
+    }
+
+    fun onMapMovedWithBounds(
+        lat: Double,
+        lon: Double,
+        zoom: Float,
+        swLat: Double,
+        swLon: Double,
+        neLat: Double,
+        neLon: Double,
+    ) {
+        val nextZoom = zoom.coerceIn(5.0f, 18.0f)
+        val nextBounds = MapBounds(
+            swLat = minOf(swLat, neLat),
+            swLon = swLon,
+            neLat = maxOf(swLat, neLat),
+            neLon = neLon,
+        )
+        val boundsChanged = viewportBounds?.isCloseTo(nextBounds) != true
+        viewportBounds = nextBounds
+        viewportBoundsZoom = nextZoom
+
+        if (boundsChanged ||
+            abs(uiState.mapCenterLat - lat) > 0.0001 ||
+            abs(uiState.mapCenterLon - lon) > 0.0001 ||
+            abs(uiState.zoomLevel - zoom) > 0.1
+        ) {
+            uiState = uiState.copy(
+                mapCenterLat = lat,
+                mapCenterLon = lon,
+                zoomLevel = nextZoom
             )
             applyFilters()
         }
@@ -229,75 +619,130 @@ class MapViewModel(private val repository: WindParkRepository) : ViewModel() {
     }
 
     private fun applyFilters() {
-        val currentStatus = uiState.selectedStatus
-        val filteredParks = parksForStatus(currentStatus)
-        uiState = uiState.copy(
-            filteredParks = filteredParks,
-            mapMarkers = markersForZoom(filteredParks, uiState.zoomLevel)
-        )
-    }
-
-    private fun parksForStatus(status: String): List<WindPark> =
-        if (status == "Alle") {
-            uiState.parks
-        } else {
-            uiState.parks.filter { park -> statusForPark(park.id) == status }
+        filterJob?.cancel()
+        if (uiState.isPinPlacementMode) {
+            uiState = uiState.copy(
+                mapMarkers = listOf(
+                    MapMarkerUiModel(
+                        id = "placement_pin",
+                        latitude = uiState.placementMarkerLat,
+                        longitude = uiState.placementMarkerLon,
+                        kind = MapMarkerKind.PlacementPin,
+                        count = 1
+                    )
+                )
+            )
+            return
         }
 
-    private fun statusForPark(parkId: String): String =
-        parkStatuses[parkId] ?: "Aktiv"
+        val snapshot = uiState
+        val currentFilters = snapshot.filters
+        val currentStatuses = parkStatuses
+        val bounds = viewportBounds
+        val markerBounds = bounds ?: fallbackBounds(snapshot.mapCenterLat, snapshot.mapCenterLon, snapshot.zoomLevel)
 
-    private fun markersForZoom(parks: List<WindPark>, zoom: Float): List<MapMarkerUiModel> {
-        val gridSize = when {
-            zoom < 6.5f -> 1.5
-            zoom < 7.5f -> 1.0
-            zoom < 8.5f -> 0.65
-            zoom < 9.5f -> 0.4
-            zoom < 10.25f -> 0.22
-            else -> null
-        }
+        filterJob = viewModelScope.launch {
+            try {
+                delay(150)
+                val filteredParks = withContext(Dispatchers.Default) {
+                    val rawParks = applyMapFilters(snapshot.parks, currentStatuses, currentFilters)
+                    filterParksInBounds(
+                        rawParks,
+                        markerBounds,
+                    )
+                }
 
-        if (gridSize == null) {
-            return parks.map { park ->
-                MapMarkerUiModel(
-                    id = park.id,
-                    latitude = park.latitude,
-                    longitude = park.longitude,
-                    kind = MapMarkerKind.Park,
-                    count = 1,
-                    parkId = park.id,
+                val markers = if (snapshot.zoomLevel >= TurbineMarkerMinZoom) {
+                    val turbines = repository.getWindTurbinesInBounds(
+                        swLat = markerBounds.swLat,
+                        swLon = markerBounds.swLon,
+                        neLat = markerBounds.neLat,
+                        neLon = markerBounds.neLon,
+                    )
+                    withContext(Dispatchers.Default) {
+                        val filteredTurbines = filterTurbines(turbines, currentFilters)
+                        turbinesToMarkers(filteredTurbines)
+                    }
+                } else {
+                    withContext(Dispatchers.Default) {
+                        markersForZoom(filteredParks, snapshot.zoomLevel)
+                    }
+                }
+
+                uiState = uiState.copy(
+                    filteredParks = filteredParks,
+                    mapMarkers = markers
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                uiState = uiState.copy(
+                    filteredParks = emptyList(),
+                    mapMarkers = emptyList()
                 )
             }
         }
+    }
 
-        return parks
-            .groupBy { park ->
-                val latBucket = floor(park.latitude / gridSize).toInt()
-                val lonBucket = floor(park.longitude / gridSize).toInt()
-                latBucket to lonBucket
+    private fun previewFocusedCenter(
+        latitude: Double,
+        longitude: Double,
+        zoom: Float,
+    ): Pair<Double, Double> {
+        val latSpan = focusedVisibleLatitudeSpan(latitude, zoom)
+        return latitude - (latSpan * SelectedParkFocusOffsetFraction) to longitude
+    }
+
+    private fun focusedVisibleLatitudeSpan(latitude: Double, zoom: Float): Double {
+        val bounds = viewportBounds
+        val boundsZoom = viewportBoundsZoom
+        if (bounds != null && boundsZoom != null) {
+            val currentSpan = bounds.neLat - bounds.swLat
+            if (currentSpan > 0.0) {
+                return (currentSpan * 2.0.pow((boundsZoom - zoom).toDouble()))
+                    .coerceIn(0.003, 30.0)
             }
-            .map { (bucket, bucketParks) ->
-                if (bucketParks.size == 1) {
-                    val park = bucketParks.first()
-                    MapMarkerUiModel(
-                        id = park.id,
-                        latitude = park.latitude,
-                        longitude = park.longitude,
-                        kind = MapMarkerKind.Park,
-                        count = 1,
-                        parkId = park.id,
-                    )
-                } else {
-                    val lat = bucketParks.map { it.latitude }.average()
-                    val lon = bucketParks.map { it.longitude }.average()
-                    MapMarkerUiModel(
-                        id = "cluster_${gridSize}_${bucket.first}_${bucket.second}",
-                        latitude = lat,
-                        longitude = lon,
-                        kind = MapMarkerKind.Cluster,
-                        count = bucketParks.size,
-                    )
-                }
-            }
+        }
+        return fallbackVisibleLatitudeSpan(latitude, zoom)
+    }
+
+    private fun clearViewportBounds() {
+        viewportBounds = null
+        viewportBoundsZoom = null
+    }
+
+}
+
+private fun formatTurbineLabel(count: Int): String =
+    "$count Anlage${if (count == 1) "" else "n"}"
+
+private fun formatCapacityLabel(capacityKw: Long?): String? {
+    val capacity = capacityKw ?: return null
+    val capacityMw = capacity / 1_000.0
+    return "${formatGermanNumber(capacityMw, 1)} MW"
+}
+
+private fun List<WindTurbine>.toPreviewPoints(): List<PreviewTurbinePoint> =
+    map { turbine ->
+        PreviewTurbinePoint(
+            id = turbine.id,
+            latitude = turbine.latitude,
+            longitude = turbine.longitude,
+            statusLabel = turbine.status?.let(::formatStatusLabel),
+            hubHeightM = turbine.hubHeightM,
+            rotorDiameterM = turbine.rotorDiameterM,
+            installedCapacityKw = turbine.installedCapacityKw,
+            commissioningYear = turbine.commissioningYear,
+        )
+    }
+
+private fun formatStatusLabel(status: String): String {
+    val lower = status.lowercase()
+    return when {
+        lower.contains("bau") || lower.contains("errichtung") -> "Im Bau"
+        lower.contains("stillgelegt") -> "Stillgelegt"
+        lower.contains("geplant") -> "Geplant"
+        lower.contains("betrieb") || lower.contains("aktiv") -> "Aktiv"
+        else -> status
     }
 }

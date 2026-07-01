@@ -1,6 +1,6 @@
 TEAM_ID=
 
-PRODUCT_NAME=windklar
+PRODUCT_NAME=WindKlar
 PRODUCT_BUNDLE_IDENTIFIER=product.lifecycle.windenergy.windklar$(TEAM_ID)
 
 CURRENT_PROJECT_VERSION=1

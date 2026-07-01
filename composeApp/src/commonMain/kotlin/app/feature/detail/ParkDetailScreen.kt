@@ -24,16 +24,22 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.MonetizationOn
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Euro
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -46,23 +52,41 @@ import androidx.compose.ui.unit.sp
 import app.core.model.Metric
 import app.core.model.SnapshotAssumption
 import app.core.model.WindTurbine
+import app.core.ui.theme.WindklarTheme
+import app.core.ui.components.StatusBadge
 import app.core.ui.components.formatDataQuality
 import app.core.ui.components.qualityColors
+import app.core.ui.components.CitizenImpactDashboard
+import app.core.ui.components.DataStatusFooter
+import app.core.ui.components.ImpactMetric
+import androidx.compose.ui.text.style.TextOverflow
+import app.core.util.formatGermanNumber
+import app.core.util.isRedundantMunicipality
+import app.core.ui.components.WindklarHeader
+import app.feature.report.DataHintDialog
+import org.jetbrains.compose.resources.painterResource
+import windklar.composeapp.generated.resources.Res
+import windklar.composeapp.generated.resources.header_background_quiet
 
-private val ScreenBackground = Color(0xFFF8FAF7)
-private val PrimaryGreen = Color(0xFF2D5A2D)
-private val HeaderEndGreen = Color(0xFF43A047)
-private val DarkGreen = Color(0xFF1A3A1A)
-private val MutedGreen = Color(0xFF5A7A5A)
-private val PaleGreen = Color(0xFFE8F5E9)
-private val HeartRed = Color(0xFFE53935)
+private val ScreenBackground @Composable get() = WindklarTheme.colors.screenBackground
+private val PrimaryGreen @Composable get() = WindklarTheme.colors.primaryGreen
+private val HeaderEndGreen @Composable get() = WindklarTheme.colors.headerEndGreen
+private val DarkGreen @Composable get() = WindklarTheme.colors.darkGreen
+private val MutedGreen @Composable get() = WindklarTheme.colors.mutedGreen
+private val PaleGreen @Composable get() = WindklarTheme.colors.paleGreen
+
 
 @Composable
 fun ParkDetailScreen(
     viewModel: ParkDetailViewModel,
     onBack: () -> Unit,
+    onNavigateToRegion: (type: String, id: String) -> Unit,
+    onNavigateToCountry: () -> Unit,
+    onShowParkOnMap: () -> Unit,
+    onShowTurbineOnMap: (String) -> Unit,
 ) {
     val uiState = viewModel.uiState
+    var showParkDataHintDialog by rememberSaveable { mutableStateOf(false) }
 
     if (uiState.isLoading) {
         Box(
@@ -96,23 +120,12 @@ fun ParkDetailScreen(
             .verticalScroll(rememberScrollState()),
     ) {
         // Header
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(PrimaryGreen, HeaderEndGreen),
-                        start = Offset.Zero,
-                        end = Offset(900f, 900f),
-                    ),
-                )
-                .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 48.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+        WindklarHeader(
+            title = park.name,
+            subtitle = "Gemeinde ${park.municipalityName}",
+            showDecorativeCircles = false,
+            backgroundPainter = painterResource(Res.drawable.header_background_quiet),
+            navigationIcon = {
                 Box(
                     modifier = Modifier
                         .size(40.dp)
@@ -128,7 +141,8 @@ fun ParkDetailScreen(
                         modifier = Modifier.size(20.dp),
                     )
                 }
-
+            },
+            actionIcon = {
                 Box(
                     modifier = Modifier
                         .size(40.dp)
@@ -140,28 +154,28 @@ fun ParkDetailScreen(
                     Icon(
                         imageVector = if (uiState.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                         contentDescription = "Favorit",
-                        tint = if (uiState.isFavorite) HeartRed else Color.White,
+                        tint = if (uiState.isFavorite) WindklarTheme.colors.heartRed else Color.White,
                         modifier = Modifier.size(20.dp),
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = park.name,
-                color = Color.White,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
-            )
-
-            Text(
-                text = "Gemeinde ${park.municipalityName}",
-                color = Color.White.copy(alpha = 0.9f),
-                fontSize = 16.sp,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        }
+            },
+            breadcrumbs = {
+                val breadcrumbSegments = listOfNotNull(
+                    app.core.ui.components.BreadcrumbSegment(name = "Deutschland", onClick = onNavigateToCountry),
+                    app.core.ui.components.BreadcrumbSegment(name = park.stateName, onClick = { onNavigateToRegion("state", park.stateId) }),
+                    app.core.ui.components.BreadcrumbSegment(name = park.districtName, onClick = { onNavigateToRegion("district", park.districtId) }),
+                    app.core.ui.components.BreadcrumbSegment(
+                        name = "Gemeinde ${park.municipalityName}",
+                        onClick = { onNavigateToRegion("city", park.municipalityId) }
+                    ).takeUnless { isRedundantMunicipality(park.districtName, park.municipalityName) }
+                )
+                app.core.ui.components.Breadcrumbs(
+                    segments = breadcrumbSegments,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            bottomPadding = 48.dp
+        )
 
         // Content
         Column(
@@ -171,39 +185,107 @@ fun ParkDetailScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             // Summary Card
-            SummaryCard(
-                turbineCount = park.turbineCount,
-                installedCapacityKw = park.installedCapacityKw,
-                dataQuality = park.dataQuality
+            SummaryCard(park = park, onShowOnMap = onShowParkOnMap)
+
+            val prodMetric = uiState.metrics.firstOrNull { it.metricType == "annual_production" }
+            val co2Metric = uiState.metrics.firstOrNull { it.metricType == "co2_savings" }
+            val houseMetric = uiState.metrics.firstOrNull { it.metricType == "households_supplied" } ?: uiState.metrics.firstOrNull { it.metricType == "household_equivalent" }
+            val muniMetric = uiState.metrics.firstOrNull { it.metricType == "municipal_participation" }
+
+            val prodVal = prodMetric?.value?.let { "${formatGermanNumber(it / 1_000_000.0, 1)} GWh/Jahr" } ?: "Keine Daten"
+            val co2Val = co2Metric?.value?.let { "${formatGermanNumber((it / 1000.0).toInt())} t/Jahr" } ?: "Keine Daten"
+            val houseVal = houseMetric?.value?.let { "${formatGermanNumber(it.toInt())} Haushalte" } ?: "Keine Daten"
+            val muniVal = muniMetric?.value?.let { "ca. ${formatNumber(it.toInt())} EUR/Jahr" } ?: "Keine Daten"
+
+            val flh = uiState.assumptions.firstOrNull { it.id == "full_load_hours" }?.value ?: 2000.0
+            val co2Factor = uiState.assumptions.firstOrNull { it.id == "emission_factor_kg_per_kwh" }?.value ?: 0.38
+            val consumption = uiState.assumptions.firstOrNull { it.id == "household_consumption_kwh" }?.value ?: 3500.0
+            val muniBenefit = uiState.assumptions.firstOrNull { it.id == "municipal_benefit_eur_per_kwh" }?.value ?: 0.002
+
+            val prodNote = "Aus der installierten Leistung und der geschätzten Jahresproduktion berechnet. Entspricht standortspezifischen Volllaststunden von ${formatGermanNumber(flh.toInt())} h/a (bundesweiter Richtwert: 2.000 h/a)."
+            val co2Note = "Berechnet aus der Jahresproduktion und dem CO₂-Emissionsfaktor des deutschen Strommixes von ${formatGermanNumber(co2Factor * 1000.0, 0)} g/kWh (bzw. ${formatGermanNumber(co2Factor, 2)} kg/kWh)."
+            val houseNote = "Rechnerische Abdeckung von privaten Haushalten basierend auf einem durchschnittlichen Stromverbrauch von ${formatGermanNumber(consumption.toInt())} kWh/Jahr pro Haushalt."
+            val muniNote = "Schätzung nach § 6 EEG für Windenergie an Land. Grundlage: ${formatGermanNumber(muniBenefit * 100.0, 1)} ct/kWh der geschätzten Jahresproduktion."
+
+            val impactMetrics = listOf(
+                ImpactMetric(
+                    label = "Jahresproduktion",
+                    value = prodVal,
+                    isMissing = prodMetric?.value == null,
+                    note = prodNote,
+                    icon = Icons.Outlined.Bolt
+                ),
+                ImpactMetric(
+                    label = "Vermiedene CO₂-Emissionen",
+                    value = co2Val,
+                    isMissing = co2Metric?.value == null,
+                    note = co2Note,
+                    icon = Icons.Outlined.Eco
+                ),
+                ImpactMetric(
+                    label = "Versorgte Haushalte",
+                    value = houseVal,
+                    isMissing = houseMetric?.value == null,
+                    note = houseNote,
+                    icon = Icons.Outlined.Home
+                ),
+                ImpactMetric(
+                    label = "Kommunale Beteiligung an Land (§6 EEG)",
+                    value = muniVal,
+                    isMissing = muniMetric?.value == null,
+                    note = muniNote,
+                    icon = Icons.Outlined.Euro
+                )
             )
 
             // Citizen Impact Dashboard
-            CitizenImpactDashboard(metrics = uiState.metrics)
-
-            CalculationAssumptionsCard(assumptions = uiState.assumptions)
+            CitizenImpactDashboard(
+                metrics = impactMetrics
+            )
 
             // Individual Turbines List
-            TurbinesSection(turbines = uiState.turbines)
+            TurbinesSection(turbines = uiState.turbines, onShowTurbineOnMap = onShowTurbineOnMap)
 
-            // Data quality limitations notice
-            DataSourceAttributionCard(attribution = uiState.attribution)
+            // Subtle Footer
+            DataStatusFooter(dataQuality = park.dataQuality)
+
+            DataHintActionCard(
+                onClick = { showParkDataHintDialog = true }
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+
+    if (showParkDataHintDialog) {
+        DataHintDialog(
+            latitude = park.latitude,
+            longitude = park.longitude,
+            contextLabel = "Windpark ${park.name}",
+            defaultCategory = "wrong_technical_data",
+            onDismiss = { showParkDataHintDialog = false },
+            onSubmit = { category, confidence, description, suggestedValue ->
+                viewModel.submitParkDataHint(
+                    category = category,
+                    confidence = confidence,
+                    description = description,
+                    suggestedValue = suggestedValue,
+                    onSuccess = { showParkDataHintDialog = false },
+                )
+            },
+        )
     }
 }
 
 @Composable
 private fun SummaryCard(
-    turbineCount: Int,
-    installedCapacityKw: Long?,
-    dataQuality: String
+    park: app.core.model.WindPark,
+    onShowOnMap: () -> Unit
 ) {
-    val quality = qualityColors(dataQuality)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = WindklarTheme.colors.cardBackground,
         shadowElevation = 8.dp
     ) {
         Column(
@@ -219,235 +301,56 @@ private fun SummaryCard(
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Anlagenanzahl", color = MutedGreen, fontSize = 12.sp)
-                    Text(formatTurbineCount(turbineCount), color = DarkGreen, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(formatTurbineCount(park.turbineCount), color = DarkGreen, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Gesamtleistung", color = MutedGreen, fontSize = 12.sp)
-                    val capStr = installedCapacityKw?.let { "${(it / 1000.0).roundTo(1)} MW" } ?: "k.A."
+                    Text("Installierte Gesamtleistung", color = MutedGreen, fontSize = 12.sp)
+                    val capStr = park.installedCapacityKw?.let { "${formatGermanNumber(it / 1000.0, 1)} MW" } ?: "k.A."
                     Text(capStr, color = DarkGreen, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = quality.container
-                ) {
-                    Text(
-                        text = "Stammdaten: ${formatDataQuality(dataQuality)}",
-                        color = quality.content,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CitizenImpactDashboard(metrics: List<Metric>) {
-    val prodMetric = metrics.firstOrNull { it.metricType == "annual_production" }
-    val co2Metric = metrics.firstOrNull { it.metricType == "co2_savings" }
-    val houseMetric = metrics.firstOrNull { it.metricType == "households_supplied" } ?: metrics.firstOrNull { it.metricType == "household_equivalent" }
-    val muniMetric = metrics.firstOrNull { it.metricType == "municipal_participation" }
-
-    val prodVal = prodMetric?.value?.let { "${(it / 1_000_000.0).roundTo(1)} GWh/Jahr" } ?: "Keine Daten"
-    val co2Val = co2Metric?.value?.let { "${formatNumber((it / 1000.0).toInt())} t/Jahr" } ?: "Keine Daten"
-    val houseVal = houseMetric?.value?.let { "${formatNumber(it.toInt())} Haushalte" } ?: "Keine Daten"
-    val muniVal = muniMetric?.value?.let { "ca. ${formatNumber(it.toInt())} EUR/Jahr" } ?: "Keine Daten"
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = Color.White,
-        shadowElevation = 8.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "Lokaler Nutzen & Klimawirkung",
-                color = DarkGreen,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
-
-            ImpactRow(
-                icon = Icons.Outlined.Bolt,
-                label = "Jahresproduktion",
-                value = prodVal,
-                note = prodMetric?.calculationNote,
-                quality = prodMetric?.dataQuality ?: "missing"
-            )
-
-            ImpactRow(
-                icon = Icons.Outlined.Eco,
-                label = "Vermiedene CO2-Emissionen",
-                value = co2Val,
-                note = co2Metric?.calculationNote,
-                quality = co2Metric?.dataQuality ?: "missing"
-            )
-
-            ImpactRow(
-                icon = Icons.Outlined.Home,
-                label = "Versorgte Haushalte",
-                value = houseVal,
-                note = houseMetric?.calculationNote,
-                quality = houseMetric?.dataQuality ?: "missing"
-            )
-
-            ImpactRow(
-                icon = Icons.Outlined.MonetizationOn,
-                label = "Kommunale Beteiligung (§6 EEG)",
-                value = muniVal,
-                note = muniMetric?.calculationNote
-                    ?: "Geschätzte mögliche kommunale Beteiligung nach §6 EEG. Grundlage: 0,2 ct/kWh und geschätzte Jahresproduktion. Keine bestätigte Auszahlung.",
-                quality = muniMetric?.dataQuality ?: "missing"
-            )
-        }
-    }
-}
-
-@Composable
-private fun ImpactRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    value: String,
-    note: String?,
-    quality: String
-) {
-    val qualityColor = qualityColors(quality)
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .background(PaleGreen, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = PrimaryGreen,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Spacer(modifier = Modifier.height(4.dp))
+            Surface(
+                onClick = onShowOnMap,
+                shape = RoundedCornerShape(12.dp),
+                color = PaleGreen,
+                contentColor = PrimaryGreen,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(label, color = DarkGreen, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = qualityColor.container
+                Row(
+                    modifier = Modifier.padding(vertical = 10.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Map,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = formatDataQuality(quality).uppercase(),
-                        color = qualityColor.content,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        text = "Auf Karte zeigen",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
-            Text(value, color = PrimaryGreen, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 2.dp))
-            if (!note.isNullOrBlank()) {
-                Text(
-                    text = note,
-                    color = MutedGreen,
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
         }
     }
 }
 
+// Shared UI components used instead of local duplicates
+
 @Composable
-private fun CalculationAssumptionsCard(assumptions: List<SnapshotAssumption>) {
-    val orderedAssumptionIds = listOf(
-        "full_load_hours",
-        "emission_factor_kg_per_kwh",
-        "household_consumption_kwh",
-        "municipal_benefit_eur_per_kwh",
-    )
-    val visibleAssumptions = orderedAssumptionIds.mapNotNull { id ->
-        assumptions.firstOrNull { it.id == id }
-    }
+private fun TurbinesSection(
+    turbines: List<WindTurbine>,
+    onShowTurbineOnMap: (String) -> Unit
+) {
+    var turbinesExpanded by rememberSaveable { mutableStateOf(false) }
 
-    if (visibleAssumptions.isEmpty()) return
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = Color.White,
-        shadowElevation = 8.dp
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "Welche Annahmen stecken dahinter?",
-                color = DarkGreen,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
-            Text(
-                text = "Diese Werte erklären, wie WindKlar die geschätzten Wirkungswerte berechnet.",
-                color = MutedGreen,
-                fontSize = 12.sp,
-                lineHeight = 17.sp
-            )
-
-            visibleAssumptions.forEach { assumption ->
-                AssumptionRow(assumption = assumption)
-            }
-        }
-    }
-}
-
-@Composable
-private fun AssumptionRow(assumption: SnapshotAssumption) {
-    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            Text(
-                text = assumption.label,
-                color = DarkGreen,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = "${formatAssumptionValue(assumption.value)} ${assumption.unit}",
-                color = PrimaryGreen,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.End,
-                modifier = Modifier.padding(start = 12.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun TurbinesSection(turbines: List<WindTurbine>) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = "Windenergieanlagen (${turbines.size})",
             color = DarkGreen,
@@ -459,19 +362,42 @@ private fun TurbinesSection(turbines: List<WindTurbine>) {
         if (turbines.isEmpty()) {
             Text("Keine detaillierten Anlagendaten vorhanden.", color = MutedGreen, fontSize = 14.sp)
         } else {
-            turbines.forEach { turbine ->
-                TurbineCard(turbine = turbine)
+            val visibleTurbines = if (turbinesExpanded) turbines else turbines.take(3)
+            visibleTurbines.forEach { turbine ->
+                TurbineCard(turbine = turbine, onShowOnMap = onShowTurbineOnMap)
+            }
+
+            if (turbines.size > 3) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Surface(
+                    onClick = { turbinesExpanded = !turbinesExpanded },
+                    shape = RoundedCornerShape(8.dp),
+                    color = PaleGreen,
+                    contentColor = PrimaryGreen,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = if (turbinesExpanded) "Weniger Windanlagen anzeigen" else "Alle Windanlagen anzeigen",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(vertical = 10.dp)
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun TurbineCard(turbine: WindTurbine) {
+private fun TurbineCard(
+    turbine: WindTurbine,
+    onShowOnMap: (String) -> Unit
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = Color.White,
+        color = WindklarTheme.colors.cardBackground,
         shadowElevation = 4.dp
     ) {
         Column(
@@ -484,65 +410,97 @@ private fun TurbineCard(turbine: WindTurbine) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = turbine.name.ifBlank { "Anlage #${turbine.id.takeLast(4)}" },
+                    text = turbine.name.ifBlank { "Windanlage #${turbine.id.takeLast(4)}" },
                     color = DarkGreen,
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp
+                    fontSize = 15.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
+                Spacer(modifier = Modifier.width(8.dp))
                 
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = if (turbine.status?.lowercase() == "in betrieb") Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(PaleGreen, CircleShape)
+                        .clickable { onShowOnMap(turbine.id) },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = turbine.status ?: "Unbekannt",
-                        color = if (turbine.status?.lowercase() == "in betrieb") Color(0xFF2D5A2D) else Color(0xFFE65100),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    Icon(
+                        imageVector = Icons.Outlined.Map,
+                        contentDescription = "Auf Karte zeigen",
+                        tint = PrimaryGreen,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                val statusLower = turbine.status?.lowercase() ?: ""
+                val (badgeBg, badgeFg) = when {
+                    statusLower == "in betrieb" || statusLower.contains("aktiv") || statusLower.contains("betrieb") -> {
+                        WindklarTheme.colors.paleGreen to WindklarTheme.colors.primaryGreen
+                    }
+                    statusLower.contains("stillgelegt") -> {
+                        WindklarTheme.colors.qualityMissingContainer to WindklarTheme.colors.qualityMissingContent
+                    }
+                    else -> {
+                        WindklarTheme.colors.statusOrangeLight to WindklarTheme.colors.statusOrangeDark
+                    }
+                }
+                StatusBadge(
+                    text = turbine.status ?: "Unbekannt",
+                    containerColor = badgeBg,
+                    contentColor = badgeFg,
+                )
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Hersteller / Modell", color = MutedGreen, fontSize = 11.sp)
-                    val modelStr = if (!turbine.manufacturer.isNullOrBlank()) "${turbine.manufacturer} ${turbine.model ?: ""}" else "k.A."
-                    Text(modelStr, color = DarkGreen, fontSize = 13.sp)
+                    val modelStr = if (!turbine.manufacturer.isNullOrBlank()) {
+                        "${turbine.manufacturer} ${turbine.model ?: ""}".trim()
+                    } else null
+                    Text(modelStr ?: "k.A.", color = DarkGreen, fontSize = 13.sp)
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Nennleistung", color = MutedGreen, fontSize = 11.sp)
-                    val powStr = turbine.installedCapacityKw?.let { "${(it / 1000.0).roundTo(1)} MW" } ?: "k.A."
+                    val powStr = turbine.installedCapacityKw?.let { "${formatGermanNumber(it / 1000.0, 1)} MW" } ?: "k.A."
                     Text(powStr, color = DarkGreen, fontSize = 13.sp)
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Nabenhöhe", color = MutedGreen, fontSize = 11.sp)
-                    val heightStr = turbine.hubHeightM?.let { "${it.roundTo(1)} m" } ?: "k.A."
-                    Text(heightStr, color = DarkGreen, fontSize = 13.sp)
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Rotordurchmesser", color = MutedGreen, fontSize = 11.sp)
-                    val diamStr = turbine.rotorDiameterM?.let { "${it.roundTo(1)} m" } ?: "k.A."
-                    Text(diamStr, color = DarkGreen, fontSize = 13.sp)
+            val hubHeight = turbine.hubHeightM
+            val rotorDiameter = turbine.rotorDiameterM
+            if (hubHeight != null || rotorDiameter != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    if (hubHeight != null) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Nabenhöhe", color = MutedGreen, fontSize = 11.sp)
+                            Text("${formatGermanNumber(hubHeight, 1)} m", color = DarkGreen, fontSize = 13.sp)
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                    if (rotorDiameter != null) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Rotordurchmesser", color = MutedGreen, fontSize = 11.sp)
+                            Text("${formatGermanNumber(rotorDiameter, 1)} m", color = DarkGreen, fontSize = 13.sp)
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
                 }
             }
 
-            val qualityColor = qualityColors(turbine.dataQuality)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = qualityColor.container
-                ) {
-                    Text(
-                        text = "Stammdaten: ${formatDataQuality(turbine.dataQuality)}",
-                        color = qualityColor.content,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-                    )
+            turbine.commissioningYear?.let { year ->
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Inbetriebnahme", color = MutedGreen, fontSize = 11.sp)
+                        Text(year.toString(), color = DarkGreen, fontSize = 13.sp)
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -550,67 +508,40 @@ private fun TurbineCard(turbine: WindTurbine) {
 }
 
 @Composable
-private fun DataSourceAttributionCard(attribution: String) {
-    val normalizedAttribution = attribution.removePrefix("Quelle:").trim().ifBlank {
-        "Marktstammdatenregister der Bundesnetzagentur"
-    }
-
+private fun DataHintActionCard(
+    onClick: () -> Unit,
+) {
     Surface(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFFFFF9C4),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFBC02D))
+        color = WindklarTheme.colors.statusOrangeLight,
+        contentColor = WindklarTheme.colors.statusOrangeDark,
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.Top
+            modifier = Modifier.padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = Icons.Outlined.Warning,
                 contentDescription = null,
-                tint = Color(0xFFF57F17),
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(18.dp),
             )
-            Column {
-                Text(
-                    text = "Datenhinweis",
-                    color = Color(0xFFF57F17),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp
-                )
-                Text(
-                    text = "Berechnete Werte beruhen auf typischen Durchschnittsannahmen. Regionale Unterschiede können zu Abweichungen führen. Quelle: $normalizedAttribution.",
-                    color = Color(0xFF5D4037),
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-            }
+            Text(
+                text = "Datenfehler zum Windpark melden",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
     }
 }
 
-private fun Double.roundTo(decimals: Int): Double {
-    var multiplier = 1.0
-    repeat(decimals) { multiplier *= 10 }
-    return kotlin.math.round(this * multiplier) / multiplier
-}
+private fun formatNumber(number: Int): String = formatGermanNumber(number)
 
-private fun formatNumber(number: Int): String {
-    return number.toString().reversed().chunked(3).joinToString(".").reversed()
-}
-
-private fun formatAssumptionValue(value: Double): String {
-    val roundedInt = value.toInt()
-    return if (value == roundedInt.toDouble()) {
-        formatNumber(roundedInt)
-    } else {
-        value.toString().replace(".", ",")
-    }
-}
+private fun formatAssumptionValue(value: Double): String = formatGermanNumber(value, 2, true)
 
 private fun formatTurbineCount(count: Int): String {
-    val unit = if (count == 1) "Windrad" else "Windräder"
-    return "$count $unit"
+    val unit = if (count == 1) "Windanlage" else "Windanlagen"
+    return "${formatGermanNumber(count)} $unit"
 }

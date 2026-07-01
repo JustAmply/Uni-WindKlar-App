@@ -1,0 +1,3 @@
+# Onshore-only dataset scope
+
+WindKlar will focus strictly on wind energy installations on land (onshore) and exclude offshore wind parks and turbines entirely. This matches the product positioning of explaining the local impact of wind energy to citizens where they live, work, and see the installations. Furthermore, it simplifies coordinate-to-municipality mapping since offshore/marine coordinate points cannot be mapped to terrestrial municipalities (Landkreise / Bundesländer) without introducing arbitrary coastal pseudo-municipalities. All offshore installations are filtered out at the start of the data preprocessing pipeline.

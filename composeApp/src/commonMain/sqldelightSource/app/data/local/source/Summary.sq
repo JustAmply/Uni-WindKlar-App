@@ -1,0 +1,277 @@
+CREATE TABLE park_operational_summary (
+    wind_park_id TEXT NOT NULL PRIMARY KEY REFERENCES wind_park(id) ON DELETE CASCADE,
+    park_status TEXT NOT NULL,
+    valid_turbine_count INTEGER NOT NULL,
+    valid_capacity_kw INTEGER NOT NULL
+);
+
+CREATE TABLE region_summary (
+    region_type TEXT NOT NULL,
+    region_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    context_label TEXT,
+    parent_name TEXT,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    wind_park_count INTEGER NOT NULL,
+    turbine_count INTEGER NOT NULL,
+    installed_capacity_kw INTEGER NOT NULL,
+    annual_production_kwh REAL NOT NULL,
+    co2_savings_kg REAL NOT NULL,
+    household_equivalent REAL NOT NULL,
+    municipal_benefit_eur REAL NOT NULL,
+    PRIMARY KEY(region_type, region_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_region_summary_type_capacity
+ON region_summary(region_type, installed_capacity_kw DESC);
+
+CREATE TABLE map_search_entry (
+    id TEXT NOT NULL PRIMARY KEY,
+    result_type TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    label TEXT NOT NULL,
+    description TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    type_rank INTEGER NOT NULL,
+    haystack TEXT NOT NULL,
+    sort_name TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_map_search_entry_rank_sort
+ON map_search_entry(type_rank, sort_name);
+
+CREATE TABLE national_stats_summary (
+    id TEXT NOT NULL PRIMARY KEY,
+    wind_park_count INTEGER NOT NULL,
+    active_turbine_count INTEGER NOT NULL,
+    installed_capacity_kw INTEGER NOT NULL,
+    annual_production_kwh REAL NOT NULL,
+    co2_savings_kg REAL NOT NULL,
+    household_equivalent REAL NOT NULL,
+    municipal_benefit_eur REAL NOT NULL,
+    capacity_class_lt_5mw INTEGER NOT NULL,
+    capacity_class_5_20mw INTEGER NOT NULL,
+    capacity_class_20_50mw INTEGER NOT NULL,
+    capacity_class_gte_50mw INTEGER NOT NULL,
+    turbine_commissioning_pre_2000 INTEGER NOT NULL,
+    turbine_commissioning_2000_2009 INTEGER NOT NULL,
+    turbine_commissioning_2010_2019 INTEGER NOT NULL,
+    turbine_commissioning_2020_plus INTEGER NOT NULL,
+    turbine_commissioning_unknown INTEGER NOT NULL,
+    turbine_height_lt_80m INTEGER NOT NULL,
+    turbine_height_80_120m INTEGER NOT NULL,
+    turbine_height_120_160m INTEGER NOT NULL,
+    turbine_height_gte_160m INTEGER NOT NULL,
+    turbine_height_unknown INTEGER NOT NULL
+);
+
+selectAllParkOperationalSummaries:
+SELECT *
+FROM park_operational_summary;
+
+selectMapStartupParks:
+SELECT
+    wind_park.id,
+    wind_park.name,
+    wind_park.municipality_id,
+    wind_park.municipality_name,
+    wind_park.district_id,
+    wind_park.district_name,
+    wind_park.state_id,
+    wind_park.state_name,
+    wind_park.latitude,
+    wind_park.longitude,
+    wind_park.grouping_method,
+    wind_park.source_name,
+    wind_park.source_url,
+    wind_park.source_updated_at,
+    wind_park.data_quality,
+    park_operational_summary.park_status,
+    park_operational_summary.valid_turbine_count,
+    park_operational_summary.valid_capacity_kw
+FROM wind_park
+JOIN park_operational_summary
+    ON park_operational_summary.wind_park_id = wind_park.id
+ORDER BY wind_park.name;
+
+selectParkOperationalSummary:
+SELECT *
+FROM park_operational_summary
+WHERE wind_park_id = ?;
+
+selectParkOperationalSummariesByIds:
+SELECT *
+FROM park_operational_summary
+WHERE wind_park_id IN ?;
+
+selectRegionSummaries:
+SELECT *
+FROM region_summary
+WHERE region_type = ?
+ORDER BY installed_capacity_kw DESC, name;
+
+selectRegionSummary:
+SELECT *
+FROM region_summary
+WHERE region_type = ?
+  AND region_id = ?;
+
+selectAllMapSearchEntries:
+SELECT *
+FROM map_search_entry
+ORDER BY type_rank, sort_name, id;
+
+selectNationalStatsSummary:
+SELECT *
+FROM national_stats_summary
+WHERE id = 'DE';
+
+upsertParkOperationalSummary:
+INSERT OR IGNORE INTO park_operational_summary(
+    wind_park_id,
+    park_status,
+    valid_turbine_count,
+    valid_capacity_kw
+)
+VALUES (?, ?, ?, ?);
+
+updateParkOperationalSummary:
+UPDATE park_operational_summary
+SET
+    park_status = :park_status,
+    valid_turbine_count = :valid_turbine_count,
+    valid_capacity_kw = :valid_capacity_kw
+WHERE wind_park_id = :wind_park_id;
+
+upsertRegionSummary:
+INSERT OR IGNORE INTO region_summary(
+    region_type,
+    region_id,
+    name,
+    context_label,
+    parent_name,
+    latitude,
+    longitude,
+    wind_park_count,
+    turbine_count,
+    installed_capacity_kw,
+    annual_production_kwh,
+    co2_savings_kg,
+    household_equivalent,
+    municipal_benefit_eur
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateRegionSummary:
+UPDATE region_summary
+SET
+    name = :name,
+    context_label = :context_label,
+    parent_name = :parent_name,
+    latitude = :latitude,
+    longitude = :longitude,
+    wind_park_count = :wind_park_count,
+    turbine_count = :turbine_count,
+    installed_capacity_kw = :installed_capacity_kw,
+    annual_production_kwh = :annual_production_kwh,
+    co2_savings_kg = :co2_savings_kg,
+    household_equivalent = :household_equivalent,
+    municipal_benefit_eur = :municipal_benefit_eur
+WHERE region_type = :region_type
+  AND region_id = :region_id;
+
+upsertMapSearchEntry:
+INSERT OR IGNORE INTO map_search_entry(
+    id,
+    result_type,
+    target_id,
+    label,
+    description,
+    latitude,
+    longitude,
+    type_rank,
+    haystack,
+    sort_name
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateMapSearchEntry:
+UPDATE map_search_entry
+SET
+    result_type = :result_type,
+    target_id = :target_id,
+    label = :label,
+    description = :description,
+    latitude = :latitude,
+    longitude = :longitude,
+    type_rank = :type_rank,
+    haystack = :haystack,
+    sort_name = :sort_name
+WHERE id = :id;
+
+upsertNationalStatsSummary:
+INSERT OR IGNORE INTO national_stats_summary(
+    id,
+    wind_park_count,
+    active_turbine_count,
+    installed_capacity_kw,
+    annual_production_kwh,
+    co2_savings_kg,
+    household_equivalent,
+    municipal_benefit_eur,
+    capacity_class_lt_5mw,
+    capacity_class_5_20mw,
+    capacity_class_20_50mw,
+    capacity_class_gte_50mw,
+    turbine_commissioning_pre_2000,
+    turbine_commissioning_2000_2009,
+    turbine_commissioning_2010_2019,
+    turbine_commissioning_2020_plus,
+    turbine_commissioning_unknown,
+    turbine_height_lt_80m,
+    turbine_height_80_120m,
+    turbine_height_120_160m,
+    turbine_height_gte_160m,
+    turbine_height_unknown
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateNationalStatsSummary:
+UPDATE national_stats_summary
+SET
+    wind_park_count = :wind_park_count,
+    active_turbine_count = :active_turbine_count,
+    installed_capacity_kw = :installed_capacity_kw,
+    annual_production_kwh = :annual_production_kwh,
+    co2_savings_kg = :co2_savings_kg,
+    household_equivalent = :household_equivalent,
+    municipal_benefit_eur = :municipal_benefit_eur,
+    capacity_class_lt_5mw = :capacity_class_lt_5mw,
+    capacity_class_5_20mw = :capacity_class_5_20mw,
+    capacity_class_20_50mw = :capacity_class_20_50mw,
+    capacity_class_gte_50mw = :capacity_class_gte_50mw,
+    turbine_commissioning_pre_2000 = :turbine_commissioning_pre_2000,
+    turbine_commissioning_2000_2009 = :turbine_commissioning_2000_2009,
+    turbine_commissioning_2010_2019 = :turbine_commissioning_2010_2019,
+    turbine_commissioning_2020_plus = :turbine_commissioning_2020_plus,
+    turbine_commissioning_unknown = :turbine_commissioning_unknown,
+    turbine_height_lt_80m = :turbine_height_lt_80m,
+    turbine_height_80_120m = :turbine_height_80_120m,
+    turbine_height_120_160m = :turbine_height_120_160m,
+    turbine_height_gte_160m = :turbine_height_gte_160m,
+    turbine_height_unknown = :turbine_height_unknown
+WHERE id = :id;
+
+deleteNationalStatsSummary:
+DELETE FROM national_stats_summary;
+
+deleteMapSearchEntries:
+DELETE FROM map_search_entry;
+
+deleteRegionSummaries:
+DELETE FROM region_summary;
+
+deleteParkOperationalSummaries:
+DELETE FROM park_operational_summary;

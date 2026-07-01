@@ -1,32 +1,24 @@
 package app.navigation
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.Favorite
@@ -39,132 +31,104 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.ui.graphics.vector.ImageVector
+import app.AppGraph
 import app.core.ui.components.WindKlarBottomNav
 import app.core.ui.components.WindKlarBottomNavItem
-import app.data.local.db.AppDatabase
-import app.data.repository.SqlDelightWindParkRepository
-import app.data.seed.SnapshotSeedDataImporter
-import app.data.snapshot.ComposeResourceSnapshotProvider
+import app.core.ui.theme.WindklarTheme
 import app.feature.detail.ParkDetailScreen
-import app.feature.detail.ParkDetailViewModel
+import app.feature.detail.RegionDetailScreen
 import app.feature.favorites.FavoritesScreen
-import app.feature.favorites.FavoritesViewModel
 import app.feature.faq.FaqScreen
 import app.feature.map.MapScreen
-import app.feature.map.MapViewModel
 import app.feature.profile.ProfileScreen
-import app.feature.profile.ProfileViewModel
 import app.feature.start.StartScreen
+import app.feature.start.StartViewModel
+import app.feature.stats.ImpactDetailScreen
 import app.feature.stats.StatsScreen
-import app.feature.stats.StatsViewModel
+import app.feature.stats.toImpactDetailUiState
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import androidx.compose.runtime.snapshotFlow
 
 @Composable
-fun AppNavHost(database: AppDatabase) {
-    var isSeeded by remember { mutableStateOf(false) }
-    var seedError by remember { mutableStateOf<String?>(null) }
-    var retryCount by remember { mutableStateOf(0) }
+fun AppNavHost(appGraph: AppGraph) {
+    val startViewModel = remember(appGraph) { appGraph.startViewModel() }
+    val startUiState = startViewModel.uiState
 
-    LaunchedEffect(database, retryCount) {
-        try {
-            seedError = null
-            println("AppNavHost: Starting database seeding (attempt ${retryCount + 1})...")
-            val importer = SnapshotSeedDataImporter(
-                database = database,
-                snapshotProvider = ComposeResourceSnapshotProvider()
-            )
-            importer.importIfNeeded()
-            println("AppNavHost: Database seeding succeeded!")
-            isSeeded = true
-        } catch (e: Throwable) {
-            println("AppNavHost ERROR: Database seeding failed!")
-            e.printStackTrace()
-            seedError = e.message ?: e.toString()
+    val resolvedStartRoute = remember(startUiState.isOnboardingCompleted) {
+        when (startUiState.isOnboardingCompleted) {
+            true -> Route.Map
+            false -> Route.Start
+            null -> null
         }
     }
-
-    if (!isSeeded) {
+    if (resolvedStartRoute == null) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF8FAF7))
-                .padding(24.dp),
+                .background(WindklarTheme.colors.screenBackground),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                if (seedError != null) {
-                    Text(
-                        text = "Fehler beim Laden",
-                        color = Color(0xFFD32F2F),
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Beim Laden der Windparkdaten ist ein Fehler aufgetreten:\n$seedError",
-                        color = Color(0xFF5C1D1D),
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            onClick = { retryCount++ },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2D5A2D))
-                        ) {
-                            Text("Erneut versuchen")
-                        }
-                        Button(
-                            onClick = { 
-                                println("AppNavHost: Seeding bypassed by user.")
-                                isSeeded = true 
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF757575))
-                        ) {
-                            Text("Ohne Daten starten")
-                        }
-                    }
-                } else {
-                    CircularProgressIndicator(
-                        color = Color(0xFF2D5A2D),
-                        strokeWidth = 4.dp
-                    )
-                    Text(
-                        text = "WindKlar",
-                        color = Color(0xFF1A3A1A),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Windparkdaten werden geladen...",
-                        color = Color(0xFF5A7A5A),
-                        fontSize = 14.sp
-                    )
-                }
-            }
+            CircularProgressIndicator(color = WindklarTheme.colors.primaryGreen)
         }
         return
     }
 
-    val repository = remember(database) { SqlDelightWindParkRepository(database) }
-    var currentRoute: Route by remember { mutableStateOf(Route.Start) }
-    var detailBackRoute: Route by remember { mutableStateOf(Route.Map) }
+    var currentRoute: Route by remember(resolvedStartRoute) { mutableStateOf(resolvedStartRoute) }
+    var routeHistory by remember { mutableStateOf(listOf<Route>()) }
+    val coroutineScope = rememberCoroutineScope()
 
-    val mapViewModel = remember(repository) { MapViewModel(repository) }
-    val favoritesViewModel = remember(repository) { FavoritesViewModel(repository) }
-    val statsViewModel = remember(repository) { StatsViewModel(repository) }
-    val profileViewModel = remember(repository) { ProfileViewModel(repository) }
+    val navigateTo: (Route) -> Unit = { newRoute ->
+        routeHistory = routeHistory + currentRoute
+        currentRoute = newRoute
+    }
+    
+    val navigateBack: () -> Unit = {
+        if (routeHistory.isNotEmpty()) {
+            currentRoute = routeHistory.last()
+            routeHistory = routeHistory.dropLast(1)
+        } else {
+            currentRoute = Route.Map
+        }
+    }
+
+    val navigateToCountry: () -> Unit = {
+        routeHistory = emptyList()
+        currentRoute = Route.Stats
+    }
+
+    val mapViewModel = remember(appGraph) { appGraph.mapViewModel() }
+    val favoritesViewModel = remember(appGraph) { appGraph.favoritesViewModel() }
+    val statsViewModel = remember(appGraph) { appGraph.statsViewModel() }
+    val profileViewModel = remember(appGraph) { appGraph.profileViewModel() }
+
+    LaunchedEffect(appGraph) {
+        snapshotFlow { currentRoute }
+            .filter { it != Route.Start }
+            .first()
+        snapshotFlow { mapViewModel.uiState.isLoading }
+            .filter { !it }
+            .first()
+
+        launch { statsViewModel.loadIfNeeded() }
+        launch { favoritesViewModel.loadData() }
+    }
 
     Scaffold(
+        contentWindowInsets = if (currentRoute == Route.Start) {
+            WindowInsets(0)
+        } else {
+            ScaffoldDefaults.contentWindowInsets
+        },
         bottomBar = {
-            if (currentRoute.isTopLevelRoute()) {
+            if (currentRoute != Route.Start) {
+                val activeTopLevelRoute = currentRoute.let {
+                    if (it.isTopLevelRoute()) it
+                    else routeHistory.lastOrNull { r -> r.isTopLevelRoute() } ?: Route.Map
+                }
                 WindKlarBottomNav(
                     items = topLevelRoutes.map { route ->
-                        val isSelected = currentRoute.isSameTopLevelRoute(route)
+                        val isSelected = activeTopLevelRoute.isSameTopLevelRoute(route)
                         WindKlarBottomNavItem(
                             label = route.title,
                             icon = route.navIcon(selected = isSelected),
@@ -173,6 +137,10 @@ fun AppNavHost(database: AppDatabase) {
                                 if (isSelected && route is Route.Map) {
                                     mapViewModel.minimizePreview()
                                 }
+                                if (route is Route.Favorites) {
+                                    favoritesViewModel.loadData(force = true)
+                                }
+                                routeHistory = emptyList()
                                 currentRoute = route
                             },
                         )
@@ -182,28 +150,60 @@ fun AppNavHost(database: AppDatabase) {
         },
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
-            when (val route = currentRoute) {
-                Route.Start -> StartScreen(
-                    onGetStartedClick = { currentRoute = Route.Map },
-                )
-
-                Route.Map -> MapScreen(
+            if (currentRoute != Route.Start) {
+                MapScreen(
                     viewModel = mapViewModel,
                     onParkSelected = { parkId ->
-                        detailBackRoute = Route.Map
-                        currentRoute = Route.Detail(parkId)
+                        navigateTo(Route.Detail(parkId))
+                    },
+                    onRegionSelected = { type, id ->
+                        navigateTo(Route.RegionDetail(type, id))
+                    },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(0f),
+                    isVisible = currentRoute is Route.Map,
+                )
+            }
+
+            if (currentRoute != Route.Map) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(1f)
+                        .background(WindklarTheme.colors.screenBackground),
+                ) {
+                    when (val route = currentRoute) {
+                Route.Start -> StartScreen(
+                    onGetStartedClick = {
+                        startViewModel.completeOnboarding {
+                            currentRoute = Route.Map
+                        }
                     },
                 )
 
+                Route.Map -> Unit
+
                 Route.Stats -> StatsScreen(
                     viewModel = statsViewModel,
+                    onNavigateToParkDetail = { parkId ->
+                        navigateTo(Route.Detail(parkId))
+                    },
+                    onNavigateToRegionDetail = { type, id ->
+                        navigateTo(Route.RegionDetail(type, id))
+                    },
+                    onNavigateToImpactDetail = { metricType ->
+                        navigateTo(Route.ImpactDetail(metricType))
+                    },
                 )
 
                 Route.Favorites -> FavoritesScreen(
                     viewModel = favoritesViewModel,
                     onParkSelected = { parkId ->
-                        detailBackRoute = Route.Favorites
-                        currentRoute = Route.Detail(parkId)
+                        navigateTo(Route.Detail(parkId))
+                    },
+                    onRegionSelected = { type, id ->
+                        navigateTo(Route.RegionDetail(type, id))
                     },
                 )
 
@@ -211,14 +211,78 @@ fun AppNavHost(database: AppDatabase) {
                 
                 Route.Profile -> ProfileScreen(
                     viewModel = profileViewModel,
+                    onReplayOnboarding = {
+                        navigateTo(Route.Start)
+                    },
+                    onCreateDataHint = {
+                        routeHistory = emptyList()
+                        currentRoute = Route.Map
+                        mapViewModel.startPinPlacement(reportPark = null)
+                    },
                 )
                 
                 is Route.Detail -> {
-                    val detailViewModel = remember(route.parkId) { ParkDetailViewModel(route.parkId, repository) }
+                    val detailViewModel = remember(appGraph, route.parkId) {
+                        appGraph.parkDetailViewModel(route.parkId)
+                    }
                     ParkDetailScreen(
                         viewModel = detailViewModel,
-                        onBack = { currentRoute = detailBackRoute },
+                        onBack = { navigateBack() },
+                        onNavigateToRegion = { type, id ->
+                            navigateTo(Route.RegionDetail(type, id))
+                        },
+                        onNavigateToCountry = navigateToCountry,
+                        onShowParkOnMap = {
+                            mapViewModel.selectParkOnMap(route.parkId)
+                            routeHistory = emptyList()
+                            currentRoute = Route.Map
+                        },
+                        onShowTurbineOnMap = { turbineId ->
+                            mapViewModel.selectTurbineOnMap(route.parkId, turbineId)
+                            routeHistory = emptyList()
+                            currentRoute = Route.Map
+                        },
                     )
+                }
+
+                is Route.RegionDetail -> {
+                    val regionViewModel = remember(appGraph, route.type, route.id) {
+                        appGraph.regionDetailViewModel(route.type, route.id)
+                    }
+                    RegionDetailScreen(
+                        viewModel = regionViewModel,
+                        onBack = { navigateBack() },
+                        onParkSelected = { parkId ->
+                            navigateTo(Route.Detail(parkId))
+                        },
+                        onRegionSelected = { type, id ->
+                            navigateTo(Route.RegionDetail(type, id))
+                        },
+                        onNavigateToCountry = navigateToCountry,
+                        onShowRegionOnMap = {
+                            mapViewModel.selectRegionOnMap(route.type, route.id)
+                            routeHistory = emptyList()
+                            currentRoute = Route.Map
+                        },
+                    )
+                }
+
+                is Route.ImpactDetail -> {
+                    LaunchedEffect(route.metricType) {
+                        statsViewModel.loadImpactDetail(route.metricType)
+                    }
+                    ImpactDetailScreen(
+                        uiState = statsViewModel.uiState.toImpactDetailUiState(route.metricType),
+                        onBack = { navigateBack() },
+                        onNavigateToParkDetail = { parkId ->
+                            navigateTo(Route.Detail(parkId))
+                        },
+                        onNavigateToRegionDetail = { type, id ->
+                            navigateTo(Route.RegionDetail(type, id))
+                        },
+                    )
+                }
+            }
                 }
             }
         }
@@ -243,4 +307,6 @@ private fun Route.navIcon(selected: Boolean): ImageVector = when (this) {
     Route.Profile -> if (selected) Icons.Filled.Info else Icons.Outlined.Info
     Route.Start -> Icons.Outlined.Map
     is Route.Detail -> Icons.Outlined.Map
+    is Route.RegionDetail -> Icons.Outlined.Map
+    is Route.ImpactDetail -> Icons.Outlined.QueryStats
 }

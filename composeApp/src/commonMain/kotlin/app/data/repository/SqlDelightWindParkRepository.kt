@@ -3,54 +3,108 @@ package app.data.repository
 import app.core.model.WindPark
 import app.core.model.Metric
 import app.core.model.SnapshotAssumption
+import app.core.model.SnapshotInfo
 import app.core.model.WindTurbine
+import app.core.model.DataHint
+import app.core.model.FavoriteRegion
+import app.core.model.MapSearchEntry
+import app.core.model.NationalStatsSummary
+import app.core.model.RegionSummary
 import app.data.local.dao.*
+import app.data.local.entity.SnapshotMetadata
 import app.data.local.entity.WindParkEntity
-import app.data.local.db.AppDatabase
-import app.data.snapshot.SnapshotAssumptionDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class SqlDelightWindParkRepository(
-    private val database: AppDatabase,
+    private val windParkDao: WindParkDao,
+    private val windTurbineDao: WindTurbineDao,
+    private val metricDao: MetricDao,
+    private val favoriteDao: FavoriteDao,
+    private val recentWindParkDao: RecentWindParkDao,
+    private val dataHintDao: DataHintDao,
+    private val snapshotMetadataDao: SnapshotMetadataDao,
+    private val settingsDao: SettingsDao,
+    private val summaryDao: SummaryDao,
     private val json: Json = Json {
         ignoreUnknownKeys = true
         explicitNulls = false
     },
 ) : WindParkRepository {
-    private val windParkDao: WindParkDao = SqlDelightWindParkDao(database)
-    private val windTurbineDao: WindTurbineDao = SqlDelightWindTurbineDao(database)
-    private val metricDao: MetricDao = SqlDelightMetricDao(database)
-    private val favoriteDao: FavoriteDao = SqlDelightFavoriteDao(database)
-    private val recentWindParkDao: RecentWindParkDao = SqlDelightRecentWindParkDao(database)
-    private val dataHintDao: DataHintDao = SqlDelightDataHintDao(database)
-    private val snapshotMetadataDao: SnapshotMetadataDao = SqlDelightSnapshotMetadataDao(database)
+    private companion object {
+        const val ONBOARDING_COMPLETED_KEY = "onboarding_completed"
+    }
+
+    private val snapshotMutex = Mutex()
+    private var cachedSnapshotInfo: SnapshotInfo? = null
+    private var hasCachedSnapshotInfo = false
+    private var cachedAssumptions: List<SnapshotAssumption>? = null
+
+    private val summaryMutex = Mutex()
+    private var cachedOperationalSummaryMap: Map<String, ParkOperationalSummary>? = null
+    private suspend fun getOperationalSummaryMap(): Map<String, ParkOperationalSummary> = summaryMutex.withLock {
+        cachedOperationalSummaryMap ?: summaryDao.getAllParkOperationalSummaries().also {
+            cachedOperationalSummaryMap = it
+        }
+    }
+
+    override suspend fun getMapStartupSnapshot(): MapStartupSnapshot = withContext(Dispatchers.Default) {
+        val favorites = favoriteDao.getFavoriteIds().toSet()
+        val (parks, statuses) = summaryDao.getMapStartupParks(favorites)
+        val searchEntries = summaryDao.getAllMapSearchEntries()
+
+        MapStartupSnapshot(
+            parks = parks,
+            parkStatuses = statuses,
+            searchEntries = searchEntries,
+        )
+    }
 
     override suspend fun getWindParks(): List<WindPark> = withContext(Dispatchers.Default) {
         val favorites = favoriteDao.getFavoriteIds().toSet()
-        windParkDao.getAll().map { it.toDomain(favorites.contains(it.id)) }
+        val summaries = getOperationalSummaryMap()
+        windParkDao.getAll()
+            .filter { summaries[it.id]?.parkStatus != "Stillgelegt" }
+            .map { it.toDomain(favorites.contains(it.id), summaries[it.id]) }
     }
 
     override suspend fun getWindPark(id: String): WindPark? = withContext(Dispatchers.Default) {
         val entity = windParkDao.getById(id) ?: return@withContext null
+        val summary = summaryDao.getParkOperationalSummary(id)
         val isFav = favoriteDao.isFavorite(id)
-        entity.toDomain(isFav)
+        entity.toDomain(isFav, summary)
     }
 
     override suspend fun searchWindParks(query: String): List<WindPark> = withContext(Dispatchers.Default) {
         val favorites = favoriteDao.getFavoriteIds().toSet()
-        windParkDao.search(query).map { it.toDomain(favorites.contains(it.id)) }
+        val entities = windParkDao.search(query)
+        val parkIds = entities.map { it.id }
+        val summaries = summaryDao.getParkOperationalSummariesByIds(parkIds)
+        entities
+            .filter { summaries[it.id]?.parkStatus != "Stillgelegt" }
+            .map { it.toDomain(favorites.contains(it.id), summaries[it.id]) }
     }
 
     override suspend fun getFavoriteWindParks(): List<WindPark> = withContext(Dispatchers.Default) {
-        val favorites = favoriteDao.getFavoriteIds().toSet()
-        windParkDao.getAll()
-            .filter { favorites.contains(it.id) }
-            .map { it.toDomain(true) }
+        val favorites = favoriteDao.getFavoriteIds()
+        if (favorites.isEmpty()) return@withContext emptyList()
+        val summaries = summaryDao.getParkOperationalSummariesByIds(favorites)
+        val entitiesMap = windParkDao.getByIds(favorites).associateBy { it.id }
+        favorites.mapNotNull { id ->
+            val summary = summaries[id]
+            if (summary?.parkStatus == "Stillgelegt") {
+                null
+            } else {
+                entitiesMap[id]?.toDomain(true, summary)
+            }
+        }
     }
 
     override suspend fun isFavorite(parkId: String): Boolean = withContext(Dispatchers.Default) {
@@ -65,12 +119,55 @@ class SqlDelightWindParkRepository(
         }
     }
 
+    override suspend fun getFavoriteRegions(): List<FavoriteRegion> = withContext(Dispatchers.Default) {
+        val favoriteEntities = favoriteDao.getFavoriteRegions()
+        if (favoriteEntities.isEmpty()) return@withContext emptyList()
+
+        favoriteEntities.mapNotNull { entity ->
+            val region = summaryDao.getRegionSummary(entity.regionType.lowercase(), entity.regionId)
+                ?: return@mapNotNull null
+            FavoriteRegion(
+                type = entity.regionType,
+                id = entity.regionId,
+                name = region.name
+            )
+        }
+    }
+
+    override suspend fun getFavoriteRegionSummaries(): List<RegionSummary> = withContext(Dispatchers.Default) {
+        val favoriteEntities = favoriteDao.getFavoriteRegions()
+        if (favoriteEntities.isEmpty()) return@withContext emptyList()
+
+        favoriteEntities.mapNotNull { entity ->
+            summaryDao.getRegionSummary(entity.regionType.lowercase(), entity.regionId)
+        }
+    }
+
+    override suspend fun isRegionFavorite(type: String, id: String): Boolean = withContext(Dispatchers.Default) {
+        favoriteDao.isRegionFavorite(type, id)
+    }
+
+    override suspend fun setRegionFavorite(type: String, id: String, isFavorite: Boolean): Unit = withContext(Dispatchers.Default) {
+        if (isFavorite) {
+            favoriteDao.addRegionFavorite(type, id, epochMillis())
+        } else {
+            favoriteDao.removeRegionFavorite(type, id)
+        }
+    }
+
     override suspend fun getRecentWindParks(limit: Long): List<WindPark> = withContext(Dispatchers.Default) {
         val favorites = favoriteDao.getFavoriteIds().toSet()
         val recentIds = recentWindParkDao.getRecentWindParkIds(limit)
-        val entitiesMap = windParkDao.getAll().filter { recentIds.contains(it.id) }.associateBy { it.id }
+        if (recentIds.isEmpty()) return@withContext emptyList()
+        val summaries = summaryDao.getParkOperationalSummariesByIds(recentIds)
+        val entitiesMap = windParkDao.getByIds(recentIds).associateBy { it.id }
         recentIds.mapNotNull { id ->
-            entitiesMap[id]?.toDomain(favorites.contains(id))
+            val summary = summaries[id]
+            if (summary?.parkStatus == "Stillgelegt") {
+                null
+            } else {
+                entitiesMap[id]?.toDomain(favorites.contains(id), summary)
+            }
         }
     }
 
@@ -87,25 +184,13 @@ class SqlDelightWindParkRepository(
     }
 
     override suspend fun getMetricsForNational(): List<Metric> = withContext(Dispatchers.Default) {
-        val allMetrics = metricDao.getAll()
-        val groups = allMetrics.groupBy { it.metricType }
-        groups.map { (type, list) ->
-            val sum = list.sumOf { it.value ?: 0.0 }
-            Metric(
-                id = "national_$type",
-                subjectType = "national",
-                subjectId = "DE",
-                metricType = type,
-                value = sum,
-                unit = list.firstOrNull()?.unit ?: "",
-                period = "year",
-                sourceName = "WindKlar aggregated national data",
-                sourceUrl = "",
-                sourceUpdatedAt = "",
-                dataQuality = "derived",
-                calculationNote = "Sum of all precomputed wind park estimates."
-            )
-        }
+        val summary = getNationalStatsSummary() ?: return@withContext emptyList()
+        listOf(
+            summary.toNationalMetric("annual_production", summary.annualProductionKwh, "kWh/a"),
+            summary.toNationalMetric("co2_savings", summary.co2SavingsKg, "kg CO2/a"),
+            summary.toNationalMetric("household_equivalent", summary.householdEquivalent, "households"),
+            summary.toNationalMetric("municipal_participation", summary.municipalBenefitEur, "EUR/a"),
+        )
     }
 
     override suspend fun getWindTurbinesForPark(parkId: String): List<WindTurbine> = withContext(Dispatchers.Default) {
@@ -116,8 +201,51 @@ class SqlDelightWindParkRepository(
         windTurbineDao.getAll()
     }
 
+    override suspend fun getWindTurbinesInBounds(
+        swLat: Double,
+        swLon: Double,
+        neLat: Double,
+        neLon: Double,
+    ): List<WindTurbine> = withContext(Dispatchers.Default) {
+        windTurbineDao.getInBounds(swLat, swLon, neLat, neLon)
+    }
+
+    override suspend fun countActiveWindTurbines(): Int = withContext(Dispatchers.Default) {
+        getNationalStatsSummary()?.activeTurbineCount ?: 0
+    }
+
     override suspend fun getWindParkStatuses(): Map<String, String> = withContext(Dispatchers.Default) {
-        windTurbineDao.getParkStatuses()
+        getOperationalSummaryMap().mapValues { (_, summary) -> summary.parkStatus }
+    }
+
+    override suspend fun getMapSearchEntries(): List<MapSearchEntry> = withContext(Dispatchers.Default) {
+        summaryDao.getAllMapSearchEntries()
+    }
+
+    override suspend fun getRegionSummaries(type: String): List<RegionSummary> = withContext(Dispatchers.Default) {
+        summaryDao.getRegionSummaries(type)
+    }
+
+    override suspend fun getWindParksByRegion(type: String, id: String): List<WindPark> = withContext(Dispatchers.Default) {
+        val favorites = favoriteDao.getFavoriteIds().toSet()
+        val summaries = getOperationalSummaryMap()
+        val entities = when (type.lowercase()) {
+            "city" -> windParkDao.getByMunicipality(id)
+            "district" -> windParkDao.getByDistrict(id)
+            "state" -> windParkDao.getByState(id)
+            else -> emptyList()
+        }
+        entities
+            .filter { summaries[it.id]?.parkStatus != "Stillgelegt" }
+            .map { it.toDomain(favorites.contains(it.id), summaries[it.id]) }
+    }
+
+    override suspend fun getRegionSummary(type: String, id: String): RegionSummary? = withContext(Dispatchers.Default) {
+        summaryDao.getRegionSummary(type, id)
+    }
+
+    override suspend fun getNationalStatsSummary(): NationalStatsSummary? = withContext(Dispatchers.Default) {
+        summaryDao.getNationalStatsSummary()
     }
 
 
@@ -157,46 +285,140 @@ class SqlDelightWindParkRepository(
     }
 
     override suspend fun getSnapshotAttribution(): String = withContext(Dispatchers.Default) {
-        snapshotMetadataDao.getLatest()?.attribution ?: "Marktstammdatenregister"
+        getSnapshotInfo()?.attribution ?: "Marktstammdatenregister"
     }
 
     override suspend fun getSnapshotLimitations(): List<String> = withContext(Dispatchers.Default) {
-        val raw = snapshotMetadataDao.getLatest()?.limitations ?: ""
-        if (raw.isBlank()) emptyList() else raw.split("\n")
+        getSnapshotInfo()?.limitations ?: emptyList()
+    }
+
+    override suspend fun getSnapshotInfo(): SnapshotInfo? = withContext(Dispatchers.Default) {
+        snapshotMutex.withLock {
+            if (hasCachedSnapshotInfo) return@withLock cachedSnapshotInfo
+            val metadata = snapshotMetadataDao.getLatest()
+            val limitations = metadata?.limitations
+                ?.takeIf { it.isNotBlank() }
+                ?.split("\n")
+                ?: emptyList()
+            val info = metadata?.let {
+                SnapshotInfo(
+                    snapshotId = it.snapshotId,
+                    sourceName = it.sourceName,
+                    attribution = it.attribution,
+                    mastrExportDate = it.mastrExportDate,
+                    processedAt = it.processedAt,
+                    pipelineVersion = it.pipelineVersion,
+                    limitations = limitations,
+                    isLocalSnapshot = true,
+                )
+            }
+            cachedSnapshotInfo = info
+            hasCachedSnapshotInfo = true
+            info
+        }
+    }
+
+    override suspend fun getDataHints(): List<DataHint> = withContext(Dispatchers.Default) {
+        dataHintDao.getAll()
+    }
+
+    override suspend fun isOnboardingCompleted(): Boolean = withContext(Dispatchers.Default) {
+        settingsDao.getValue(ONBOARDING_COMPLETED_KEY)
+            ?.trim()
+            ?.lowercase()
+            ?.let { it == "true" }
+            ?: false
+    }
+
+    override suspend fun setOnboardingCompleted(completed: Boolean): Unit = withContext(Dispatchers.Default) {
+        settingsDao.upsertValue(ONBOARDING_COMPLETED_KEY, completed.toString())
     }
 
     override suspend fun getSnapshotAssumptions(): List<SnapshotAssumption> = withContext(Dispatchers.Default) {
-        val raw = snapshotMetadataDao.getLatest()?.assumptions_json ?: return@withContext emptyList()
-        runCatching {
-            json.decodeFromString<List<SnapshotAssumptionDto>>(raw).map { assumption ->
-                SnapshotAssumption(
-                    id = assumption.id,
-                    label = assumption.label,
-                    value = assumption.value,
-                    unit = assumption.unit,
-                    sourceName = assumption.sourceName,
-                    sourceUrl = assumption.sourceUrl,
-                    sourceDate = assumption.sourceDate,
-                    calculationNote = assumption.calculationNote,
-                )
-            }
-        }.getOrDefault(emptyList())
+        snapshotMutex.withLock {
+            cachedAssumptions?.let { return@withLock it }
+            val raw = snapshotMetadataDao.getLatest()?.assumptionsJson ?: return@withLock emptyList()
+            val parsed = runCatching {
+                json.decodeFromString<List<SnapshotAssumptionDto>>(raw).map { assumption ->
+                    SnapshotAssumption(
+                        id = assumption.id,
+                        label = assumption.label,
+                        value = assumption.value,
+                        unit = assumption.unit,
+                        sourceName = assumption.sourceName,
+                        sourceUrl = assumption.sourceUrl,
+                        sourceDate = assumption.sourceDate,
+                        calculationNote = assumption.calculationNote,
+                    )
+                }
+            }.getOrDefault(emptyList())
+            cachedAssumptions = parsed
+            parsed
+        }
     }
 
-    private fun WindParkEntity.toDomain(isFavorite: Boolean) = WindPark(
+    override suspend fun getAllMetrics(): List<Metric> = withContext(Dispatchers.Default) {
+        metricDao.getAll()
+    }
+
+    override suspend fun getMetricsForParks(parkIds: List<String>): List<Metric> = withContext(Dispatchers.Default) {
+        if (parkIds.isEmpty()) return@withContext emptyList()
+        metricDao.getForSubjects("wind_park", parkIds)
+    }
+
+    private fun WindParkEntity.toDomain(
+        isFavorite: Boolean,
+        summary: ParkOperationalSummary? = null
+    ) = WindPark(
         id = id,
         name = name,
         municipalityId = municipalityId,
         municipalityName = municipalityName,
+        districtId = districtId,
+        districtName = districtName,
+        stateId = stateId,
+        stateName = stateName,
         latitude = latitude,
         longitude = longitude,
-        turbineCount = turbineCount ?: 0,
-        installedCapacityKw = installedCapacityKw,
+        turbineCount = summary?.turbineCount ?: turbineCount ?: 0,
+        installedCapacityKw = summary?.capacityKw ?: installedCapacityKw,
         isFavorite = isFavorite,
         sourceName = sourceName,
         sourceUrl = sourceUrl,
         sourceUpdatedAt = sourceUpdatedAt,
         dataQuality = dataQuality
+    )
+
+    private fun NationalStatsSummary.toNationalMetric(
+        metricType: String,
+        value: Double,
+        unit: String,
+    ): Metric =
+        Metric(
+            id = "national_$metricType",
+            subjectType = "national",
+            subjectId = "DE",
+            metricType = metricType,
+            value = value,
+            unit = unit,
+            period = "year",
+            sourceName = "WindKlar MVP-Berechnung",
+            sourceUrl = "",
+            sourceUpdatedAt = "",
+            dataQuality = "estimated",
+            calculationNote = "Bundesweite Summe aus vorberechneten Windpark-Metriken.",
+        )
+
+    @Serializable
+    private data class SnapshotAssumptionDto(
+        val id: String,
+        val label: String,
+        val value: Double,
+        val unit: String,
+        val sourceName: String,
+        val sourceUrl: String,
+        val sourceDate: String,
+        val calculationNote: String,
     )
 }
 

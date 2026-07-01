@@ -1,0 +1,102 @@
+CREATE TABLE metric (
+    id TEXT NOT NULL PRIMARY KEY,
+    subject_type TEXT NOT NULL,
+    subject_id TEXT NOT NULL,
+    metric_type TEXT NOT NULL,
+    metric_value REAL,
+    unit TEXT NOT NULL,
+    period TEXT,
+    source_name TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    source_updated_at TEXT NOT NULL,
+    data_quality TEXT NOT NULL,
+    calculation_note TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_metric_subject ON metric(subject_type, subject_id);
+CREATE INDEX IF NOT EXISTS idx_metric_type ON metric(metric_type);
+
+selectMetricsForSubject:
+SELECT *
+FROM metric
+WHERE subject_type = ?
+  AND subject_id = ?
+ORDER BY metric_type;
+
+selectMetricsForSubjects:
+SELECT *
+FROM metric
+WHERE subject_type = :subjectType
+  AND subject_id IN :subjectIds
+ORDER BY metric_type;
+
+selectAllMetrics:
+SELECT *
+FROM metric;
+
+selectNationalMetricAggregates:
+SELECT
+    metric.metric_type AS metric_type,
+    COALESCE(SUM(metric.metric_value), 0.0) AS metric_value,
+    MIN(metric.unit) AS unit,
+    MIN(metric.period) AS period,
+    MIN(metric.source_name) AS source_name,
+    MIN(metric.source_url) AS source_url,
+    MAX(metric.source_updated_at) AS source_updated_at,
+    CASE
+        WHEN COUNT(metric.metric_value) = 0 THEN 'missing'
+        WHEN SUM(CASE WHEN metric.metric_value IS NOT NULL AND metric.data_quality = 'estimated' THEN 1 ELSE 0 END) > 0 THEN 'estimated'
+        WHEN SUM(CASE WHEN metric.metric_value IS NOT NULL AND metric.data_quality = 'simulated' THEN 1 ELSE 0 END) > 0 THEN 'simulated'
+        WHEN SUM(CASE WHEN metric.metric_value IS NOT NULL AND metric.data_quality = 'derived' THEN 1 ELSE 0 END) > 0 THEN 'derived'
+        WHEN SUM(CASE WHEN metric.metric_value IS NOT NULL AND metric.data_quality = 'measured' THEN 1 ELSE 0 END) > 0 THEN 'measured'
+        ELSE 'official'
+    END AS data_quality,
+    MIN(metric.calculation_note) AS calculation_note,
+    COUNT(metric.metric_value) AS present_value_count
+FROM metric
+JOIN wind_park ON wind_park.id = metric.subject_id
+WHERE metric.subject_type = 'wind_park'
+  AND wind_park.id NOT IN (
+      SELECT wind_park_id
+      FROM wind_turbine
+      GROUP BY wind_park_id
+      HAVING COUNT(*) = SUM(CASE WHEN LOWER(COALESCE(status, '')) LIKE '%stillgelegt%' THEN 1 ELSE 0 END)
+  )
+GROUP BY metric.metric_type
+ORDER BY metric.metric_type;
+
+upsertMetric:
+INSERT OR IGNORE INTO metric(
+    id,
+    subject_type,
+    subject_id,
+    metric_type,
+    metric_value,
+    unit,
+    period,
+    source_name,
+    source_url,
+    source_updated_at,
+    data_quality,
+    calculation_note
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateMetric:
+UPDATE metric
+SET
+    subject_type = :subject_type,
+    subject_id = :subject_id,
+    metric_type = :metric_type,
+    metric_value = :metric_value,
+    unit = :unit,
+    period = :period,
+    source_name = :source_name,
+    source_url = :source_url,
+    source_updated_at = :source_updated_at,
+    data_quality = :data_quality,
+    calculation_note = :calculation_note
+WHERE id = :id;
+
+deleteAllMetrics:
+DELETE FROM metric;

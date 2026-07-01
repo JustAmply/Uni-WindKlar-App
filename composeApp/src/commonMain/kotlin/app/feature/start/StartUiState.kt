@@ -9,4 +9,5 @@ data class StartUiState(
         "Schützen Sie unsere Umwelt",
     ),
     val ctaLabel: String = "Jetzt entdecken",
+    val isOnboardingCompleted: Boolean? = null,
 )

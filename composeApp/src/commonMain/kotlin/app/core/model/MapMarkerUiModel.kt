@@ -3,6 +3,8 @@ package app.core.model
 enum class MapMarkerKind {
     Park,
     Cluster,
+    Turbine,
+    PlacementPin,
 }
 
 data class MapMarkerUiModel(

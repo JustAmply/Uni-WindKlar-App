@@ -6,16 +6,16 @@
 - Keep this file small: durable repo rules only. Do not duplicate the PRD here.
 
 ## Project
-`windklar` is a Kotlin Multiplatform app for Android and iOS. It helps people in Germany understand nearby wind parks, production context, municipal benefit, data quality and local data hints.
+`windklar` is a Kotlin Multiplatform app for Android and iOS. It helps people in Germany understand nearby onshore wind parks, production context, municipal benefit, data quality and local data hints. Offshore wind energy is excluded.
 
 Seminar context: the app is built for a university course with the Umweltbundesamt as seminar customer. Prefer a coherent, demonstrable MVP over broad speculative features.
 
 Product tone: factual, accessible and transparent about uncertainty. Do not make the app feel like advertising.
 
 ## MVP Rules
-- `Windanlage` is the atomic MaStR/Open-MaStR-backed source-data and coordinate unit.
+- `Windanlage` is the atomic MaStR-backed source-data and coordinate unit.
 - `Windpark` is the citizen-facing UX unit for map, search, favorites, detail and municipality context.
-- Use a Germany-wide preprocessed local JSON snapshot imported into SQLDelight; no live API dependency for baseline runtime flows.
+- Use a Germany-wide preprocessed source SQLite seed database; no runtime JSON import and no live API dependency for baseline runtime flows.
 - Search belongs inside the `Map` flow as an overlay/sheet, not as a bottom-nav tab.
 - `Profile` means `Info & Einstellungen`; no account, auth, logout, notifications or dark-mode controls unless implemented later.
 - `ReportWindTurbine` means local `Datenhinweis`, not an official MaStR correction.
@@ -28,7 +28,8 @@ Product tone: factual, accessible and transparent about uncertainty. Do not make
 - `composeApp/src/commonMain/kotlin/app/feature/*`: feature UI/state/viewmodel packages.
 - `composeApp/src/commonMain/kotlin/app/core`: shared UI, models, theme and utilities.
 - `composeApp/src/commonMain/kotlin/app/data`: repositories, DAO contracts, entities and seed import contracts.
-- `composeApp/src/commonMain/sqldelight/app/data/local/db`: SQLDelight schema files.
+- `composeApp/src/commonMain/sqldelightSource`: SQLDelight schema files for replaceable source data.
+- `composeApp/src/commonMain/sqldelightUser`: SQLDelight schema files for persistent local user data.
 
 Keep platform code thin:
 - `commonMain`: shared UI, state and repository contracts.
@@ -44,14 +45,15 @@ Current routes:
 - `Faq`
 - `Profile`
 - `Detail(parkId)`
+- `RegionDetail(type, id)`
 
 Bottom nav is owned by `AppNavHost` and contains `Map`, `Stats`, `Favorites`, `Faq`, `Profile`.
 
 Rules:
 - Do not duplicate bottom-nav ownership inside feature screens.
 - Top-level screens should not show their own back button to `Map`.
-- Back affordances belong to subflows such as detail, search overlay/sheet, data hint form and turbine subdetail.
-- Add `ReportWindTurbine` only when implementing the data-hint slice.
+- Back affordances belong to subflows such as detail, search overlay/sheet, data hint dialog and turbine subdetail.
+- `ReportWindTurbine` is implemented as a dialog inside the `Map` flow, not as a separate navigation route.
 
 ## Data
 Use this boundary:
@@ -71,7 +73,7 @@ Target local model:
 - `data_hint`
 - optional `snapshot_metadata`
 
-- Source-data preprocessing lives in top-level `data/`; app runtime imports only the bundled app-ready JSON snapshot.
+- Source-data preprocessing lives in top-level `data/`; app runtime opens only the bundled app-ready source SQLite seed database plus the persistent user database.
 - `RecentWindPark.sq` records every opened park.
 - Production and impact values belong in the generic `metric` model.
 - Source, timestamp, calculation note and data quality are first-class data.
@@ -92,14 +94,19 @@ Data-quality labels: `official`, `measured`, `derived`, `estimated`, `simulated`
 
 ## Current Baseline
 - App root: `app.App`, wrapping `AppNavHost` in `WindklarTheme`.
-- Implemented visual slices: `StartScreen`, `MapScreen`, `FavoritesScreen`, `FaqScreen`, `StatsScreen`, `ProfileScreen`.
-- Scaffold slices: `SearchScreen`, `ParkDetailScreen`, map/search/detail viewmodels, database driver factory and snapshot seed importer.
-- Missing slice: `ReportWindTurbine` route/package/form.
-- UI is mostly mock `UiState`; repositories/DAO contracts are not yet wired through generated SQLDelight APIs.
+- All screens implemented and wired to repository: `StartScreen`, `MapScreen`, `StatsScreen`, `FavoritesScreen`, `FaqScreen`, `ProfileScreen`, `ParkDetailScreen`, `RegionDetailScreen`.
+- Search is implemented inside the `Map` flow as an overlay/sheet.
+- `ReportWindTurbine` is implemented as a dialog composable (`ReportWindTurbineDialog`) triggered from the `MapScreen` pin-placement FAB.
+- All repositories/DAO contracts are wired through generated SQLDelight APIs.
+- Android and iOS copy/replace the bundled source SQLite database (`windklar_source_seed.db`) before driver creation when the bundled snapshot checksum changes.
+- Local user data lives in a separate `windklar_user.db` and is not replaced by source-data updates.
+- Data wireframe: `UI -> ViewModel -> Repository -> SQLDelight DAOs -> SourceDatabase/UserDatabase -> SQLite`.
+- `Favorites` supports both parks and regions; `Recents` records every opened park.
+- `FaqScreen` renders static content from `FaqUiState.defaultFaqQuestions` (no ViewModel).
 - AGP 9.x/KMP compatibility warning is accepted for the seminar MVP unless the build breaks.
 
 ## Build And Verify
-- Android build: `.\gradlew.bat :composeApp:assembleDebug`
+- Android build: `.\gradlew.bat :androidApp:assembleDebug`
 - iOS: open `iosApp` in Xcode and run there.
 - For docs-only changes, run `git diff --check`.
 - For feature changes, verify the relevant manual flow; Android manual QA is required before demo, iOS smoke test is desirable where available.

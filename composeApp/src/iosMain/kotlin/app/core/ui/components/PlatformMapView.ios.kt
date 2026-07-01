@@ -8,11 +8,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.interop.UIKitView
 import app.core.model.MapMarkerUiModel
+import app.core.ui.theme.WindklarTheme
+import app.core.ui.theme.toHexRgb
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import kotlinx.serialization.json.Json
@@ -27,6 +29,7 @@ import platform.WebKit.WKWebView
 import platform.WebKit.WKWebViewConfiguration
 import platform.WebKit.WKNavigationDelegateProtocol
 import platform.WebKit.WKNavigation
+import platform.WebKit.WKWebsiteDataStore
 import platform.darwin.NSObject
 import windklar.composeapp.generated.resources.Res
 
@@ -41,12 +44,27 @@ actual fun PlatformMapView(
     markers: List<MapMarkerUiModel>,
     selectedParkId: String?,
     onMapMoved: (lat: Double, lon: Double, zoom: Float) -> Unit,
+    onMapMovedWithBounds: ((
+        lat: Double,
+        lon: Double,
+        zoom: Float,
+        swLat: Double,
+        swLon: Double,
+        neLat: Double,
+        neLon: Double,
+    ) -> Unit)?,
     onParkClicked: (String) -> Unit,
     onClusterClicked: (lat: Double, lon: Double) -> Unit,
+    onPlacementPinDragged: ((lat: Double, lon: Double) -> Unit)?,
     modifier: Modifier
 ) {
     var isPageLoaded by remember { mutableStateOf(false) }
     var webViewRef by remember { mutableStateOf<WKWebView?>(null) }
+    val currentOnMapMoved = rememberUpdatedState(onMapMoved)
+    val currentOnMapMovedWithBounds = rememberUpdatedState(onMapMovedWithBounds)
+    val currentOnParkClicked = rememberUpdatedState(onParkClicked)
+    val currentOnClusterClicked = rememberUpdatedState(onClusterClicked)
+    val currentOnPlacementPinDragged = rememberUpdatedState(onPlacementPinDragged)
 
     var leafletCss by remember { mutableStateOf<String?>(null) }
     var leafletJs by remember { mutableStateOf<String?>(null) }
@@ -61,12 +79,19 @@ actual fun PlatformMapView(
         }
     }
 
+    val colors = WindklarTheme.colors
+    val bg = colors.screenBackground.toHexRgb()
+    val primary = colors.primaryGreen.toHexRgb()
+    val white = colors.cardBackground.toHexRgb()
+    val error = colors.errorRed.toHexRgb()
+    val teal = colors.turbineTeal.toHexRgb()
+
     val htmlContent = remember(leafletCss, leafletJs) {
         val css = leafletCss ?: ""
         val js = leafletJs ?: ""
-        val centerLatDefault = 51.1657
-        val centerLonDefault = 10.4515
-        val zoomDefault = 6.0f
+        val centerLatDefault = centerLat
+        val centerLonDefault = centerLon
+        val zoomDefault = zoomLevel
         """
         <!DOCTYPE html>
         <html>
@@ -74,31 +99,52 @@ actual fun PlatformMapView(
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
                 $css
-                
+
                 body, html {
                     margin: 0; padding: 0; width: 100%; height: 100%;
-                    background: #F8FAF7;
+                    background: $bg;
                 }
                 #map {
                     width: 100%; height: 100%;
                 }
                 #offline-message {
                     display: none;
-                    padding: 20px;
-                    text-align: center;
+                    position: absolute;
+                    left: 16px;
+                    right: 16px;
+                    bottom: 16px;
+                    z-index: 1000;
+                    padding: 12px 14px;
                     font-family: sans-serif;
-                    color: #2D5A2D;
-                    margin-top: 100px;
+                    color: $primary;
+                    background: rgba(255, 255, 255, 0.94);
+                    border: 1px solid rgba(38, 110, 80, 0.24);
+                    border-radius: 12px;
+                    box-shadow: 0 3px 12px rgba(0,0,0,0.18);
+                    pointer-events: none;
+                }
+                #offline-message h3 {
+                    margin: 0 0 4px 0;
+                    font-size: 14px;
+                    line-height: 18px;
+                }
+                #offline-message p {
+                    margin: 0;
+                    font-size: 12px;
+                    line-height: 16px;
                 }
                 .leaflet-control-zoom { display: none !important; }
-                .leaflet-control-attribution { font-size: 8px !important; }
+                .leaflet-control-attribution {
+                    font-size: 8px !important;
+                    pointer-events: none;
+                }
                 .windklar-cluster {
                     width: 30px;
                     height: 30px;
                     border-radius: 999px;
-                    background: #2D5A2D;
-                    border: 2px solid #FFFFFF;
-                    color: #FFFFFF;
+                    background: $primary;
+                    border: 2px solid $white;
+                    color: $white;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -107,13 +153,36 @@ actual fun PlatformMapView(
                     font-size: 11px;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.25);
                 }
+                .windklar-turbine {
+                    width: 22px;
+                    height: 22px;
+                    color: $teal;
+                    background: rgba(255, 255, 255, 0.96);
+                    border: 1.5px solid $white;
+                    border-radius: 999px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 2px 7px rgba(0,0,0,0.28);
+                    box-sizing: border-box;
+                }
+                .windklar-turbine.selected {
+                    color: $error;
+                    transform: scale(1.12);
+                    box-shadow: 0 3px 9px rgba(0,0,0,0.34);
+                }
+                .windklar-turbine svg {
+                    width: 18px;
+                    height: 18px;
+                    display: block;
+                }
             </style>
         </head>
         <body>
             <div id="map"></div>
             <div id="offline-message">
-                <h3>Karte kann nicht geladen werden</h3>
-                <p>Bitte &Uuml;berpr&uuml;fen Sie Ihre Internetverbindung.</p>
+                <h3>Basiskarte offline nicht verf&uuml;gbar</h3>
+                <p>Windparkdaten, Suche und gespeicherte Eintr&auml;ge bleiben lokal nutzbar.</p>
             </div>
             <script>
                 $js
@@ -121,36 +190,108 @@ actual fun PlatformMapView(
             <script>
                 var map;
                 var markersGroup;
-                
+                var baseTileLayer;
+                var pendingBaseTiles = 0;
+                var loadedBaseTiles = 0;
+                var failedBaseTiles = 0;
+
+                function notifyMove() {
+                    if (!map) return;
+                    var center = map.getCenter();
+                    var zoom = map.getZoom();
+                    var bounds = map.getBounds();
+                    var sw = bounds.getSouthWest();
+                    var ne = bounds.getNorthEast();
+                    var data = {
+                        type: 'move',
+                        lat: center.lat,
+                        lon: center.lng,
+                        zoom: zoom,
+                        swLat: sw.lat,
+                        swLon: sw.lng,
+                        neLat: ne.lat,
+                        neLon: ne.lng
+                    };
+                    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.iosBridge) {
+                        window.webkit.messageHandlers.iosBridge.postMessage(JSON.stringify(data));
+                    }
+                }
+
+                function showOfflineNotice() {
+                    var message = document.getElementById('offline-message');
+                    if (message) {
+                        message.style.display = 'block';
+                    }
+                }
+
+                function hideOfflineNotice() {
+                    var message = document.getElementById('offline-message');
+                    if (message) {
+                        message.style.display = 'none';
+                    }
+                }
+
+                function updateBaseMapAvailability() {
+                    if (loadedBaseTiles > 0) {
+                        hideOfflineNotice();
+                    } else if (pendingBaseTiles === 0 && failedBaseTiles > 0) {
+                        showOfflineNotice();
+                    }
+                }
+
+                function onBaseTileLoadStart() {
+                    if (pendingBaseTiles === 0) {
+                        loadedBaseTiles = 0;
+                        failedBaseTiles = 0;
+                    }
+                    pendingBaseTiles += 1;
+                }
+
+                function onBaseTileLoaded() {
+                    pendingBaseTiles = Math.max(0, pendingBaseTiles - 1);
+                    loadedBaseTiles += 1;
+                    updateBaseMapAvailability();
+                }
+
+                function onBaseTileFailed() {
+                    pendingBaseTiles = Math.max(0, pendingBaseTiles - 1);
+                    failedBaseTiles += 1;
+                    updateBaseMapAvailability();
+                }
+
+                function createBaseTileLayer() {
+                    baseTileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap contributors',
+                        referrerPolicy: 'origin',
+                        updateWhenIdle: true,
+                        keepBuffer: 1
+                    });
+                    baseTileLayer.on('tileloadstart', onBaseTileLoadStart);
+                    baseTileLayer.on('tileload', onBaseTileLoaded);
+                    baseTileLayer.on('tileerror', onBaseTileFailed);
+                    baseTileLayer.on('load', updateBaseMapAvailability);
+                    return baseTileLayer;
+                }
+
                 try {
                     map = L.map('map', {
                         zoomControl: false,
+                        attributionControl: true,
                         maxZoom: 18,
                         minZoom: 5,
                         preferCanvas: true
                     }).setView([$centerLatDefault, $centerLonDefault], $zoomDefault);
 
-                    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                        referrerPolicy: 'origin'
-                    }).addTo(map);
+                    map.attributionControl.setPrefix(false);
+                    createBaseTileLayer().addTo(map);
 
                     markersGroup = L.layerGroup().addTo(map);
 
-                    function notifyMove() {
-                        var center = map.getCenter();
-                        var zoom = map.getZoom();
-                        var data = { type: 'move', lat: center.lat, lon: center.lng, zoom: zoom };
-                        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.iosBridge) {
-                            window.webkit.messageHandlers.iosBridge.postMessage(JSON.stringify(data));
-                        }
-                    }
-
                     map.on('moveend', notifyMove);
+                    setTimeout(notifyMove, 0);
                 } catch (e) {
                     console.error("Leaflet initialization failed", e);
-                    document.getElementById('map').style.display = 'none';
-                    document.getElementById('offline-message').style.display = 'block';
+                    showOfflineNotice();
                 }
 
                 function setCenter(lat, lon, zoom) {
@@ -158,21 +299,26 @@ actual fun PlatformMapView(
                     map.invalidateSize();
                     var currentCenter = map.getCenter();
                     var currentZoom = map.getZoom();
-                    if (Math.abs(currentCenter.lat - lat) > 0.0001 || 
-                        Math.abs(currentCenter.lng - lon) > 0.0001 || 
+                    if (Math.abs(currentCenter.lat - lat) > 0.0001 ||
+                        Math.abs(currentCenter.lng - lon) > 0.0001 ||
                         Math.abs(currentZoom - zoom) > 0.1) {
                         map.setView([lat, lon], zoom);
                     }
+                }
+
+                function turbineIconHtml(isSelected) {
+                    var selectedClass = isSelected ? ' selected' : '';
+                    return '<div class="windklar-turbine' + selectedClass + '" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M12 10.8V21"/><path d="M9.4 21H14.6"/><circle cx="12" cy="9" r="1.7" fill="currentColor" stroke="none"/><path d="M12 7.3V3.2"/><path d="M13.5 9.8L17.6 12.2"/><path d="M10.5 9.8L6.4 12.2"/></svg></div>';
                 }
 
                 function updateParks(markersJson, selectedId) {
                     if (!map) return;
                     map.invalidateSize();
                     if (!markersGroup) return;
-                    
+
                     var markers = JSON.parse(markersJson);
                     var leafletMarkers = [];
-                    
+
                     markers.forEach(function(item) {
                         if (item.kind === 'Cluster') {
                             var label = formatClusterLabel(item.count);
@@ -191,17 +337,55 @@ actual fun PlatformMapView(
                                 }
                             });
                             leafletMarkers.push(clusterMarker);
+                        } else if (item.kind === 'Turbine') {
+                            var isSelected = selectedId && item.parkId === selectedId;
+                            var turbineIcon = L.divIcon({
+                                className: '',
+                                html: turbineIconHtml(isSelected),
+                                iconSize: [22, 22],
+                                iconAnchor: [11, 11]
+                            });
+                            var turbineMarker = L.marker([item.latitude, item.longitude], {
+                                icon: turbineIcon,
+                                zIndexOffset: isSelected ? 700 : 200
+                            });
+                            turbineMarker.on('click', function() {
+                                var data = { type: 'click', parkId: item.parkId || item.id };
+                                if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.iosBridge) {
+                                    window.webkit.messageHandlers.iosBridge.postMessage(JSON.stringify(data));
+                                }
+                            });
+                            leafletMarkers.push(turbineMarker);
+                        } else if (item.kind === 'PlacementPin') {
+                            var placementIcon = L.divIcon({
+                                className: '',
+                                html: '<div style="width: 34px; height: 42px; display: flex; align-items: flex-start; justify-content: center; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.35));"><svg width="34" height="42" viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17 40C17 40 31 24.9 31 14.8C31 6.6 24.7 1 17 1C9.3 1 3 6.6 3 14.8C3 24.9 17 40 17 40Z" fill="$error" stroke="$white" stroke-width="2"/><circle cx="17" cy="15" r="5.8" fill="$white"/></svg></div>',
+                                iconSize: [34, 42],
+                                iconAnchor: [17, 40]
+                            });
+                            var placementMarker = L.marker([item.latitude, item.longitude], {
+                                draggable: true,
+                                icon: placementIcon
+                            });
+                            placementMarker.on('dragend', function(e) {
+                                var latlng = placementMarker.getLatLng();
+                                var data = { type: 'dragend', lat: latlng.lat, lon: latlng.lng };
+                                if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.iosBridge) {
+                                    window.webkit.messageHandlers.iosBridge.postMessage(JSON.stringify(data));
+                                }
+                            });
+                            leafletMarkers.push(placementMarker);
                         } else {
                             var isSelected = item.parkId === selectedId;
                             var parkMarker = L.circleMarker([item.latitude, item.longitude], {
                                 radius: isSelected ? 8 : 4,
-                                fillColor: isSelected ? '#D32F2F' : '#2D5A2D',
-                                color: '#FFFFFF',
+                                fillColor: isSelected ? '$error' : '$primary',
+                                color: '$white',
                                 weight: 2,
                                 fillOpacity: 1.0,
                                 opacity: 1.0
                             });
-                            
+
                             parkMarker.on('click', function() {
                                 var data = { type: 'click', parkId: item.parkId || item.id };
                                 if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.iosBridge) {
@@ -211,7 +395,7 @@ actual fun PlatformMapView(
                             leafletMarkers.push(parkMarker);
                         }
                     });
-                    
+
                     map.removeLayer(markersGroup);
                     markersGroup = L.layerGroup(leafletMarkers).addTo(map);
                 }
@@ -226,6 +410,7 @@ actual fun PlatformMapView(
                 window.onload = function() {
                     if (map) {
                         map.invalidateSize();
+                        setTimeout(notifyMove, 0);
                     }
                     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.iosBridge) {
                         window.webkit.messageHandlers.iosBridge.postMessage(JSON.stringify({ type: 'ready' }));
@@ -271,7 +456,22 @@ actual fun PlatformMapView(
                             val lat = obj["lat"]?.toString()?.toDoubleOrNull() ?: return
                             val lon = obj["lon"]?.toString()?.toDoubleOrNull() ?: return
                             val zoom = obj["zoom"]?.toString()?.toFloatOrNull() ?: return
-                            onMapMoved(lat, lon, zoom)
+                            val swLat = obj["swLat"]?.toString()?.toDoubleOrNull()
+                            val swLon = obj["swLon"]?.toString()?.toDoubleOrNull()
+                            val neLat = obj["neLat"]?.toString()?.toDoubleOrNull()
+                            val neLon = obj["neLon"]?.toString()?.toDoubleOrNull()
+                            val boundsCallback = currentOnMapMovedWithBounds.value
+                            if (
+                                boundsCallback != null &&
+                                swLat != null &&
+                                swLon != null &&
+                                neLat != null &&
+                                neLon != null
+                            ) {
+                                boundsCallback(lat, lon, zoom, swLat, swLon, neLat, neLon)
+                            } else {
+                                currentOnMapMoved.value(lat, lon, zoom)
+                            }
                         } else if (type == "click") {
                             val parkId = obj["parkId"]?.toString()?.removeSurrounding("\"") ?: return
                             onParkClicked(parkId)
@@ -279,6 +479,13 @@ actual fun PlatformMapView(
                             val lat = obj["lat"]?.toString()?.toDoubleOrNull() ?: return
                             val lon = obj["lon"]?.toString()?.toDoubleOrNull() ?: return
                             onClusterClicked(lat, lon)
+                        } else if (type == "dragend") {
+                            val lat = obj["lat"]?.toString()?.toDoubleOrNull() ?: return
+                            val lon = obj["lon"]?.toString()?.toDoubleOrNull() ?: return
+                            val callback = currentOnPlacementPinDragged.value
+                            if (callback != null) {
+                                callback(lat, lon)
+                            }
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
@@ -287,19 +494,15 @@ actual fun PlatformMapView(
             }
             userContentController.addScriptMessageHandler(handler, "iosBridge")
             applicationNameForUserAgent = WindklarMapUserAgent
+            websiteDataStore = WKWebsiteDataStore.defaultDataStore()
         }
     }
 
     val navigationDelegate = remember {
         object : NSObject(), WKNavigationDelegateProtocol {
             override fun webView(webView: WKWebView, didFinishNavigation: WKNavigation?) {
-                // Fallback in case window.onload doesn't trigger or gets blocked
-                platform.darwin.dispatch_after(
-                    platform.darwin.dispatch_time(platform.darwin.DISPATCH_TIME_NOW, 500_000_000 /* 500ms in ns */),
-                    platform.darwin.dispatch_get_main_queue()
-                ) {
-                    isPageLoaded = true
-                }
+                // Fallback in case window.onload doesn't trigger or gets blocked.
+                isPageLoaded = true
             }
         }
     }
@@ -342,7 +545,7 @@ actual fun PlatformMapView(
             modifier = modifier,
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(color = Color(0xFF2D5A2D))
+            CircularProgressIndicator(color = WindklarTheme.colors.primaryGreen)
         }
     }
 }

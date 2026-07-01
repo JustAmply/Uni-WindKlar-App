@@ -1,10 +1,9 @@
 package app.core.ui.components
 
 import android.webkit.JavascriptInterface
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.webkit.WebChromeClient
-import android.webkit.ConsoleMessage
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
@@ -16,9 +15,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.viewinterop.AndroidView
 import app.core.model.MapMarkerUiModel
+import app.core.ui.theme.WindklarTheme
+import app.core.ui.theme.toHexRgb
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -32,8 +34,18 @@ actual fun PlatformMapView(
     markers: List<MapMarkerUiModel>,
     selectedParkId: String?,
     onMapMoved: (lat: Double, lon: Double, zoom: Float) -> Unit,
+    onMapMovedWithBounds: ((
+        lat: Double,
+        lon: Double,
+        zoom: Float,
+        swLat: Double,
+        swLon: Double,
+        neLat: Double,
+        neLon: Double,
+    ) -> Unit)?,
     onParkClicked: (String) -> Unit,
     onClusterClicked: (lat: Double, lon: Double) -> Unit,
+    onPlacementPinDragged: ((lat: Double, lon: Double) -> Unit)?,
     modifier: Modifier
 ) {
     var isPageLoaded by remember { mutableStateOf(false) }
@@ -44,28 +56,38 @@ actual fun PlatformMapView(
     var leafletJs by remember { mutableStateOf<String?>(null) }
 
     val currentOnMapMoved = rememberUpdatedState(onMapMoved)
+    val currentOnMapMovedWithBounds = rememberUpdatedState(onMapMovedWithBounds)
     val currentOnParkClicked = rememberUpdatedState(onParkClicked)
     val currentOnClusterClicked = rememberUpdatedState(onClusterClicked)
+    val currentOnPlacementPinDragged = rememberUpdatedState(onPlacementPinDragged)
 
     LaunchedEffect(Unit) {
         try {
-            val css = Res.readBytes("files/leaflet/leaflet.css").decodeToString()
-            val js = Res.readBytes("files/leaflet/leaflet.js").decodeToString()
-            println("PlatformMapView: Loaded Leaflet CSS (${css.length} chars) and JS (${js.length} chars)")
+            val (css, js) = withContext(Dispatchers.IO) {
+                Res.readBytes("files/leaflet/leaflet.css").decodeToString() to
+                    Res.readBytes("files/leaflet/leaflet.js").decodeToString()
+            }
             leafletCss = css
             leafletJs = js
         } catch (e: Exception) {
-            println("PlatformMapView ERROR: Failed to load local Leaflet assets!")
-            e.printStackTrace()
+            leafletCss = ""
+            leafletJs = ""
         }
     }
+
+    val colors = WindklarTheme.colors
+    val bg = colors.screenBackground.toHexRgb()
+    val primary = colors.primaryGreen.toHexRgb()
+    val white = colors.cardBackground.toHexRgb()
+    val error = colors.errorRed.toHexRgb()
+    val teal = colors.turbineTeal.toHexRgb()
 
     val htmlContent = remember(leafletCss, leafletJs) {
         val css = leafletCss ?: ""
         val js = leafletJs ?: ""
-        val centerLatDefault = 51.1657
-        val centerLonDefault = 10.4515
-        val zoomDefault = 6.0f
+        val centerLatDefault = centerLat
+        val centerLonDefault = centerLon
+        val zoomDefault = zoomLevel
         """
         <!DOCTYPE html>
         <html>
@@ -73,31 +95,52 @@ actual fun PlatformMapView(
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
                 $css
-                
+
                 body, html {
                     margin: 0; padding: 0; width: 100%; height: 100%;
-                    background: #F8FAF7;
+                    background: $bg;
                 }
                 #map {
                     width: 100%; height: 100%;
                 }
                 #offline-message {
                     display: none;
-                    padding: 20px;
-                    text-align: center;
+                    position: absolute;
+                    left: 16px;
+                    right: 16px;
+                    bottom: 16px;
+                    z-index: 1000;
+                    padding: 12px 14px;
                     font-family: sans-serif;
-                    color: #2D5A2D;
-                    margin-top: 100px;
+                    color: $primary;
+                    background: rgba(255, 255, 255, 0.94);
+                    border: 1px solid rgba(38, 110, 80, 0.24);
+                    border-radius: 12px;
+                    box-shadow: 0 3px 12px rgba(0,0,0,0.18);
+                    pointer-events: none;
+                }
+                #offline-message h3 {
+                    margin: 0 0 4px 0;
+                    font-size: 14px;
+                    line-height: 18px;
+                }
+                #offline-message p {
+                    margin: 0;
+                    font-size: 12px;
+                    line-height: 16px;
                 }
                 .leaflet-control-zoom { display: none !important; }
-                .leaflet-control-attribution { font-size: 8px !important; }
+                .leaflet-control-attribution {
+                    font-size: 8px !important;
+                    pointer-events: none;
+                }
                 .windklar-cluster {
                     width: 30px;
                     height: 30px;
                     border-radius: 999px;
-                    background: #2D5A2D;
-                    border: 2px solid #FFFFFF;
-                    color: #FFFFFF;
+                    background: $primary;
+                    border: 2px solid $white;
+                    color: $white;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -106,13 +149,36 @@ actual fun PlatformMapView(
                     font-size: 11px;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.25);
                 }
+                .windklar-turbine {
+                    width: 22px;
+                    height: 22px;
+                    color: $teal;
+                    background: rgba(255, 255, 255, 0.96);
+                    border: 1.5px solid $white;
+                    border-radius: 999px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 2px 7px rgba(0,0,0,0.28);
+                    box-sizing: border-box;
+                }
+                .windklar-turbine.selected {
+                    color: $error;
+                    transform: scale(1.12);
+                    box-shadow: 0 3px 9px rgba(0,0,0,0.34);
+                }
+                .windklar-turbine svg {
+                    width: 18px;
+                    height: 18px;
+                    display: block;
+                }
             </style>
         </head>
         <body>
             <div id="map"></div>
             <div id="offline-message">
-                <h3>Karte kann nicht geladen werden</h3>
-                <p>Bitte &Uuml;berpr&uuml;fen Sie Ihre Internetverbindung.</p>
+                <h3>Basiskarte offline nicht verf&uuml;gbar</h3>
+                <p>Windparkdaten, Suche und gespeicherte Eintr&auml;ge bleiben lokal nutzbar.</p>
             </div>
             <script>
                 $js
@@ -120,38 +186,101 @@ actual fun PlatformMapView(
             <script>
                 var map;
                 var markersGroup;
-                
+                var baseTileLayer;
+                var pendingBaseTiles = 0;
+                var loadedBaseTiles = 0;
+                var failedBaseTiles = 0;
+
+                function notifyMove() {
+                    if (!map) return;
+                    var center = map.getCenter();
+                    var zoom = map.getZoom();
+                    var bounds = map.getBounds();
+                    var sw = bounds.getSouthWest();
+                    var ne = bounds.getNorthEast();
+                    if (window.AndroidBridge && window.AndroidBridge.onMapMoved) {
+                        window.AndroidBridge.onMapMoved(center.lat, center.lng, zoom, sw.lat, sw.lng, ne.lat, ne.lng);
+                    }
+                }
+
+                function showOfflineNotice() {
+                    var message = document.getElementById('offline-message');
+                    if (message) {
+                        message.style.display = 'block';
+                    }
+                }
+
+                function hideOfflineNotice() {
+                    var message = document.getElementById('offline-message');
+                    if (message) {
+                        message.style.display = 'none';
+                    }
+                }
+
+                function updateBaseMapAvailability() {
+                    if (loadedBaseTiles > 0) {
+                        hideOfflineNotice();
+                    } else if (pendingBaseTiles === 0 && failedBaseTiles > 0) {
+                        showOfflineNotice();
+                    }
+                }
+
+                function onBaseTileLoadStart() {
+                    if (pendingBaseTiles === 0) {
+                        loadedBaseTiles = 0;
+                        failedBaseTiles = 0;
+                    }
+                    pendingBaseTiles += 1;
+                }
+
+                function onBaseTileLoaded() {
+                    pendingBaseTiles = Math.max(0, pendingBaseTiles - 1);
+                    loadedBaseTiles += 1;
+                    updateBaseMapAvailability();
+                }
+
+                function onBaseTileFailed() {
+                    pendingBaseTiles = Math.max(0, pendingBaseTiles - 1);
+                    failedBaseTiles += 1;
+                    updateBaseMapAvailability();
+                }
+
+                function createBaseTileLayer() {
+                    baseTileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap contributors',
+                        referrerPolicy: 'origin',
+                        updateWhenIdle: true,
+                        keepBuffer: 1
+                    });
+                    baseTileLayer.on('tileloadstart', onBaseTileLoadStart);
+                    baseTileLayer.on('tileload', onBaseTileLoaded);
+                    baseTileLayer.on('tileerror', onBaseTileFailed);
+                    baseTileLayer.on('load', updateBaseMapAvailability);
+                    return baseTileLayer;
+                }
+
                 try {
                     map = L.map('map', {
                         zoomControl: false,
+                        attributionControl: true,
                         maxZoom: 18,
                         minZoom: 5,
                         preferCanvas: true
                     }).setView([$centerLatDefault, $centerLonDefault], $zoomDefault);
 
-                    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                        referrerPolicy: 'origin'
-                    }).addTo(map);
+                    map.attributionControl.setPrefix(false);
+                    createBaseTileLayer().addTo(map);
 
                     markersGroup = L.layerGroup().addTo(map);
 
-                    function notifyMove() {
-                        var center = map.getCenter();
-                        var zoom = map.getZoom();
-                        if (window.AndroidBridge && window.AndroidBridge.onMapMoved) {
-                            window.AndroidBridge.onMapMoved(center.lat, center.lng, zoom);
-                        }
-                    }
-
                     map.on('moveend', notifyMove);
-                    
+                    setTimeout(notifyMove, 0);
+
                     // Immediately try loading markers since Leaflet is ready
                     updateParksFromAndroid();
                 } catch (e) {
                     console.error("Leaflet initialization failed", e);
-                    document.getElementById('map').style.display = 'none';
-                    document.getElementById('offline-message').style.display = 'block';
+                    showOfflineNotice();
                 }
 
                 function setCenter(lat, lon, zoom) {
@@ -159,21 +288,26 @@ actual fun PlatformMapView(
                     map.invalidateSize();
                     var currentCenter = map.getCenter();
                     var currentZoom = map.getZoom();
-                    if (Math.abs(currentCenter.lat - lat) > 0.0001 || 
-                        Math.abs(currentCenter.lng - lon) > 0.0001 || 
+                    if (Math.abs(currentCenter.lat - lat) > 0.0001 ||
+                        Math.abs(currentCenter.lng - lon) > 0.0001 ||
                         Math.abs(currentZoom - zoom) > 0.1) {
                         map.setView([lat, lon], zoom);
                     }
+                }
+
+                function turbineIconHtml(isSelected) {
+                    var selectedClass = isSelected ? ' selected' : '';
+                    return '<div class="windklar-turbine' + selectedClass + '" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M12 10.8V21"/><path d="M9.4 21H14.6"/><circle cx="12" cy="9" r="1.7" fill="currentColor" stroke="none"/><path d="M12 7.3V3.2"/><path d="M13.5 9.8L17.6 12.2"/><path d="M10.5 9.8L6.4 12.2"/></svg></div>';
                 }
 
                 function updateParks(markersJson, selectedId) {
                     if (!map) return;
                     map.invalidateSize();
                     if (!markersGroup) return;
-                    
+
                     var markers = JSON.parse(markersJson);
                     var leafletMarkers = [];
-                    
+
                     markers.forEach(function(item) {
                         if (item.kind === 'Cluster') {
                             var label = formatClusterLabel(item.count);
@@ -191,17 +325,53 @@ actual fun PlatformMapView(
                                 }
                             });
                             leafletMarkers.push(clusterMarker);
+                        } else if (item.kind === 'Turbine') {
+                            var isSelected = selectedId && item.parkId === selectedId;
+                            var turbineIcon = L.divIcon({
+                                className: '',
+                                html: turbineIconHtml(isSelected),
+                                iconSize: [22, 22],
+                                iconAnchor: [11, 11]
+                            });
+                            var turbineMarker = L.marker([item.latitude, item.longitude], {
+                                icon: turbineIcon,
+                                zIndexOffset: isSelected ? 700 : 200
+                            });
+                            turbineMarker.on('click', function() {
+                                if (window.AndroidBridge && window.AndroidBridge.onParkClicked) {
+                                    window.AndroidBridge.onParkClicked(item.parkId || item.id);
+                                }
+                            });
+                            leafletMarkers.push(turbineMarker);
+                        } else if (item.kind === 'PlacementPin') {
+                            var placementIcon = L.divIcon({
+                                className: '',
+                                html: '<div style="width: 34px; height: 42px; display: flex; align-items: flex-start; justify-content: center; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.35));"><svg width="34" height="42" viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M17 40C17 40 31 24.9 31 14.8C31 6.6 24.7 1 17 1C9.3 1 3 6.6 3 14.8C3 24.9 17 40 17 40Z" fill="$error" stroke="$white" stroke-width="2"/><circle cx="17" cy="15" r="5.8" fill="$white"/></svg></div>',
+                                iconSize: [34, 42],
+                                iconAnchor: [17, 40]
+                            });
+                            var placementMarker = L.marker([item.latitude, item.longitude], {
+                                draggable: true,
+                                icon: placementIcon
+                            });
+                            placementMarker.on('dragend', function(e) {
+                                var latlng = placementMarker.getLatLng();
+                                if (window.AndroidBridge && window.AndroidBridge.onPlacementPinDragged) {
+                                    window.AndroidBridge.onPlacementPinDragged(latlng.lat, latlng.lng);
+                                }
+                            });
+                            leafletMarkers.push(placementMarker);
                         } else {
                             var isSelected = item.parkId === selectedId;
                             var parkMarker = L.circleMarker([item.latitude, item.longitude], {
                                 radius: isSelected ? 8 : 4,
-                                fillColor: isSelected ? '#D32F2F' : '#2D5A2D',
-                                color: '#FFFFFF',
+                                fillColor: isSelected ? '$error' : '$primary',
+                                color: '$white',
                                 weight: 2,
                                 fillOpacity: 1.0,
                                 opacity: 1.0
                             });
-                            
+
                             parkMarker.on('click', function() {
                                 if (window.AndroidBridge && window.AndroidBridge.onParkClicked) {
                                     window.AndroidBridge.onParkClicked(item.parkId || item.id);
@@ -210,7 +380,7 @@ actual fun PlatformMapView(
                             leafletMarkers.push(parkMarker);
                         }
                     });
-                    
+
                     map.removeLayer(markersGroup);
                     markersGroup = L.layerGroup(leafletMarkers).addTo(map);
                 }
@@ -233,6 +403,7 @@ actual fun PlatformMapView(
                 window.onload = function() {
                     if (map) {
                         map.invalidateSize();
+                        setTimeout(notifyMove, 0);
                     }
                     if (window.AndroidBridge && window.AndroidBridge.onMapReady) {
                         window.AndroidBridge.onMapReady();
@@ -243,6 +414,7 @@ actual fun PlatformMapView(
                 var resizeObserver = new ResizeObserver(function() {
                     if (map) {
                         map.invalidateSize();
+                        setTimeout(notifyMove, 0);
                     }
                 });
                 resizeObserver.observe(document.getElementById('map'));
@@ -252,20 +424,23 @@ actual fun PlatformMapView(
         """.trimIndent()
     }
 
-    val jsonString = remember(markers) {
-        val arr = buildJsonArray {
-            markers.forEach { marker ->
-                add(buildJsonObject {
-                    put("id", marker.id)
-                    put("latitude", marker.latitude)
-                    put("longitude", marker.longitude)
-                    put("kind", marker.kind.name)
-                    put("count", marker.count)
-                    put("parkId", marker.parkId ?: "")
-                })
+    var jsonString by remember { mutableStateOf("[]") }
+    LaunchedEffect(markers) {
+        jsonString = withContext(Dispatchers.Default) {
+            val arr = buildJsonArray {
+                markers.forEach { marker ->
+                    add(buildJsonObject {
+                        put("id", marker.id)
+                        put("latitude", marker.latitude)
+                        put("longitude", marker.longitude)
+                        put("kind", marker.kind.name)
+                        put("count", marker.count)
+                        put("parkId", marker.parkId ?: "")
+                    })
+                }
             }
+            arr.toString()
         }
-        arr.toString()
     }
 
     val currentParksJson = rememberUpdatedState(jsonString)
@@ -295,41 +470,36 @@ actual fun PlatformMapView(
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT
                     )
-                    
+
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
+                    settings.cacheMode = WebSettings.LOAD_DEFAULT
                     settings.userAgentString = "${settings.userAgentString} WindKlar/1.0 product.lifecycle.windenergy"
-                    
+
                     webViewClient = object : WebViewClient() {
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
-                            mainHandler.postDelayed({
+                            mainHandler.post {
                                 isPageLoaded = true
-                            }, 500)
-                        }
-                    }
-                    
-                    webChromeClient = object : WebChromeClient() {
-                        override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
-                            val msg = consoleMessage?.message() ?: ""
-                            val line = consoleMessage?.lineNumber() ?: 0
-                            val source = consoleMessage?.sourceId() ?: ""
-                            println("WebView Console: $msg (at $source:$line)")
-                            return true
+                            }
                         }
                     }
 
                     val bridge = AndroidMapBridge(
                         parksJsonProvider = { currentParksJson.value },
                         selectedParkIdProvider = { currentSelectedParkId.value },
-                        onMapMovedCallback = { lat, lon, zoom -> currentOnMapMoved.value(lat, lon, zoom) },
+                        onMapMovedWithBoundsCallback = { lat, lon, zoom, swLat, swLon, neLat, neLon ->
+                            currentOnMapMovedWithBounds.value?.invoke(lat, lon, zoom, swLat, swLon, neLat, neLon)
+                                ?: currentOnMapMoved.value(lat, lon, zoom)
+                        },
                         onParkClickedCallback = { id -> currentOnParkClicked.value(id) },
                         onClusterClickedCallback = { lat, lon -> currentOnClusterClicked.value(lat, lon) },
+                        onPlacementPinDraggedCallback = { lat, lon -> currentOnPlacementPinDragged.value?.invoke(lat, lon) },
                         onMapReadyCallback = { isPageLoaded = true },
                         mainHandler = mainHandler
                     )
                     addJavascriptInterface(bridge, "AndroidBridge")
-                    
+
                     webViewRef = this
                     loadDataWithBaseURL("file:///android_asset/", htmlContent, "text/html", "UTF-8", null)
                 }
@@ -344,7 +514,7 @@ actual fun PlatformMapView(
             modifier = modifier,
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(color = Color(0xFF2D5A2D))
+            CircularProgressIndicator(color = WindklarTheme.colors.primaryGreen)
         }
     }
 }
@@ -352,9 +522,18 @@ actual fun PlatformMapView(
 class AndroidMapBridge(
     private val parksJsonProvider: () -> String,
     private val selectedParkIdProvider: () -> String,
-    private val onMapMovedCallback: (lat: Double, lon: Double, zoom: Float) -> Unit,
+    private val onMapMovedWithBoundsCallback: (
+        lat: Double,
+        lon: Double,
+        zoom: Float,
+        swLat: Double,
+        swLon: Double,
+        neLat: Double,
+        neLon: Double,
+    ) -> Unit,
     private val onParkClickedCallback: (String) -> Unit,
     private val onClusterClickedCallback: (lat: Double, lon: Double) -> Unit,
+    private val onPlacementPinDraggedCallback: (lat: Double, lon: Double) -> Unit,
     private val onMapReadyCallback: () -> Unit,
     private val mainHandler: android.os.Handler
 ) {
@@ -365,8 +544,16 @@ class AndroidMapBridge(
     fun getSelectedParkId(): String = selectedParkIdProvider()
 
     @JavascriptInterface
-    fun onMapMoved(lat: Double, lon: Double, zoom: Float) {
-        mainHandler.post { onMapMovedCallback(lat, lon, zoom) }
+    fun onMapMoved(
+        lat: Double,
+        lon: Double,
+        zoom: Float,
+        swLat: Double,
+        swLon: Double,
+        neLat: Double,
+        neLon: Double,
+    ) {
+        mainHandler.post { onMapMovedWithBoundsCallback(lat, lon, zoom, swLat, swLon, neLat, neLon) }
     }
 
     @JavascriptInterface
@@ -377,6 +564,11 @@ class AndroidMapBridge(
     @JavascriptInterface
     fun onClusterClicked(lat: Double, lon: Double) {
         mainHandler.post { onClusterClickedCallback(lat, lon) }
+    }
+
+    @JavascriptInterface
+    fun onPlacementPinDragged(lat: Double, lon: Double) {
+        mainHandler.post { onPlacementPinDraggedCallback(lat, lon) }
     }
 
     @JavascriptInterface

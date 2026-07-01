@@ -28,7 +28,7 @@ Die App beantwortet vier Kernfragen:
 
 ## 3. Ziele
 
-- Windenergieanlagen und Windparks in der Umgebung auffindbar und verständlich machen.
+- Windenergieanlagen und Windparks an Land (onshore) in der Umgebung auffindbar und verständlich machen.
 - Öffentliche Windenergiedaten in eine bürgernahe Darstellung übersetzen.
 - Vertrauen durch klare Quellen, Datenqualität und Zeitstempel fördern.
 - Akzeptanzrelevante Informationen sichtbar machen, insbesondere CO2-Einsparung, Haushaltsäquivalente und kommunale Beteiligung.
@@ -42,6 +42,7 @@ Die App beantwortet vier Kernfragen:
 - WindKlar ist im MVP keine Social-Media-Plattform.
 - WindKlar ist im MVP keine vollständig automatisierte Echtzeit-Leitwarte für Windparkbetrieb.
 - WindKlar soll keine politischen Bewertungen erzwingen; die App soll transparent informieren und Zielkonflikte sichtbar machen.
+- Offshore-Windparks im Meer sind nicht Teil des MVP-Umfangs; die App konzentriert sich rein auf Windenergie an Land (onshore).
 
 ## 5. Zielgruppen und Stakeholder
 
@@ -224,10 +225,10 @@ Der MVP konzentriert sich auf Transparenz mit hohem Nutzen für Bürgerinnen und
 - Jede zentrale Metrik muss ein Datenqualitätslabel offenlegen: `official`, `measured`, `derived`, `estimated`, `simulated` oder `missing`.
 - Jede zentrale Metrik muss, soweit möglich, ein Quellenlabel und einen Zeitstempel offenlegen.
 - Die UI muss Datenqualität sichtbar machen, ohne den Hauptscreen zu überladen.
-- Der MVP muss echte MaStR/Open-MaStR-basierte Stammdaten für Windanlagen nutzen, sofern verfügbar.
-- Der MVP muss MaStR/Open-MaStR-Stammdaten aus einem vorverarbeiteten lokalen JSON-Snapshot laden, statt zur App-Laufzeit eine externe Live-API aufzurufen.
+- Der MVP muss echte MaStR-basierte Stammdaten für Windanlagen nutzen, sofern verfügbar.
+- Der MVP muss MaStR-Stammdaten aus einem vorverarbeiteten lokalen JSON-Snapshot laden, statt zur App-Laufzeit eine externe Live-API aufzurufen.
 - Der JSON-Snapshot muss sowohl einzelne Windanlagen als auch vorberechnete Windpark-Aggregate enthalten.
-- MaStR/Open-MaStR-basierte Anlagen-Stammdaten müssen als `official` gekennzeichnet werden.
+- MaStR-basierte Anlagen-Stammdaten müssen als `official` gekennzeichnet werden.
 - Windpark-Aggregate, die während der Vorverarbeitung berechnet wurden, müssen als `derived` gekennzeichnet werden.
 - Produktions- und Akzeptanzwirkungswerte müssen als `estimated` oder `simulated` gekennzeichnet werden, sofern keine gemessenen öffentlichen Werte verfügbar sind.
 - Der MVP darf geschätzte oder simulierte Wirkungswerte für Jahresproduktion, CO2-Einsparung, Haushaltsäquivalente und kommunale Beteiligung nutzen, wenn gemessene öffentliche Werte nicht verfügbar sind.
@@ -314,10 +315,10 @@ Der MVP konzentriert sich auf Transparenz mit hohem Nutzen für Bürgerinnen und
 
 ### Aktuelles SQLDelight-Schema im Repository
 
-Das Repository enthält bereits konkrete SQLDelight-Schemadateien unter `composeApp/src/commonMain/sqldelight/app/data/local/db`:
+Das Repository enthält bereits konkrete SQLDelight-Schemadateien getrennt nach Persistenzgrenze unter `composeApp/src/commonMain/sqldelightSource` und `composeApp/src/commonMain/sqldelightUser`:
 
 - `WindPark.sq`: Tabelle `wind_park` mit Aggregatfeldern, Quellenmetadaten, Gruppierungsmethode und Datenqualität; Queries für Auswahl aller Einträge, Auswahl per ID, Textsuche und Upsert.
-- `WindTurbine.sq`: Tabelle `wind_turbine` für atomare MaStR/Open-MaStR-basierte Anlagen-Stammdaten.
+- `WindTurbine.sq`: Tabelle `wind_turbine` für atomare MaStR-basierte Anlagen-Stammdaten.
 - `Metric.sq`: generische Tabelle `metric` für Produktions- und Akzeptanzwirkungswerte mit Einheit, Zeitraum, Quelle, Datenqualität und Berechnungshinweis.
 - `Favorite.sq`: Tabelle `favorite_wind_park`, geschlüsselt über `wind_park_id`; Queries für Favoriten-IDs, Favoritenexistenz, Hinzufügen und Entfernen.
 - `RecentWindPark.sq`: Tabelle `recent_wind_park`, geschlüsselt über `wind_park_id`; Queries für zuletzt geöffnete Windparks, Erfassen und Leeren.
@@ -328,7 +329,7 @@ Aktuelle Lücke: Das Kotlin-Domainmodell und die DAO-Interfaces sind noch schmal
 
 Implementiertes lokales Zielschema:
 
-- `wind_turbine`: atomare MaStR/Open-MaStR-Anlagen-Stammdaten mit Quellen- und Qualitätsmetadaten.
+- `wind_turbine`: atomare MaStR-Anlagen-Stammdaten mit Quellen- und Qualitätsmetadaten.
 - `wind_park`: vorberechnete Windpark-Aggregate für Karte, Favoriten, Suche und Detailübersicht.
 - `metric`: Produktions- und Akzeptanzwirkungswerte wie Jahresproduktion, CO2-Einsparung, Haushaltsäquivalente und kommunale Beteiligung.
 - `favorite_wind_park`: gespeicherte Windparks.
@@ -336,15 +337,15 @@ Implementiertes lokales Zielschema:
 - `data_hint`: lokale Datenhinweise mit Kategorie, Betreffreferenz, Standort, Beschreibung, Hinweissicherheit und lokalem Status.
 - `snapshot_metadata`: optionale Metadaten für Quelle, Importzeitstempel, Version und Berechnungsannahmen.
 
-Die Quellen-Datenpipeline lebt jetzt außerhalb der App unter `data/`, und die App importiert nur den appfertigen JSON-Snapshot, der unter Compose-Ressourcen gebündelt ist. Rohe und intermediäre MaStR-Dateien werden bewusst ignoriert.
+Die Quellen-Datenpipeline lebt jetzt außerhalb der App unter `data/`. Die App bündelt keinen Runtime-JSON-Snapshot mehr, sondern öffnet eine appfertige Source-SQLite-Datenbank und eine separate User-SQLite-Datenbank. Rohe und intermediäre MaStR-Dateien werden bewusst ignoriert.
 
-Aktualisierte Modellierungsentscheidung: Das SQL-Schema enthält `wind_turbine` als atomare MaStR/Open-MaStR-basierte Einheit. Windpark-Zeilen sind Aggregate oder kuratierte Gruppierungen über diese Anlagenzeilen.
+Aktualisierte Modellierungsentscheidung: Das SQL-Schema enthält `wind_turbine` als atomare MaStR-basierte Einheit. Windpark-Zeilen sind Aggregate oder kuratierte Gruppierungen über diese Anlagenzeilen.
 
 Aktualisierte lokale Zustandsentscheidung: Das Produktkonzept ist "Zuletzt angesehen", nicht ein reiner Suchverlauf. `RecentWindPark.sq` erfasst geöffnete Windparks unabhängig vom Einstiegspfad.
 
 Aktualisierte lokale Persistenzentscheidung: Favoriten und zuletzt angesehene Windparks sind SQLDelight-gestütztes MVP-Verhalten, nicht nur Mock-Zustand.
 
-Aktualisierte Datenquellenentscheidung: Der MVP nutzt echte MaStR/Open-MaStR-basierte Stammdaten für Windanlagen, sofern verfügbar. Anlagen-Stammdaten werden als `official` gekennzeichnet; Vorverarbeitungsaggregate werden als `derived` gekennzeichnet; Produktion, CO2, Haushaltsäquivalente und kommunale Beteiligung können `estimated` oder `simulated` sein, wenn gemessene öffentliche Daten nicht verfügbar sind.
+Aktualisierte Datenquellenentscheidung: Der MVP nutzt echte MaStR-basierte Stammdaten für Windanlagen, sofern verfügbar. Anlagen-Stammdaten werden als `official` gekennzeichnet; Vorverarbeitungsaggregate werden als `derived` gekennzeichnet; Produktion, CO2, Haushaltsäquivalente und kommunale Beteiligung können `estimated` oder `simulated` sein, wenn gemessene öffentliche Daten nicht verfügbar sind.
 
 Aktualisierte Entscheidung zur kommunalen Beteiligung: Kommunale Beteiligung im MVP wird als kurzer geschätzter erwarteter §6-EEG-Wert angezeigt, basierend auf 0,2 ct/kWh und geschätzter Jahresproduktion, mit einem klaren Hinweis "keine bestätigte Auszahlung", sofern keine Zahlungsquelle existiert.
 
@@ -354,7 +355,7 @@ Aktualisierte lokale Schemaentscheidung: SQLDelight nutzt `wind_turbine`, `wind_
 
 Aktualisierte Umfangsentscheidung: Der MVP-Datensatz soll Deutschland abdecken und nicht nur eine Demo-Region wie Leipzig/Sachsen. Dadurch steigen Anforderungen an Kartendichte und Import, weshalb Clustering/Filterung und lokales Cache-Design Teil der MVP-Datenstrategie sind.
 
-Aktualisierte Integrationsentscheidung: Der MVP nutzt einen vorverarbeiteten lokalen MaStR/Open-MaStR-JSON-Snapshot statt Live-API-Zugriff zur Laufzeit. Die App sollte diesen Snapshot in SQLDelight-gestützte lokale Speicherung importieren oder bündeln.
+Aktualisierte Integrationsentscheidung: Der MVP nutzt einen vorverarbeiteten lokalen MaStR-JSON-Snapshot statt Live-API-Zugriff zur Laufzeit. Die App sollte diesen Snapshot in SQLDelight-gestützte lokale Speicherung importieren oder bündeln.
 
 Aktualisierte Aggregationsentscheidung: Windpark-Gruppierung und Aggregatfelder sollten während der Snapshot-Vorverarbeitung berechnet werden. Die App importiert sowohl Windpark-Aggregate als auch einzelne Windanlagen, statt deutschlandweite Gruppierungen zur Laufzeit zu berechnen.
 
@@ -389,7 +390,7 @@ Aktualisierte QA-Entscheidung: Android-Manuelle-QA ist vor der Demo erforderlich
 ### Mögliche Quellen
 
 - Marktstammdatenregister für Anlagen-Stammdaten.
-- Open-MaStR für zugängliche Anlagen-Stammdatenexporte oder Integration.
+- Offizieller MaStR-Datendownload der Bundesnetzagentur für zugängliche Anlagen-Stammdatenexporte.
 - OpenStreetMap für Basiskarte und geografischen Kontext.
 - DWD-Wetterdaten für optionale Prognosen oder Produktionsschätzung.
 - SMARD oder öffentliche Energiestatistiken für kontextuelle Energiedaten.
@@ -472,7 +473,7 @@ Figma ist die Quelle der Wahrheit für Screenset, Informationsarchitektur, Kompo
 - Ein klares Domainmodell rund um Anlagen, Windparks, Gemeinden, Metriken, Quellen und lokalen Nutzerzustand verwenden.
 - Quellenmetadaten und Datenqualität als Daten erster Klasse behandeln, nicht als UI-Nachgedanken.
 - Ein hybrides Metadatenschema verwenden: Quellenfelder auf Stammdatentabellen und ein separates Metrikmodell für Produktions- und Akzeptanzwirkungswerte.
-- Echte MaStR/Open-MaStR-basierte Stammdaten für die MVP-Basis nutzen, sofern verfügbar.
+- Echte MaStR-basierte Stammdaten für die MVP-Basis nutzen, sofern verfügbar.
 - Die öffentlichen Quellen-Stammdaten für MVP-Zuverlässigkeit über einen vorverarbeiteten lokalen JSON-Snapshot laden.
 - Windpark-Aggregation in der Vorverarbeitung halten, nicht in der App-Laufzeitlogik.
 - Kartenverhalten für den MVP geteilt oder datengetrieben halten; getrennte native Android-/iOS-Kartenstacks vermeiden, sofern sie später nicht erforderlich werden.
@@ -493,12 +494,16 @@ Figma ist die Quelle der Wahrheit für Screenset, Informationsarchitektur, Kompo
 - Paket-Namespace/Application-ID: `product.lifecycle.windenergy`.
 - Aktuelle Bibliotheken: Kotlin 2.3.21, Compose Multiplatform 1.10.3, Material 3 1.10.0-alpha05, SQLDelight 2.3.2, Android compile/target SDK 36 und min SDK 24.
 - Geteilte App-Wurzel: `app.App`, umschließt `AppNavHost` in `WindklarTheme`.
-- Aktuelles Routenmodell: `Start`, `Map`, `Stats`, `Favorites`, `Faq`, `Profile`, `Detail(parkId)`.
+- Aktuelles Routenmodell: `Start`, `Map`, `Stats`, `Favorites`, `Faq`, `Profile`, `Detail(parkId)`, `RegionDetail(type, id)`.
 - Aktuelle Routen der obersten Ebene in der unteren Navigation: `Map`, `Stats`, `Favorites`, `Faq`, `Profile` / `Info & Einstellungen`.
-- Implementierte visuelle Umsetzungsschritte: `StartScreen`, `MapScreen`, `FavoritesScreen`, `FaqScreen`, `StatsScreen` und `ProfileScreen`.
-- Platzhalter- oder Gerüst-Umsetzungsschritte: `SearchScreen`, `ParkDetailScreen`, `MapViewModel`, `SearchViewModel`, `ParkDetailViewModel`, Datenbank-Driver-Factory und Seed-Importer.
-- Fehlender Umsetzungsschritt: `ReportWindTurbine`-Route/-Paket/-Formular ist noch nicht implementiert.
-- Aktueller Datenstand: Die UI ist überwiegend durch Mock-`UiState`-Defaults gestützt; Repository- und DAO-Verträge existieren, sind aber noch nicht über generierte SQLDelight-Datenbank-APIs verdrahtet.
+- Implementierte Screens: `StartScreen`, `MapScreen`, `StatsScreen`, `FavoritesScreen`, `FaqScreen`, `ProfileScreen`, `ParkDetailScreen`, `RegionDetailScreen`.
+- Suche ist im `Map`-Flow umgesetzt; der separate `SearchScreen`-/`SearchViewModel`-/`SearchUiState`-Platzhalter wurde entfernt.
+- `ReportWindTurbine` ist als Dialog-Composable (`ReportWindTurbineDialog`) umgesetzt und wird über den Pin-Placement-FAB in `MapScreen` ausgelöst.
+- Alle Repositories/DAO-Verträge sind über generierte SQLDelight-Datenbank-APIs verdrahtet.
+- Stammdaten und lokale Nutzerdaten sind in getrennte SQLDelight-Datenbanken aufgeteilt: `windklar_source.db` wird aus `windklar_source_seed.db` ersetzt, `windklar_user.db` bleibt über App-Updates erhalten.
+- Daten-Fluss: `UI -> ViewModel -> Repository -> SQLDelight DAOs -> SourceDatabase/UserDatabase -> SQLite`.
+- `Favorites` unterstützt Parks und Regionen; `Recents` speichert jeden geöffneten Park.
+- Aktueller Datenstand: Die UI ist an reale Repository- und SQLDelight-Daten angebunden; Mock-`UiState`-Defaults sind durch echte Daten ersetzt.
 - Aktuelle Assets: Start-Hintergrund/Icon und Favoriten-Windpark-Thumbnails sind unter `composeResources/drawable` gebündelt.
 - Aktuelles Build-Risiko: Der Gradle-Problems-Report markiert eine Kotlin-Multiplatform-/Android-Gradle-Plugin-Kompatibilitätswarnung für die Nutzung von `org.jetbrains.kotlin.multiplatform` mit `com.android.application` unter AGP 9.x. Dies ist für den Seminar-MVP akzeptiert; eine spätere Migration könnte ein separates Android-App-Subprojekt erfordern, wenn die App über das Seminar hinaus weitergeführt wird oder der Build bricht.
 
@@ -510,10 +515,11 @@ Für das aktuelle Seminarprojekt sind neue automatisierte Tests kein Teil des an
 
 - Datentransformations-Prüfpunkt: rohe Quellen-/Demo-Windparkdaten werden zu appfertigen Windpark- und Metrikobjekten.
 - Karteninteraktions-Prüfpunkt: Die Auswahl einer Kartenvorschau öffnet die korrekte Route `Detail(parkId)`.
-- Detailansichts-Prüfpunkt: fehlende, abgeleitete, geschätzte und offizielle Werte werden mit korrekten Labels gerendert, sobald Quellenmetadaten implementiert sind.
+- Detailansichts-Prüfpunkt: fehlende, abgeleitete, geschätzte und offizielle Werte werden mit korrekten Labels gerendert.
 - Wirkungsberechnungs-Prüfpunkt: Haushalts- und CO2-Äquivalent-Berechnungen sind deterministisch und als Schätzungen gekennzeichnet.
-- Lokaler-Zustands-Prüfpunkt: Favoriten und zuletzt angesehene Windparks bleiben lokal erhalten und können von Nutzerinnen und Nutzern geändert werden, sobald die SQLDelight-Verdrahtung abgeschlossen ist.
-- Berechtigungs-Prüfpunkt: verweigerter, nicht verfügbarer oder gewährter Standortzugriff führt zu verständlichen UI-Zuständen, sobald Standortunterstützung implementiert ist.
+- Lokaler-Zustands-Prüfpunkt: Favoriten und zuletzt angesehene Windparks bleiben lokal erhalten und können von Nutzerinnen und Nutzern geändert werden.
+- Berechtigungs-Prüfpunkt: verweigerter, nicht verfügbarer oder gewährter Standortzugriff führt zu verständlichen UI-Zuständen.
+- Datenhinweis-Prüfpunkt: Über den Pin-Placement-FAB erstellte Datenhinweise werden lokal gespeichert, erhalten den ausgewählten Park-Kontext und können exportiert werden.
 - Fehler-Prüfpunkt: fehlgeschlagenes Quellen-/API-Laden zeigt Ausweich- oder Fehlerzustände ohne Absturz, falls externe Daten eingeführt werden.
 
 ### Akzeptanzprüfungen
@@ -577,7 +583,7 @@ Mögliche Studienfragen:
 
 - Kotlin-Domainmodelle und SQLDelight-Schema mit dem lokalen Zielmodell abgleichen.
 - Generierte SQLDelight-Datenbank-APIs über DAO-/Repository-Verträge verdrahten.
-- Seed-Import für einen deutschlandweiten vorverarbeiteten MaStR/Open-MaStR-abgeleiteten JSON-Windanlagen-Snapshot implementieren oder anpassen.
+- Seed-Import für einen deutschlandweiten vorverarbeiteten MaStR-abgeleiteten JSON-Windanlagen-Snapshot implementieren oder anpassen.
 - App-Shell und untere Navigation in Besitz von `AppNavHost` halten.
 - Platzhalter-Detailansicht durch repository-gestützte Windpark-Details ersetzen.
 - Quellen- und Datenqualitätsfelder zum Schema oder einem begleitenden Metrik-/Quellenmodell hinzufügen.
@@ -637,10 +643,10 @@ Mögliche Studienfragen:
 - Entschieden: Windanlagen sind die atomare Quellen- und Koordinateneinheit; Windparks sind die primäre bürgernahe UX-Einheit für Kartenübersicht, Favoriten und Gemeindekontext.
 - Entschieden: Die Karte nutzt progressive Offenlegung. Nutzerinnen und Nutzer sehen zuerst Windparks oder Cluster; einzelne Windanlagen erscheinen nur bei höheren Zoomstufen oder im Windpark-Detailkontext.
 - Entschieden: Favoriten sind im MVP nur Windpark-bezogen. Einzelne Windanlagen können geprüft, aber nicht separat gespeichert werden.
-- Entschieden: Der MVP nutzt echte MaStR/Open-MaStR-Stammdaten für Windanlagen, sofern verfügbar, während Produktions- und Akzeptanzwirkungswerte mit expliziten Datenqualitätslabels geschätzt oder simuliert sein dürfen.
-- Entschieden: MaStR/Open-MaStR-Anlagen-Stammdaten sind `official`; vorverarbeitungsgenerierte Windpark-Aggregate sind `derived`; Produktions- und Akzeptanzwirkungswerte sind `estimated` oder `simulated`, sofern gemessene öffentliche Werte nicht verfügbar sind.
+- Entschieden: Der MVP nutzt echte MaStR-Stammdaten für Windanlagen, sofern verfügbar, während Produktions- und Akzeptanzwirkungswerte mit expliziten Datenqualitätslabels geschätzt oder simuliert sein dürfen.
+- Entschieden: MaStR-Anlagen-Stammdaten sind `official`; vorverarbeitungsgenerierte Windpark-Aggregate sind `derived`; Produktions- und Akzeptanzwirkungswerte sind `estimated` oder `simulated`, sofern gemessene öffentliche Werte nicht verfügbar sind.
 - Entschieden: Der MVP-Datensatz soll Deutschland abdecken, nicht nur Leipzig/Sachsen oder eine andere lokale Demo-Region.
-- Entschieden: Der MVP nutzt einen vorverarbeiteten lokalen MaStR/Open-MaStR-JSON-Snapshot statt Live-API-Zugriff innerhalb der App und importiert diesen Snapshot anschließend in SQLDelight.
+- Entschieden: Der MVP nutzt einen vorverarbeiteten lokalen MaStR-JSON-Snapshot statt Live-API-Zugriff innerhalb der App und importiert diesen Snapshot anschließend in SQLDelight.
 - Entschieden: `ReportWindTurbine` ist ein Datenhinweis-Ablauf für strukturierte, lokale/exportierbare Datenqualitätshinweise. Er darf keine offizielle MaStR-Korrektur versprechen.
 - Entschieden: Datenhinweise werden im MVP lokal in SQLDelight gespeichert und können später exportiert werden; kein Backend- oder Kontoablauf ist erforderlich.
 - Entschieden: Datenhinweise nutzen die Kategorien `missing_installation`, `wrong_location`, `wrong_status`, `wrong_wind_park_assignment`, `wrong_technical_data`, `installation_removed` und `other`.
